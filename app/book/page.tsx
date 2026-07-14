@@ -151,10 +151,13 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     setSuccessMessage(
   "Thank you. Your booking has been received. We'll contact you shortly to confirm your lesson schedule."
 );
-window.scrollTo({
-  top: 0,
-  behavior: "smooth",
-});
+
+setTimeout(() => {
+  window.scrollTo({
+    top: 0,
+    behavior: "smooth",
+  });
+}, 100);
 // Reset the form
 setParentName("");
 setStudentName("");
@@ -187,9 +190,9 @@ setAdditionalNotes("");
           booking.
         </p>
 {successMessage && (
-  <p className="mt-6 text-center text-lg font-medium text-emerald-700">
-    {successMessage}
-  </p>
+  <div className="mb-6 rounded-xl border border-green-200 bg-green-50 px-6 py-4 text-center text-green-800 shadow-sm">
+    <p className="font-semibold">{successMessage}</p>
+  </div>
 )}
         <form
   onSubmit={handleSubmit}
