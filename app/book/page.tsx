@@ -121,6 +121,7 @@ const [mathTime, setMathTime] = useState("");
 const [scienceTime, setScienceTime] = useState("");
 const [additionalNotes, setAdditionalNotes] = useState("");
 const [timezone, setTimezone] = useState("");
+const [successMessage, setSuccessMessage] = useState("");
 const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
   e.preventDefault();
 
@@ -146,8 +147,28 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     console.error(error);
     alert(error.message);
   } else {
-    alert("Booking submitted successfully!");
     console.log(data);
+    setSuccessMessage(
+  "✅ Thank you! Your booking request has been received. We'll contact you shortly via WhatsApp and email."
+);
+
+// Reset the form
+setParentName("");
+setStudentName("");
+setEmail("");
+setWhatsapp("");
+setAcademicLevel("");
+setCountry("United Kingdom");
+setSubjects({
+  mathematics: false,
+  science: false,
+});
+setMathDay("");
+setMathTime("");
+setScienceDay("");
+setScienceTime("");
+setTimezone("");
+setAdditionalNotes("");
   }
 };
 
@@ -160,9 +181,13 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 
         <p className="mt-4 text-lg text-slate-600">
           Complete the form below and we'll contact you to confirm your
-          child's free discovery session.
+          booking.
         </p>
-
+{successMessage && (
+  <div className="mb-6 rounded-xl bg-green-100 border border-green-300 p-4 text-green-800">
+    {successMessage}
+  </div>
+)}
         <form
   onSubmit={handleSubmit}
   className="mt-10 space-y-8"
