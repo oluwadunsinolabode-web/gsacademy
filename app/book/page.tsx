@@ -152,12 +152,12 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
   "Thank you. Your booking has been received. We'll contact you shortly to confirm your lesson schedule."
 );
 
-setTimeout(() => {
+requestAnimationFrame(() => {
   window.scrollTo({
     top: 0,
     behavior: "smooth",
   });
-}, 100);
+});
 // Reset the form
 setParentName("");
 setStudentName("");
@@ -188,19 +188,15 @@ setAdditionalNotes("");
         <p className="mt-4 text-base sm:text-lg text-slate-600">
   Complete the form below and we'll contact you to confirm your booking.
 </p>
-{successMessage && (
- <div className="mb-8 text-center">
-  <p className="text-lg font-semibold text-emerald-700">
-    Thank you. Your booking has been received.
-  </p>
-
-  <p className="mt-1 text-slate-600">
-    We'll contact you shortly to confirm your lesson schedule.
-  </p>
-</div>
-    <p className="font-semibold">{successMessage}</p>
+<div className="mt-6">
+  {successMessage && (
+  <div className="mb-6 rounded-xl bg-green-50 px-6 py-4 text-center text-green-700 text-lg font-medium">
+    <p className="font-semibold">
+      {successMessage}
+    </p>
   </div>
 )}
+</div>
         <form
   onSubmit={handleSubmit}
   className="mt-10 space-y-8"
