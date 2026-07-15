@@ -179,18 +179,25 @@ setAdditionalNotes("");
 };
 
   return (
-    <main className="min-h-screen bg-slate-50 px-6 py-16">
-      <div className="mx-auto max-w-3xl rounded-3xl bg-white p-10 shadow-xl">
-        <h1 className="text-4xl font-extrabold text-slate-900">
-          Book a Discovery Session
-        </h1>
+    <main className="min-h-screen bg-slate-50 px-4 sm:px-6 py-10 sm:py-16">
+      <div className="mx-auto max-w-3xl rounded-3xl bg-white p-6 sm:p-10 shadow-xl">
+       <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900">
+  Book a Discovery Session
+</h1>
 
-        <p className="mt-4 text-lg text-slate-600">
-          Complete the form below and we'll contact you to confirm your
-          booking.
-        </p>
+        <p className="mt-4 text-base sm:text-lg text-slate-600">
+  Complete the form below and we'll contact you to confirm your booking.
+</p>
 {successMessage && (
-  <div className="mb-6 rounded-xl border border-green-200 bg-green-50 px-6 py-4 text-center text-green-800 shadow-sm">
+ <div className="mb-8 text-center">
+  <p className="text-lg font-semibold text-emerald-700">
+    Thank you. Your booking has been received.
+  </p>
+
+  <p className="mt-1 text-slate-600">
+    We'll contact you shortly to confirm your lesson schedule.
+  </p>
+</div>
     <p className="font-semibold">{successMessage}</p>
   </div>
 )}
@@ -300,7 +307,7 @@ setAdditionalNotes("");
     Subjects
   </label>
 
-  <div className="flex gap-10 text-slate-900">
+  <div className="flex flex-col gap-4 sm:flex-row sm:gap-10 text-slate-900">
     <label className="flex items-center gap-2">
       <input
         type="checkbox"
