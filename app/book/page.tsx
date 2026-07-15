@@ -151,12 +151,13 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     setSuccessMessage(
   "Thank you. Your booking has been received. We'll contact you shortly to confirm your lesson schedule."
 );
+setTimeout(() => {
+  setSuccessMessage("");
+}, 5000);
 
-requestAnimationFrame(() => {
-  window.scrollTo({
-    top: 0,
-    behavior: "smooth",
-  });
+window.scrollTo({
+  top: 0,
+  behavior: "smooth",
 });
 // Reset the form
 setParentName("");
@@ -182,21 +183,19 @@ setAdditionalNotes("");
     <main className="min-h-screen bg-slate-50 px-4 sm:px-6 py-10 sm:py-16">
       <div className="mx-auto max-w-3xl rounded-3xl bg-white p-6 sm:p-10 shadow-xl">
        <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900">
-  Book a Discovery Session
+  Book a Lesson with GS Academy
 </h1>
 
         <p className="mt-4 text-base sm:text-lg text-slate-600">
   Complete the form below and we'll contact you to confirm your booking.
 </p>
-<div className="mt-6">
-  {successMessage && (
-  <div className="mb-6 rounded-xl bg-green-50 px-6 py-4 text-center text-green-700 text-lg font-medium">
-    <p className="font-semibold">
-      {successMessage}
-    </p>
+{successMessage && (
+  <div
+    className="fixed top-5 left-1/2 z-50 -translate-x-1/2 rounded-xl bg-green-600 px-6 py-4 text-white shadow-xl animate-bounce"
+  >
+    {successMessage}
   </div>
 )}
-</div>
         <form
   onSubmit={handleSubmit}
   className="mt-10 space-y-8"
@@ -458,7 +457,7 @@ setAdditionalNotes("");
   type="submit"
   className="w-full rounded-xl bg-slate-900 py-5 text-lg font-bold text-white transition hover:bg-slate-800"
 >
-  Book My Discovery Session
+  Book Now
 </button>
 
 </form>
