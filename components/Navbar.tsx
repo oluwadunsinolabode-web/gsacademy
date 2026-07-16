@@ -14,13 +14,13 @@ export default function Navbar() {
         {/* Logo */}
         <Link href="/">
           <Image
-            src="/logo.png"
-            alt="GS Academy"
-            width={180}
-            height={50}
-            priority
-            className="h-10 w-auto sm:h-14"
-          />
+  src="/gs_website_logo.png"
+  alt="GS Academy"
+  width={280}
+  height={72}
+  priority
+  className="h-auto w-auto"
+ />
         </Link>
 
         {/* Desktop Menu */}
