@@ -43,14 +43,14 @@ export default function Home() {
           {/* RIGHT */}
           <div className="flex flex-1 items-start justify-center md:-mt-16">
 
-            <Image
-              src="/images/hero-image.png"
-              alt="Student learning online"
-              width={950}
-              height={680}
-              priority
-              className="rounded-3xl shadow-xl"
-            />
+           <Image
+  src="/images/greatsam-hero.png"
+  alt="Great Sam - Founder of GS Academy"
+  width={700}
+  height={850}
+  priority
+  className="rounded-3xl object-cover shadow-2xl"
+/>
 
           </div>
 
