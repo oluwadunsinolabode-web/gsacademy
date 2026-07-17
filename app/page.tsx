@@ -8,7 +8,7 @@ export default function Home() {
 
       {/* Hero Section */}
       <section className="bg-white">
-        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-12 px-8 py-16 md:flex-row">
+<div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-12 px-8 py-10 md:flex-row">
 
           {/* LEFT */}
           <div className="flex-1">
