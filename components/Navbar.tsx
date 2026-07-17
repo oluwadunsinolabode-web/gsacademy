@@ -13,13 +13,13 @@ export default function Navbar() {
 
         {/* Logo */}
         <Link href="/" className="flex items-center">
-  <Image
+ <Image
   src="/gs_website_logo.png"
   alt="GS Academy"
-  width={230}
-  height={58}
+  width={280}
+  height={72}
   priority
-  className="block"
+  className="h-14 w-auto object-contain"
 />
 </Link>
 
