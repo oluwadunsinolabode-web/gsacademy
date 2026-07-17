@@ -92,7 +92,91 @@ export default function Home() {
 
         </div>
       </section>
+{/* Why GS Academy */}
+<section className="bg-slate-50 py-24">
+  <div className="mx-auto max-w-7xl px-8">
 
+    <div className="mx-auto max-w-3xl text-center">
+      <h2 className="text-4xl font-extrabold text-slate-900 md:text-5xl">
+        Why Parents Choose GS Academy
+      </h2>
+
+      <p className="mt-6 text-lg leading-8 text-slate-600">
+        Every lesson is carefully designed to help students build
+        confidence, improve grades and achieve lasting academic success.
+      </p>
+    </div>
+
+    <div className="mt-20 grid gap-8 md:grid-cols-2">
+
+      {/* Card 1 */}
+      <div className="rounded-3xl bg-white p-10 shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-xl">
+
+        <div className="mb-6 h-1 w-16 rounded-full bg-yellow-500"></div>
+
+        <h3 className="text-2xl font-bold text-slate-900">
+          Personal Learning Plans
+        </h3>
+
+        <p className="mt-5 leading-8 text-slate-600">
+          Every student follows a structured learning plan tailored
+          to their strengths, weaknesses and academic goals.
+        </p>
+
+      </div>
+
+      {/* Card 2 */}
+      <div className="rounded-3xl bg-white p-10 shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-xl">
+
+        <div className="mb-6 h-1 w-16 rounded-full bg-yellow-500"></div>
+
+        <h3 className="text-2xl font-bold text-slate-900">
+          One-to-One Live Lessons
+        </h3>
+
+        <p className="mt-5 leading-8 text-slate-600">
+          Individual online lessons ensure every student receives
+          the attention, guidance and support they deserve.
+        </p>
+
+      </div>
+
+      {/* Card 3 */}
+      <div className="rounded-3xl bg-white p-10 shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-xl">
+
+        <div className="mb-6 h-1 w-16 rounded-full bg-yellow-500"></div>
+
+        <h3 className="text-2xl font-bold text-slate-900">
+          Monthly Mock Assessments
+        </h3>
+
+        <p className="mt-5 leading-8 text-slate-600">
+          Students complete monthly assessments to monitor progress,
+          identify improvement areas and prepare for examinations.
+        </p>
+
+      </div>
+
+      {/* Card 4 */}
+      <div className="rounded-3xl bg-white p-10 shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-xl">
+
+        <div className="mb-6 h-1 w-16 rounded-full bg-yellow-500"></div>
+
+        <h3 className="text-2xl font-bold text-slate-900">
+          Parent Progress Reports
+        </h3>
+
+        <p className="mt-5 leading-8 text-slate-600">
+          Regular progress updates keep parents informed about
+          attendance, performance and overall academic development.
+        </p>
+
+      </div>
+
+    </div>
+
+  </div>
+</section>
       {/* Trust Strip */}
       <section className="border-y bg-slate-50 py-6">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-center gap-10 px-6 text-sm font-semibold tracking-wide text-slate-700">
