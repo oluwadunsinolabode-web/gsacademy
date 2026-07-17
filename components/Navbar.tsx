@@ -23,36 +23,50 @@ export default function Navbar() {
   />
 </Link>
 
-        {/* Desktop Menu */}
-        <div className="hidden items-center gap-8 md:flex">
-          <Link href="/" className="font-medium text-slate-700 hover:text-yellow-600">
-            Home
-          </Link>
+       {/* Desktop Menu */}
+<div className="hidden items-center gap-8 md:flex">
+  <Link
+    href="/"
+    className="font-medium text-slate-700 hover:text-yellow-600"
+  >
+    Home
+  </Link>
 
-          <a href="#about" className="font-medium text-slate-700 hover:text-yellow-600">
-            About
-          </a>
+  <Link
+    href="/about"
+    className="font-medium text-slate-700 hover:text-yellow-600"
+  >
+    About
+  </Link>
 
-          <a href="#subjects" className="font-medium text-slate-700 hover:text-yellow-600">
-            Subjects
-          </a>
+  <Link
+    href="/subjects"
+    className="font-medium text-slate-700 hover:text-yellow-600"
+  >
+    Subjects
+  </Link>
 
-          <a href="#pricing" className="font-medium text-slate-700 hover:text-yellow-600">
-            Pricing
-          </a>
+  <Link
+    href="/pricing"
+    className="font-medium text-slate-700 hover:text-yellow-600"
+  >
+    Pricing
+  </Link>
 
-          <a href="#contact" className="font-medium text-slate-700 hover:text-yellow-600">
-            Contact
-          </a>
+  <Link
+    href="/contact"
+    className="font-medium text-slate-700 hover:text-yellow-600"
+  >
+    Contact
+  </Link>
 
-          <Link
-            href="/book"
-            className="rounded-xl bg-yellow-500 px-5 py-3 font-semibold text-slate-900 transition hover:bg-yellow-400"
-          >
-            Book Now
-          </Link>
-        </div>
-
+  <Link
+    href="/book"
+    className="rounded-xl bg-yellow-500 px-5 py-3 font-semibold text-slate-900 transition hover:bg-yellow-400"
+  >
+    Book Now
+  </Link>
+</div>
         {/* Mobile Hamburger */}
        <button
   onClick={() => setMenuOpen(!menuOpen)}
@@ -84,61 +98,41 @@ export default function Navbar() {
       </div>
 
       {/* Mobile Dropdown */}
-      {menuOpen && (
-        <div className="border-t border-gray-200 bg-white md:hidden">
-          <div className="flex flex-col px-6 py-4">
+{menuOpen && (
+  <div className="border-t border-gray-200 bg-white md:hidden">
+    <div className="flex flex-col px-6 py-4">
 
-            <Link
-              href="/"
-              onClick={() => setMenuOpen(false)}
-              className="py-3 font-medium text-slate-700"
-            >
-              Home
-            </Link>
+      <Link href="/" onClick={() => setMenuOpen(false)} className="py-3 font-medium text-slate-700">
+        Home
+      </Link>
 
-            <a
-              href="#about"
-              onClick={() => setMenuOpen(false)}
-              className="py-3 font-medium text-slate-700"
-            >
-              About
-            </a>
+      <Link href="/about" onClick={() => setMenuOpen(false)} className="py-3 font-medium text-slate-700">
+        About
+      </Link>
 
-            <a
-              href="#subjects"
-              onClick={() => setMenuOpen(false)}
-              className="py-3 font-medium text-slate-700"
-            >
-              Subjects
-            </a>
+      <Link href="/subjects" onClick={() => setMenuOpen(false)} className="py-3 font-medium text-slate-700">
+        Subjects
+      </Link>
 
-            <a
-              href="#pricing"
-              onClick={() => setMenuOpen(false)}
-              className="py-3 font-medium text-slate-700"
-            >
-              Pricing
-            </a>
+      <Link href="/pricing" onClick={() => setMenuOpen(false)} className="py-3 font-medium text-slate-700">
+        Pricing
+      </Link>
 
-            <a
-              href="#contact"
-              onClick={() => setMenuOpen(false)}
-              className="py-3 font-medium text-slate-700"
-            >
-              Contact
-            </a>
+      <Link href="/contact" onClick={() => setMenuOpen(false)} className="py-3 font-medium text-slate-700">
+        Contact
+      </Link>
 
-            <Link
-              href="/book"
-              onClick={() => setMenuOpen(false)}
-              className="mt-4 rounded-xl bg-yellow-500 py-3 text-center font-semibold text-slate-900 transition hover:bg-yellow-400"
-            >
-              Book Now
-            </Link>
+      <Link
+        href="/book"
+        onClick={() => setMenuOpen(false)}
+        className="mt-4 rounded-xl bg-yellow-500 py-3 text-center font-semibold text-slate-900 transition hover:bg-yellow-400"
+      >
+        Book Now
+      </Link>
 
-          </div>
-        </div>
-      )}
+    </div>
+  </div>
+)}
     </nav>
   );
 }
