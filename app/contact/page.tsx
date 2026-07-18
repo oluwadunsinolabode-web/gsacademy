@@ -61,7 +61,7 @@ export default function ContactPage() {
               </h2>
 
               <p className="mt-3 text-slate-600">
-                +234 706 459 6878
+                +234 706 458 6878
               </p>
 
             </a>
