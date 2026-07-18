@@ -17,7 +17,7 @@ export default function PricingPage() {
             </h1>
 
             <p className="mt-6 text-lg leading-8 text-slate-600">
-              Simple, transparent pricing with no hidden charges.
+              Simple and affordble pricing.
             </p>
 
           </div>
@@ -44,7 +44,7 @@ export default function PricingPage() {
 
             <div className="space-y-5 text-lg text-slate-700">
 
-              <p>• Two live one-to-one lessons each week</p>
+              <p>• Live one-to-one lessons each week</p>
 
               <p>• Personal learning plan</p>
 
