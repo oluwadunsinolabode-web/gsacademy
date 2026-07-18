@@ -15,8 +15,9 @@ export default function SubjectsPage() {
             </h1>
 
             <p className="mt-6 text-lg leading-8 text-slate-600">
-              Mathematics is our specialty, supported by excellent Science
-              tutoring and additional academic subjects delivered by experienced tutors.
+             We provide high-quality online tutoring across a wide range of academic
+  subjects, helping students build confidence, improve performance and
+  achieve outstanding results.
             </p>
           </div>
 

@@ -28,37 +28,44 @@ export default function Navbar() {
 
           <Link
             href="/"
-            className="font-medium text-slate-700 hover:text-yellow-600 transition"
+            className="font-medium text-slate-700 transition hover:text-yellow-600"
           >
             Home
           </Link>
 
           <Link
             href="/about"
-            className="font-medium text-slate-700 hover:text-yellow-600 transition"
+            className="font-medium text-slate-700 transition hover:text-yellow-600"
           >
             About
           </Link>
 
           <Link
             href="/subjects"
-            className="font-medium text-slate-700 hover:text-yellow-600 transition"
+            className="font-medium text-slate-700 transition hover:text-yellow-600"
           >
             Subjects
           </Link>
 
           <Link
             href="/pricing"
-            className="font-medium text-slate-700 hover:text-yellow-600 transition"
+            className="font-medium text-slate-700 transition hover:text-yellow-600"
           >
             Pricing
           </Link>
 
           <Link
             href="/contact"
-            className="font-medium text-slate-700 hover:text-yellow-600 transition"
+            className="font-medium text-slate-700 transition hover:text-yellow-600"
           >
             Contact
+          </Link>
+
+          <Link
+            href="/login"
+            className="font-medium text-slate-700 transition hover:text-yellow-600"
+          >
+            Login
           </Link>
 
           <Link
@@ -144,6 +151,14 @@ export default function Navbar() {
               className="py-3 font-medium text-slate-700"
             >
               Contact
+            </Link>
+
+            <Link
+              href="/login"
+              onClick={() => setMenuOpen(false)}
+              className="py-3 font-medium text-slate-700"
+            >
+              Login
             </Link>
 
             <Link
