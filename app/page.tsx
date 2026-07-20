@@ -79,11 +79,7 @@ export default function Home() {
 
 </div>
 
-  <p className="mt-5 text-sm text-slate-500">
-    *Continue on a flexible monthly tuition plan after enrolment.
-  </p>
-
-</div>
+  </div>
 
           {/* RIGHT */}
           <div className="flex flex-1 items-start justify-center md:-mt-16">

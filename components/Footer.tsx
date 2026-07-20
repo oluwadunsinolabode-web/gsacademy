@@ -20,10 +20,26 @@ export default function Footer() {
           <h4 className="text-lg font-semibold">Quick Links</h4>
 
           <ul className="mt-5 space-y-3 text-slate-300">
-            <li><Link href="/">Home</Link></li>
-            <li><Link href="/about">About</Link></li>
-            <li><Link href="/subjects">Subjects</Link></li>
-            <li><Link href="/pricing">Pricing</Link></li>
+            <li>
+              <Link href="/" className="hover:text-yellow-400">
+                Home
+              </Link>
+            </li>
+            <li>
+              <Link href="/about" className="hover:text-yellow-400">
+                About
+              </Link>
+            </li>
+            <li>
+              <Link href="/subjects" className="hover:text-yellow-400">
+                Subjects
+              </Link>
+            </li>
+            <li>
+              <Link href="/pricing" className="hover:text-yellow-400">
+                Pricing
+              </Link>
+            </li>
           </ul>
         </div>
 
@@ -32,9 +48,21 @@ export default function Footer() {
           <h4 className="text-lg font-semibold">Support</h4>
 
           <ul className="mt-5 space-y-3 text-slate-300">
-            <li><Link href="/book">Book Free Week</Link></li>
-            <li><Link href="/contact">Contact</Link></li>
-            <li><Link href="/login">Student Portal</Link></li>
+            <li>
+              <Link href="/book" className="hover:text-yellow-400">
+                Book Free Week
+              </Link>
+            </li>
+            <li>
+              <Link href="/contact" className="hover:text-yellow-400">
+                Contact
+              </Link>
+            </li>
+            <li>
+              <Link href="/login" className="hover:text-yellow-400">
+                Student Portal
+              </Link>
+            </li>
           </ul>
         </div>
 
@@ -42,9 +70,42 @@ export default function Footer() {
         <div>
           <h4 className="text-lg font-semibold">Contact</h4>
 
-          <div className="mt-5 space-y-3 text-slate-300 text-sm">
+          <div className="mt-5 space-y-3 text-sm text-slate-300">
             <p>gsacademyadmin@gmail.com</p>
             <p>+234 706 458 6878</p>
+
+            <div className="pt-4">
+              <h5 className="font-semibold text-white">Follow Us</h5>
+
+              <div className="mt-3 space-y-2">
+                <a
+                  href="https://facebook.com/gsacademyhub"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block hover:text-yellow-400"
+                >
+                  Facebook: @gsacademyhub
+                </a>
+
+                <a
+                  href="https://instagram.com/gsacademyhub"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block hover:text-yellow-400"
+                >
+                  Instagram: @gsacademyhub
+                </a>
+
+                <a
+                  href="https://linkedin.com/company/gsacademyhub"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block hover:text-yellow-400"
+                >
+                  LinkedIn: @gsacademyhub
+                </a>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -57,7 +118,7 @@ export default function Footer() {
             © {new Date().getFullYear()} GS Academy. All rights reserved.
           </p>
 
-          <p>GS Academy</p>
+          <p>Grooming Scholars.</p>
 
         </div>
       </div>
