@@ -97,6 +97,78 @@ export default function Home() {
 
         </div>
       </section>
+      {/* How It Works */}
+
+<section className="bg-slate-50 py-24">
+  <div className="mx-auto max-w-7xl px-8">
+
+    <div className="text-center">
+      <h2 className="text-4xl font-extrabold text-slate-900 md:text-5xl">
+        How It Works
+      </h2>
+
+      <p className="mt-5 text-lg text-slate-600">
+        Getting started is simple.
+      </p>
+    </div>
+
+    <div className="mt-16 grid gap-8 md:grid-cols-3">
+
+      {/* Step 1 */}
+      <div className="rounded-3xl bg-white p-10 shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-xl">
+
+        <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-full bg-yellow-500 text-2xl font-bold text-slate-900">
+          1
+        </div>
+
+        <h3 className="text-2xl font-bold text-slate-900">
+          Book Your Free Week
+        </h3>
+
+        <p className="mt-4 leading-8 text-slate-600">
+          Start with a FREE one-week trial and discover how GS Academy can support your child's success.
+        </p>
+
+      </div>
+
+      {/* Step 2 */}
+      <div className="rounded-3xl bg-white p-10 shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-xl">
+
+        <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-full bg-yellow-500 text-2xl font-bold text-slate-900">
+          2
+        </div>
+
+        <h3 className="text-2xl font-bold text-slate-900">
+          Attend Live Lessons
+        </h3>
+
+        <p className="mt-4 leading-8 text-slate-600">
+          Join engaging live online lessons designed around your child's learning needs and academic goals.
+        </p>
+
+      </div>
+
+      {/* Step 3 */}
+      <div className="rounded-3xl bg-white p-10 shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-xl">
+
+        <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-full bg-yellow-500 text-2xl font-bold text-slate-900">
+          3
+        </div>
+
+        <h3 className="text-2xl font-bold text-slate-900">
+          Track Progress
+        </h3>
+
+        <p className="mt-4 leading-8 text-slate-600">
+          Follow your child's progress with regular assessments and performance reports throughout their learning journey.
+        </p>
+
+      </div>
+
+    </div>
+
+  </div>
+</section>
     </main>
 
 <Footer />
