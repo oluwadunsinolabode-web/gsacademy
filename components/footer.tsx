@@ -103,7 +103,7 @@ export default function Footer() {
               </p>
 
               <p>
-                📱 +234 706 459 6878
+                📱 +234 706 458 6878
               </p>
 
               <p>
