@@ -2,11 +2,9 @@
  import Navbar from "@/components/Navbar";
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
 import Footer from "@/components/Footer";
 export default function Home() {
-  const [showWhy, setShowWhy] = useState(false);
- return (
+  return (
   <>
     <main className="min-h-screen bg-white">
       <Navbar />
@@ -103,37 +101,7 @@ export default function Home() {
 
         </div>
       </section>
-    {/* Call To Action */}
-
-<section className="bg-slate-900 py-24 text-center text-white">
-
-  <div className="mx-auto max-w-4xl px-8">
-
-    <h2 className="text-4xl font-extrabold md:text-5xl">
-      Ready to Help Your Child Succeed?
-    </h2>
-
-    <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-slate-300">
-      Give your child the confidence to excel through personalised online
-      tutoring in Mathematics, Science and other core academic subjects.
-      Start with a completely FREE one-week trial.
-    </p>
-
-    <div className="mt-12">
-
-      <Link
-        href="/book"
-        className="inline-block rounded-xl bg-yellow-500 px-10 py-4 text-lg font-bold text-slate-900 transition hover:bg-yellow-400"
-      >
-        Book Your FREE Week
-      </Link>
-
-    </div>
-
-  </div>
-
-</section>
-</main>
+    </main>
 
 <Footer />
 
