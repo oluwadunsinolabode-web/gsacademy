@@ -1,4 +1,5 @@
 import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
 import Link from "next/link";
 
 export default function PricingPage() {
@@ -17,7 +18,7 @@ export default function PricingPage() {
             </h1>
 
             <p className="mt-6 text-lg leading-8 text-slate-600">
-              Simple and affordble pricing.
+              Simple and affordable pricing.
             </p>
 
           </div>
@@ -62,7 +63,7 @@ export default function PricingPage() {
                 Monthly Tuition
               </h3>
 
-              <p className="mt-4 text-slate-600 leading-8">
+              <p className="mt-4 leading-8 text-slate-600">
                 Tuition fees depend on the student's academic level,
                 country and selected subjects.
               </p>
@@ -89,6 +90,9 @@ export default function PricingPage() {
         </section>
 
       </main>
+
+      <Footer />
+
     </>
   );
 }

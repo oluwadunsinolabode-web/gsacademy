@@ -3,9 +3,11 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
+import Footer from "@/components/Footer";
 export default function Home() {
   const [showWhy, setShowWhy] = useState(false);
-  return (
+ return (
+  <>
     <main className="min-h-screen bg-white">
       <Navbar />
 
@@ -245,7 +247,11 @@ export default function Home() {
   </div>
 
 </section>
-      
-    </main>
-  );
-} 
+
+</main>
+
+<Footer />
+
+</>
+);
+}

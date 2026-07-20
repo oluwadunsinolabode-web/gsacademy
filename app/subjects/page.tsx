@@ -1,4 +1,5 @@
 import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
 
 export default function SubjectsPage() {
   return (
@@ -15,9 +16,9 @@ export default function SubjectsPage() {
             </h1>
 
             <p className="mt-6 text-lg leading-8 text-slate-600">
-             We provide high-quality online tutoring across a wide range of academic
-  subjects, helping students build confidence, improve performance and
-  achieve outstanding results.
+              We provide high-quality online tutoring across a wide range of
+              academic subjects, helping students build confidence, improve
+              performance and achieve outstanding results.
             </p>
           </div>
 
@@ -77,6 +78,18 @@ export default function SubjectsPage() {
 
             <div className="rounded-3xl bg-white p-8 shadow-sm">
               <h2 className="text-2xl font-bold text-slate-900">
+                English Language
+              </h2>
+
+              <p className="mt-4 leading-8 text-slate-600">
+                Develop strong reading, writing, grammar and communication
+                skills while preparing confidently for school assessments,
+                WAEC, NECO, GCSE and IGCSE examinations.
+              </p>
+            </div>
+
+            <div className="rounded-3xl bg-white p-8 shadow-sm">
+              <h2 className="text-2xl font-bold text-slate-900">
                 Other Subjects
               </h2>
 
@@ -103,6 +116,9 @@ export default function SubjectsPage() {
         </section>
 
       </main>
+
+      <Footer />
+
     </>
   );
 }

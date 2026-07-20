@@ -1,4 +1,5 @@
 import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
 import Link from "next/link";
 
 export default function ContactPage() {
@@ -23,9 +24,7 @@ export default function ContactPage() {
 
           </div>
 
-
           <div className="mt-16 grid gap-8 md:grid-cols-3">
-
 
             {/* Email */}
             <div className="rounded-3xl bg-white p-8 text-center shadow-sm">
@@ -44,12 +43,12 @@ export default function ContactPage() {
 
             </div>
 
-
             {/* WhatsApp */}
             <a
               href="https://wa.me/2347064586878"
               target="_blank"
-              className="rounded-3xl bg-white p-8 text-center shadow-sm transition hover:-translate-y-1"
+              rel="noopener noreferrer"
+              className="rounded-3xl bg-white p-8 text-center shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
             >
 
               <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-yellow-500 text-2xl">
@@ -65,7 +64,6 @@ export default function ContactPage() {
               </p>
 
             </a>
-
 
             {/* Worldwide */}
             <div className="rounded-3xl bg-white p-8 text-center shadow-sm">
@@ -84,9 +82,9 @@ export default function ContactPage() {
 
             </div>
 
-
           </div>
 
+          {/* CTA */}
 
           <section className="mt-20 rounded-3xl bg-slate-900 px-8 py-14 text-center text-white">
 
@@ -99,7 +97,6 @@ export default function ContactPage() {
               learning plan for your academic goals.
             </p>
 
-
             <Link
               href="/book"
               className="mt-8 inline-block rounded-xl bg-yellow-500 px-10 py-4 font-bold text-slate-900 transition hover:bg-yellow-400"
@@ -107,13 +104,14 @@ export default function ContactPage() {
               Book a Discovery Session
             </Link>
 
-
           </section>
-
 
         </section>
 
       </main>
+
+      <Footer />
+
     </>
   );
 }
