@@ -1,103 +1,174 @@
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
-
 export default function ProgressPage() {
   return (
     <>
-      <Navbar />
 
-      <main className="min-h-screen bg-slate-100">
+      <h1 className="text-4xl font-extrabold text-slate-900">
+        Academic Progress
+      </h1>
 
-        <div className="mx-auto max-w-7xl px-8 py-12">
+      <p className="mt-3 text-slate-600">
+        Monitor your academic performance and tutor feedback.
+      </p>
 
-          <h1 className="text-4xl font-extrabold text-slate-900">
-            Academic Progress
-          </h1>
 
-          <p className="mt-3 text-slate-600">
-            Monitor your academic performance and tutor feedback.
+      <div className="mt-10 grid gap-8 lg:grid-cols-3">
+
+
+        {/* Mathematics */}
+
+        <div className="rounded-3xl bg-white p-8 shadow-sm">
+
+          <h2 className="text-2xl font-bold text-slate-900">
+            Mathematics
+          </h2>
+
+          <p className="mt-6 text-5xl font-extrabold text-green-600">
+            92%
           </p>
 
-          <div className="mt-10 grid gap-8 lg:grid-cols-3">
-
-            {/* Mathematics */}
-
-            <div className="rounded-3xl bg-white p-8 shadow-sm">
-
-              <h2 className="text-2xl font-bold text-slate-900">
-                Mathematics
-              </h2>
-
-              <p className="mt-6 text-5xl font-extrabold text-green-600">
-                92%
-              </p>
-
-              <p className="mt-3 text-slate-600">
-                Excellent Progress
-              </p>
-
-            </div>
-
-            {/* English */}
-
-            <div className="rounded-3xl bg-white p-8 shadow-sm">
-
-              <h2 className="text-2xl font-bold text-slate-900">
-                English
-              </h2>
-
-              <p className="mt-6 text-5xl font-extrabold text-yellow-500">
-                84%
-              </p>
-
-              <p className="mt-3 text-slate-600">
-                Very Good
-              </p>
-
-            </div>
-
-            {/* Attendance */}
-
-            <div className="rounded-3xl bg-white p-8 shadow-sm">
-
-              <h2 className="text-2xl font-bold text-slate-900">
-                Attendance
-              </h2>
-
-              <p className="mt-6 text-5xl font-extrabold text-blue-600">
-                100%
-              </p>
-
-              <p className="mt-3 text-slate-600">
-                Outstanding
-              </p>
-
-            </div>
-
-          </div>
-
-          {/* Tutor Comment */}
-
-          <div className="mt-10 rounded-3xl bg-white p-10 shadow-sm">
-
-            <h2 className="text-3xl font-bold text-slate-900">
-              Tutor's Comment
-            </h2>
-
-            <p className="mt-6 leading-8 text-slate-600">
-              John has shown remarkable improvement in Mathematics over the
-              past few weeks. His confidence has increased significantly, and
-              he participates actively during lessons. Continued practice with
-              homework will help him achieve even higher results.
-            </p>
-
-          </div>
+          <p className="mt-3 text-slate-600">
+            Excellent Progress
+          </p>
 
         </div>
 
-      </main>
 
-      <Footer />
+
+        {/* Science */}
+
+        <div className="rounded-3xl bg-white p-8 shadow-sm">
+
+          <h2 className="text-2xl font-bold text-slate-900">
+            Science
+          </h2>
+
+          <p className="mt-6 text-5xl font-extrabold text-yellow-500">
+            84%
+          </p>
+
+          <p className="mt-3 text-slate-600">
+            Very Good
+          </p>
+
+        </div>
+
+
+
+        {/* Attendance */}
+
+        <div className="rounded-3xl bg-white p-8 shadow-sm">
+
+          <h2 className="text-2xl font-bold text-slate-900">
+            Attendance
+          </h2>
+
+          <p className="mt-6 text-5xl font-extrabold text-blue-600">
+            100%
+          </p>
+
+          <p className="mt-3 text-slate-600">
+            Outstanding
+          </p>
+
+        </div>
+
+
+      </div>
+
+
+
+      {/* Tutor Feedback */}
+
+      <div className="mt-10 rounded-3xl bg-white p-10 shadow-sm">
+
+        <h2 className="text-3xl font-bold text-slate-900">
+          Tutor Feedback
+        </h2>
+
+
+        <p className="mt-6 leading-8 text-slate-600">
+          Your tutor feedback, assessment results and academic
+          recommendations will appear here after your lessons and
+          assessments.
+        </p>
+
+
+      </div>
+
+
+
+      {/* Assessment History */}
+
+      <div className="mt-10 rounded-3xl bg-white p-10 shadow-sm">
+
+        <h2 className="text-3xl font-bold text-slate-900">
+          Assessment History
+        </h2>
+
+
+        <div className="mt-6 overflow-hidden rounded-2xl border border-slate-200">
+
+          <table className="w-full">
+
+            <thead className="bg-slate-900 text-white">
+
+              <tr>
+
+                <th className="px-6 py-4 text-left">
+                  Assessment
+                </th>
+
+                <th className="px-6 py-4 text-left">
+                  Subject
+                </th>
+
+                <th className="px-6 py-4 text-left">
+                  Score
+                </th>
+
+                <th className="px-6 py-4 text-left">
+                  Date
+                </th>
+
+              </tr>
+
+            </thead>
+
+
+            <tbody>
+
+              <tr className="border-b">
+
+                <td className="px-6 py-4">
+                  No assessment yet
+                </td>
+
+                <td className="px-6 py-4">
+                  -
+                </td>
+
+                <td className="px-6 py-4">
+                  -
+                </td>
+
+                <td className="px-6 py-4">
+                  -
+                </td>
+
+              </tr>
+
+
+            </tbody>
+
+
+          </table>
+
+
+        </div>
+
+
+      </div>
+
 
     </>
   );
