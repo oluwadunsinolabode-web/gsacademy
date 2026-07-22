@@ -15,9 +15,9 @@ export default function DashboardLayout({
   return (
     <>
 
-      <main className="min-h-screen bg-slate-100 py-6">
+     <main className="min-h-screen bg-slate-100 lg:py-6">
 
-        <div className="mx-auto max-w-7xl overflow-hidden rounded-3xl shadow-lg">
+      <div className="w-full lg:mx-auto lg:max-w-7xl overflow-hidden bg-white lg:rounded-3xl lg:shadow-lg">
 
 
           {/* Mobile Dashboard Header */}
@@ -260,7 +260,7 @@ export default function DashboardLayout({
 
             {/* Main Content */}
 
-            <section className="min-h-screen flex-1 bg-slate-50 p-5 sm:p-8">
+     <section className="min-h-screen flex-1 bg-white p-5 sm:p-8">
 
               {children}
 
