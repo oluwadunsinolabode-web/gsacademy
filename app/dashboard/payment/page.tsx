@@ -6,121 +6,152 @@ export default function PaymentsPage() {
         Payment History
       </h1>
 
-      <p className="mt-3 text-slate-600">
+      <p className="mt-3 text-slate-700">
         View your tuition payment history and receipts.
       </p>
 
 
-      <div className="mt-10 overflow-hidden rounded-3xl bg-white shadow-sm">
+      {/* Payment Cards */}
 
-        <table className="w-full">
+      <div className="mt-10 space-y-6">
 
-          <thead className="bg-slate-900 text-white">
 
-            <tr>
+        {/* Paid Payment */}
 
-              <th className="px-6 py-5 text-left">
+        <div className="rounded-3xl bg-white p-6 shadow-sm">
+
+
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+
+
+            <div>
+
+              <p className="text-sm font-semibold text-slate-600">
                 Month
-              </th>
+              </p>
 
-              <th className="px-6 py-5 text-left">
-                Amount
-              </th>
-
-              <th className="px-6 py-5 text-left">
-                Status
-              </th>
-
-              <th className="px-6 py-5 text-left">
-                Receipt
-              </th>
-
-            </tr>
-
-          </thead>
-
-
-          <tbody>
-
-
-            <tr className="border-b">
-
-              <td className="px-6 py-5">
+              <h2 className="mt-1 text-2xl font-bold text-slate-900">
                 July 2026
-              </td>
+              </h2>
 
-              <td className="px-6 py-5">
+
+            </div>
+
+
+
+            <div>
+
+              <p className="text-sm font-semibold text-slate-600">
+                Amount
+              </p>
+
+              <p className="mt-1 text-xl font-bold text-slate-900">
                 £120
-              </td>
+              </p>
 
-              <td className="px-6 py-5">
 
-                <span className="rounded-full bg-green-100 px-4 py-2 font-semibold text-green-700">
-                  Paid
-                </span>
-
-              </td>
-
-              <td className="px-6 py-5">
-
-                <button
-                  className="rounded-lg bg-yellow-500 px-5 py-2 font-semibold text-slate-900 hover:bg-yellow-400"
-                >
-                  Download
-                </button>
-
-              </td>
-
-            </tr>
+            </div>
 
 
 
-            <tr>
+            <span className="w-fit rounded-full bg-green-100 px-5 py-2 font-semibold text-green-700">
+              Paid
+            </span>
 
-              <td className="px-6 py-5">
+
+          </div>
+
+
+
+          <button
+            className="
+            mt-6 w-full rounded-xl 
+            bg-yellow-500 px-5 py-3
+            font-bold text-slate-900
+            transition hover:bg-yellow-400
+            sm:w-auto
+            "
+          >
+            Download Receipt
+          </button>
+
+
+        </div>
+
+
+
+
+
+        {/* Pending Payment */}
+
+        <div className="rounded-3xl bg-white p-6 shadow-sm">
+
+
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+
+
+            <div>
+
+              <p className="text-sm font-semibold text-slate-600">
+                Month
+              </p>
+
+              <h2 className="mt-1 text-2xl font-bold text-slate-900">
                 August 2026
-              </td>
+              </h2>
 
-              <td className="px-6 py-5">
+            </div>
+
+
+
+            <div>
+
+              <p className="text-sm font-semibold text-slate-600">
+                Amount
+              </p>
+
+              <p className="mt-1 text-xl font-bold text-slate-900">
                 £120
-              </td>
+              </p>
 
-              <td className="px-6 py-5">
-
-                <span className="rounded-full bg-yellow-100 px-4 py-2 font-semibold text-yellow-700">
-                  Pending
-                </span>
-
-              </td>
-
-              <td className="px-6 py-5">
-                —
-              </td>
-
-            </tr>
+            </div>
 
 
-          </tbody>
+
+            <span className="w-fit rounded-full bg-yellow-100 px-5 py-2 font-semibold text-yellow-700">
+              Pending
+            </span>
 
 
-        </table>
+
+          </div>
+
+
+        </div>
 
 
       </div>
 
 
 
+
+
+      {/* Help Section */}
+
       <div className="mt-10 rounded-3xl bg-white p-8 shadow-sm">
+
 
         <h2 className="text-2xl font-bold text-slate-900">
           Need Help?
         </h2>
 
-        <p className="mt-4 leading-8 text-slate-600">
+
+        <p className="mt-4 leading-8 text-slate-700">
           If you have any questions regarding your tuition payments,
           receipts or invoices, please contact the GS Academy
           administration team.
         </p>
+
 
       </div>
 
