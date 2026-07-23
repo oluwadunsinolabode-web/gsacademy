@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { supabase } from "@/lib/supabase";
 
 export default function BookingPage() {
   const academicLevels: Record<string, string[]> = {
@@ -93,6 +94,64 @@ export default function BookingPage() {
   };
 const [otherLevel, setOtherLevel] = useState("");
   const [country, setCountry] = useState("United Kingdom");
+  const [parentName, setParentName] = useState("");
+const [studentName, setStudentName] = useState("");
+const [email, setEmail] = useState("");
+const [whatsapp, setWhatsapp] = useState("");
+
+const [subjectMath, setSubjectMath] = useState(false);
+const [subjectScience, setSubjectScience] = useState(false);
+
+const [day, setDay] = useState("");
+const [time, setTime] = useState("");
+
+const [success, setSuccess] = useState("");
+const [loading, setLoading] = useState(false);
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+
+  setLoading(true);
+
+  const { error } = await supabase
+    .from("bookings")
+    .insert([
+      {
+        parent_name: parentName,
+        student_name: studentName,
+        email,
+        whatsapp,
+        country,
+        academic_level:
+          country === "Other"
+            ? otherLevel
+            : academicLevels[country][0],
+        subjects: [
+          ...(subjectMath ? ["Mathematics"] : []),
+          ...(subjectScience ? ["Science"] : []),
+        ],
+        preferred_day: day,
+        preferred_time: time,
+      },
+    ]);
+
+  setLoading(false);
+
+  if (error) {
+    alert(error.message);
+    return;
+  }
+
+  setSuccess("✅ Booking submitted successfully!");
+
+  setParentName("");
+  setStudentName("");
+  setEmail("");
+  setWhatsapp("");
+  setSubjectMath(false);
+  setSubjectScience(false);
+  setDay("");
+  setTime("");
+};
 
   return (
     <main className="min-h-screen bg-slate-50 px-6 py-16">
@@ -105,8 +164,15 @@ const [otherLevel, setOtherLevel] = useState("");
           Complete the form below and we'll contact you to confirm your
           child's free discovery session.
         </p>
-
-        <form className="mt-10 space-y-8">
+{success && (
+  <div className="mt-6 rounded-xl bg-green-600 p-4 text-center font-semibold text-white">
+    {success}
+  </div>
+)}
+       <form
+  onSubmit={handleSubmit}
+  className="mt-10 space-y-8"
+>
           <div>
             <label className="mb-2 block font-semibold text-slate-900">
               Parent / Guardian Name
