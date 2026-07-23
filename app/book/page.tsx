@@ -1,319 +1,556 @@
 "use client";
 
 import { useState } from "react";
-import { supabase } from "@/lib/supabase";
+import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
 
-export default function BookingPage() {
-  const academicLevels: Record<string, string[]> = {
-    "United Kingdom": [
-      "Year 1",
-      "Year 2",
-      "Year 3",
-      "Year 4",
-      "Year 5",
-      "Year 6",
-      "Year 7",
-      "Year 8",
-      "Year 9",
-      "Year 10",
-      "Year 11",
-      "Year 12",
-      "Year 13",
-      "GCSE",
-      "IGCSE",
-      "A-Level",
-    ],
+/* ===========================
+   COUNTRY LIST
+=========================== */
 
-    "United States": [
-      "Grade 1",
-      "Grade 2",
-      "Grade 3",
-      "Grade 4",
-      "Grade 5",
-      "Grade 6",
-      "Grade 7",
-      "Grade 8",
-      "Grade 9",
-      "Grade 10",
-      "Grade 11",
-      "Grade 12",
-      "SAT",
-      "AP",
-    ],
+const countries = [
+  "Nigeria",
+  "United Kingdom",
+  "United States",
+  "Canada",
+  "Australia",
+  "Other",
+];
 
-    Canada: [
-      "Grade 1",
-      "Grade 2",
-      "Grade 3",
-      "Grade 4",
-      "Grade 5",
-      "Grade 6",
-      "Grade 7",
-      "Grade 8",
-      "Grade 9",
-      "Grade 10",
-      "Grade 11",
-      "Grade 12",
-    ],
+/* ===========================
+   ACADEMIC LEVELS
+=========================== */
 
-    Australia: [
-      "Year 1",
-      "Year 2",
-      "Year 3",
-      "Year 4",
-      "Year 5",
-      "Year 6",
-      "Year 7",
-      "Year 8",
-      "Year 9",
-      "Year 10",
-      "Year 11",
-      "Year 12",
-    ],
+const academicLevels: Record<string, string[]> = {
+  Nigeria: [
+    "Primary 1",
+    "Primary 2",
+    "Primary 3",
+    "Primary 4",
+    "Primary 5",
+    "Primary 6",
+    "JSS 1",
+    "JSS 2",
+    "JSS 3",
+    "SS 1",
+    "SS 2",
+    "SS 3",
+  ],
 
-    Nigeria: [
-      "Primary 1",
-      "Primary 2",
-      "Primary 3",
-      "Primary 4",
-      "Primary 5",
-      "Primary 6",
-      "JSS 1",
-      "JSS 2",
-      "JSS 3",
-      "SS 1",
-      "SS 2",
-      "SS 3",
-      "WAEC Candidate",
-      "NECO Candidate",
-      "JAMB Candidate",
-      "School Leaver",
-    ],
+  "United Kingdom": [
+    "Year 1",
+    "Year 2",
+    "Year 3",
+    "Year 4",
+    "Year 5",
+    "Year 6",
+    "Year 7",
+    "Year 8",
+    "Year 9",
+    "Year 10",
+    "Year 11",
+    "Year 12",
+    "Year 13",
+    "GCSE",
+    "IGCSE",
+    "A-Level",
+  ],
 
-    Other: ["Please Specify"],
-  };
-const [otherLevel, setOtherLevel] = useState("");
-  const [country, setCountry] = useState("United Kingdom");
-  const [parentName, setParentName] = useState("");
-const [studentName, setStudentName] = useState("");
-const [email, setEmail] = useState("");
-const [whatsapp, setWhatsapp] = useState("");
+  "United States": [
+    "Grade 1",
+    "Grade 2",
+    "Grade 3",
+    "Grade 4",
+    "Grade 5",
+    "Grade 6",
+    "Grade 7",
+    "Grade 8",
+    "Grade 9",
+    "Grade 10",
+    "Grade 11",
+    "Grade 12",
+    "SAT",
+    "AP",
+  ],
 
-const [subjectMath, setSubjectMath] = useState(false);
-const [subjectScience, setSubjectScience] = useState(false);
+  Canada: [
+    "Grade 1",
+    "Grade 2",
+    "Grade 3",
+    "Grade 4",
+    "Grade 5",
+    "Grade 6",
+    "Grade 7",
+    "Grade 8",
+    "Grade 9",
+    "Grade 10",
+    "Grade 11",
+    "Grade 12",
+  ],
 
-const [day, setDay] = useState("");
-const [time, setTime] = useState("");
+  Australia: [
+    "Year 1",
+    "Year 2",
+    "Year 3",
+    "Year 4",
+    "Year 5",
+    "Year 6",
+    "Year 7",
+    "Year 8",
+    "Year 9",
+    "Year 10",
+    "Year 11",
+    "Year 12",
+  ],
 
-const [success, setSuccess] = useState("");
-const [loading, setLoading] = useState(false);
-const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-
-  setLoading(true);
-
-  const { error } = await supabase
-    .from("bookings")
-    .insert([
-      {
-        parent_name: parentName,
-        student_name: studentName,
-        email,
-        whatsapp,
-        country,
-        academic_level:
-          country === "Other"
-            ? otherLevel
-            : academicLevels[country][0],
-        subjects: [
-          ...(subjectMath ? ["Mathematics"] : []),
-          ...(subjectScience ? ["Science"] : []),
-        ],
-        preferred_day: day,
-        preferred_time: time,
-      },
-    ]);
-
-  setLoading(false);
-
-  if (error) {
-    alert(error.message);
-    return;
-  }
-
-  setSuccess("✅ Booking submitted successfully!");
-
-  setParentName("");
-  setStudentName("");
-  setEmail("");
-  setWhatsapp("");
-  setSubjectMath(false);
-  setSubjectScience(false);
-  setDay("");
-  setTime("");
+  Other: [],
 };
 
-  return (
-    <main className="min-h-screen bg-slate-50 px-6 py-16">
-      <div className="mx-auto max-w-3xl rounded-3xl bg-white p-10 shadow-xl">
-        <h1 className="text-4xl font-extrabold text-slate-900">
-          Book a Discovery Session
-        </h1>
+/* ===========================
+   SUBJECTS
+=========================== */
 
-        <p className="mt-4 text-lg text-slate-600">
-          Complete the form below and we'll contact you to confirm your
-          child's free discovery session.
-        </p>
-{success && (
-  <div className="mt-6 rounded-xl bg-green-600 p-4 text-center font-semibold text-white">
-    {success}
-  </div>
-)}
-       <form
-  onSubmit={handleSubmit}
-  className="mt-10 space-y-8"
->
-          <div>
-            <label className="mb-2 block font-semibold text-slate-900">
-              Parent / Guardian Name
-            </label>
+const subjects: Record<string, string[]> = {
+  Nigeria: [
+    "Mathematics",
+    "English Language",
+    "Physics",
+    "Chemistry",
+    "Biology",
+  ],
 
-            <input
-              type="text"
-              placeholder="John Smith"
-              className="w-full rounded-xl border border-slate-300 bg-white px-6 py-4 text-slate-900 placeholder:text-slate-400 focus:border-yellow-500 focus:outline-none"
-            />
+  "United Kingdom": [
+    "Mathematics",
+    "Combined Science",
+    "Physics",
+    "Chemistry",
+    "Biology",
+  ],
+
+  "United States": [
+    "Mathematics",
+    "General Science",
+    "Physics",
+    "Chemistry",
+    "Biology",
+  ],
+
+  Canada: [
+    "Mathematics",
+    "Science",
+    "Physics",
+    "Chemistry",
+    "Biology",
+  ],
+
+  Australia: [
+    "Mathematics",
+    "Science",
+    "Physics",
+    "Chemistry",
+    "Biology",
+  ],
+
+  Other: [
+    "Mathematics",
+    "Science",
+  ],
+};
+
+/* ===========================
+   PACKAGE DEFINITIONS
+=========================== */
+
+const nigeriaPackages = [
+  "Package 1 - Small Group",
+  "Package 2 - Private Coaching",
+  "Package 3 - Premium Coaching",
+];
+
+const internationalPackage =
+  "One-on-One Coaching";
+/* ===========================
+   TIME OPTIONS
+=========================== */
+
+const timeSlots = [
+  "10:00 AM - 12:00 PM",
+  "12:00 PM - 2:00 PM",
+  "2:00 PM - 4:00 PM",
+  "3:00 PM - 5:00 PM",
+  "5:00 PM - 7:00 PM",
+];
+
+/* ===========================
+   PACKAGE RULES
+=========================== */
+
+const packageRules = {
+
+  "Package 1 - Small Group": {
+    scheduleSelection: false,
+    maxDays: 0,
+    maxSessionsPerDay: 0,
+    mathsSessions: 0,
+    otherSubjectSessions: 0,
+    sessionDuration: "Fixed by GS Academy",
+  },
+
+
+  "Package 2 - Private Coaching": {
+    scheduleSelection: true,
+    maxDays: 3,
+    maxSessionsPerDay: 3,
+    mathsSessions: 2,
+    otherSubjectSessions: 1,
+    sessionDuration: "2 hours",
+  },
+
+
+  "Package 3 - Premium Coaching": {
+    scheduleSelection: true,
+    maxDays: 4,
+    maxSessionsPerDay: 3,
+    mathsSessions: 2,
+    otherSubjectSessions: 2,
+    sessionDuration: "Maths: 2 hours, Others: 1.5 hours",
+  },
+
+
+  "One-on-One Coaching": {
+    scheduleSelection: true,
+    maxDays: 5,
+    maxSessionsPerDay: 1,
+    mathsSessions: 1,
+    otherSubjectSessions: 1,
+    sessionDuration: "2 hours",
+  },
+
+};
+
+/* ===========================
+   COMPONENT
+=========================== */
+
+export default function BookingPage() {
+
+  /* Parent Information */
+
+  const [parentName, setParentName] = useState("");
+  const [studentName, setStudentName] = useState("");
+  const [email, setEmail] = useState("");
+  const [whatsapp, setWhatsapp] = useState("");
+
+  /* Country */
+
+  const [country, setCountry] =
+    useState("Nigeria");
+
+  /* Academic Level */
+
+  const [studentLevel, setStudentLevel] =
+    useState("");
+
+  /* Package */
+
+  const [selectedPackage, setSelectedPackage] =
+    useState("");
+
+  /* Subjects */
+
+  const [selectedSubjects, setSelectedSubjects] =
+    useState<string[]>([]);
+/* Lesson Time */
+
+const [selectedTime, setSelectedTime] =
+  useState("");
+  /* Additional Notes */
+
+  const [additionalNotes, setAdditionalNotes] =
+    useState("");
+
+  /* Success & Loading */
+
+  const [loading, setLoading] =
+    useState(false);
+
+  const [success, setSuccess] =
+    useState("");
+
+  /* ===========================
+     LOGIC VARIABLES
+  =========================== */
+
+  const isNigeria =
+    country === "Nigeria";
+
+  const availablePackages =
+    isNigeria
+      ? nigeriaPackages
+      : [internationalPackage];
+
+  const availableSubjects =
+    subjects[country] ?? [];
+
+  const availableLevels = academicLevels[country] ?? [];
+  const currentPackageRule =
+  packageRules[
+    selectedPackage as keyof typeof packageRules
+  ];
+
+return (
+    <>
+      <Navbar />
+
+      <main className="min-h-screen bg-slate-50 py-16 px-6">
+        <div className="mx-auto max-w-4xl rounded-3xl bg-white p-10 shadow-xl">
+
+          <div className="text-center">
+            <h1 className="text-4xl font-extrabold text-slate-900">
+              Book a Discovery Session
+            </h1>
+
+            <p className="mt-4 text-lg text-slate-600">
+              Complete the form below to begin your GS Academy journey.
+            </p>
           </div>
 
-          <div>
-            <label className="mb-2 block font-semibold text-slate-900">
-              Student Name
-            </label>
+          <form className="mt-12 space-y-8">
 
-            <input
-              type="text"
-              placeholder="Emily Smith"
-              className="w-full rounded-xl border border-slate-300 bg-white px-6 py-4 text-slate-900 placeholder:text-slate-400 focus:border-yellow-500 focus:outline-none"
-            />
-          </div>
+            {/* Parent Name */}
 
-          <div>
-            <label className="mb-2 block font-semibold text-slate-900">
-              Email Address
-            </label>
+            <div>
+              <label className="mb-2 block font-semibold text-slate-900">
+                Parent / Guardian Name
+              </label>
 
-            <input
-              type="email"
-              placeholder="john@email.com"
-              className="w-full rounded-xl border border-slate-300 bg-white px-6 py-4 text-slate-900 placeholder:text-slate-400 focus:border-yellow-500 focus:outline-none"
-            />
-          </div>
+              <input
+                type="text"
+                value={parentName}
+                onChange={(e) => setParentName(e.target.value)}
+                placeholder="John Smith"
+                className="w-full rounded-xl border border-slate-300 px-6 py-4 focus:border-yellow-500 focus:outline-none"
+              />
+            </div>
 
-          <div>
-            <label className="mb-2 block font-semibold text-slate-900">
-              WhatsApp Number
-            </label>
+            {/* Student Name */}
 
-            <input
-              type="text"
-              placeholder="+44..."
-              className="w-full rounded-xl border border-slate-300 bg-white px-6 py-4 text-slate-900 placeholder:text-slate-400 focus:border-yellow-500 focus:outline-none"
-            />
-          </div>
+            <div>
+              <label className="mb-2 block font-semibold text-slate-900">
+                Student Name
+              </label>
 
-          <div>
-            <label className="mb-2 block font-semibold text-slate-900">
-              Country
-            </label>
+              <input
+                type="text"
+                value={studentName}
+                onChange={(e) => setStudentName(e.target.value)}
+                placeholder="Emily Smith"
+                className="w-full rounded-xl border border-slate-300 px-6 py-4 focus:border-yellow-500 focus:outline-none"
+              />
+            </div>
 
-            <select
-              value={country}
-              onChange={(e) => setCountry(e.target.value)}
-              className="w-full rounded-xl border border-slate-300 bg-white px-6 py-4 text-slate-900 focus:border-yellow-500 focus:outline-none"
-            >
-              <option>United Kingdom</option>
-              <option>United States</option>
-              <option>Canada</option>
-              <option>Australia</option>
-              <option>Nigeria</option>
-              <option>Other</option>
-            </select>
-          </div>
+            {/* Email */}
 
-         <div>
+            <div>
+              <label className="mb-2 block font-semibold text-slate-900">
+                Email Address
+              </label>
+
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="example@email.com"
+                className="w-full rounded-xl border border-slate-300 px-6 py-4 focus:border-yellow-500 focus:outline-none"
+              />
+            </div>
+
+            {/* WhatsApp */}
+
+            <div>
+              <label className="mb-2 block font-semibold text-slate-900">
+                WhatsApp Number
+              </label>
+
+              <input
+                type="text"
+                value={whatsapp}
+                onChange={(e) => setWhatsapp(e.target.value)}
+                placeholder="+234..."
+                className="w-full rounded-xl border border-slate-300 px-6 py-4 focus:border-yellow-500 focus:outline-none"
+              />
+            </div>
+
+            {/* Country */}
+
+            <div>
+              <label className="mb-2 block font-semibold text-slate-900">
+                Country
+              </label>
+
+              <select
+                value={country}
+                onChange={(e) => {
+                  setCountry(e.target.value);
+                  setStudentLevel("");
+                  setSelectedPackage("");
+                  setSelectedSubjects([]);
+                }}
+                className="w-full rounded-xl border border-slate-300 px-6 py-4 focus:border-yellow-500 focus:outline-none"
+              >
+                {countries.map((item) => (
+                  <option key={item} value={item}>
+                    {item}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Academic Level */}
+
+            <div>
+              <label className="mb-2 block font-semibold text-slate-900">
+                Academic Level
+              </label>
+
+              <select
+                value={studentLevel}
+                onChange={(e) => setStudentLevel(e.target.value)}
+                className="w-full rounded-xl border border-slate-300 px-6 py-4 focus:border-yellow-500 focus:outline-none"
+              >
+                <option value="">
+                  Select Academic Level
+                </option>
+
+                {availableLevels.map((level) => (
+                  <option key={level} value={level}>
+                    {level}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Package */}
+
+            <div>
+              <label className="mb-2 block font-semibold text-slate-900">
+                Learning Package
+              </label>
+
+              <select
+                value={selectedPackage}
+                onChange={(e) =>
+                  setSelectedPackage(e.target.value)
+                }
+                className="w-full rounded-xl border border-slate-300 px-6 py-4 focus:border-yellow-500 focus:outline-none"
+              >
+                <option value="">
+                  Select Package
+                </option>
+
+                {availablePackages.map((pkg) => (
+                  <option key={pkg} value={pkg}>
+                    {pkg}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {/* Subjects */}
+
+            <div>
+              <label className="mb-3 block font-semibold text-slate-900">
+                Select Subject(s)
+              </label>
+
+              <p className="mb-4 text-sm text-slate-600">
+                Choose all subjects you would like your child to study.
+              </p>
+
+              <div className="grid gap-3 md:grid-cols-2">
+
+                {availableSubjects.map((subject) => (
+
+                  <label
+                    key={subject}
+                    className="flex cursor-pointer items-center rounded-xl border border-slate-300 p-4 transition hover:border-yellow-500"
+                  >
+
+                    <input
+                      type="checkbox"
+                      checked={selectedSubjects.includes(subject)}
+                      onChange={(e) => {
+
+                        if (e.target.checked) {
+                          setSelectedSubjects([
+                            ...selectedSubjects,
+                            subject,
+                          ]);
+                        } else {
+                          setSelectedSubjects(
+                            selectedSubjects.filter(
+                              (s) => s !== subject
+                            )
+                          );
+                        }
+
+                      }}
+                      className="h-5 w-5 accent-yellow-500"
+                    />
+
+                    <span className="ml-3 font-medium text-slate-800">
+                      {subject}
+                    </span>
+
+                  </label>
+
+                ))}
+
+              </div>
+
+              {selectedSubjects.length > 0 && (
+
+                <div className="mt-4 rounded-xl bg-slate-100 p-4">
+
+                  <p className="font-semibold text-slate-900">
+                    Selected Subjects ({selectedSubjects.length})
+                  </p>
+
+                  <p className="mt-2 text-slate-700">
+                    {selectedSubjects.join(", ")}
+                  </p>
+
+                </div>
+
+              )}
+
+            </div>
+            {/* Additional Notes */}
+
+<div>
   <label className="mb-2 block font-semibold text-slate-900">
-    Academic Level
+    Additional Notes (Optional)
   </label>
 
-  <select
-    className="w-full rounded-xl border border-slate-300 bg-white px-6 py-4 text-slate-900 focus:border-yellow-500 focus:outline-none"
-  >
-    {academicLevels[country].map((level) => (
-      <option key={level}>{level}</option>
-    ))}
-  </select>
-
-  {country === "Other" && (
-    <input
-      type="text"
-      placeholder="Enter Academic Level"
-      value={otherLevel}
-      onChange={(e) => setOtherLevel(e.target.value)}
-      className="mt-4 w-full rounded-xl border border-slate-300 bg-white px-6 py-4 text-slate-900 placeholder:text-slate-400 focus:border-yellow-500 focus:outline-none"
-    />
-  )}
+  <textarea
+    value={additionalNotes}
+    onChange={(e) => setAdditionalNotes(e.target.value)}
+    rows={5}
+    placeholder="Tell us anything we should know about the student..."
+    className="w-full rounded-xl border border-slate-300 px-6 py-4 focus:border-yellow-500 focus:outline-none"
+  />
 </div>
+<button
+  type="submit"
+  className="w-full rounded-xl bg-slate-900 py-5 text-lg font-bold text-white transition hover:bg-slate-800"
+>
+  Continue Booking
+</button>
+          </form>
 
-          <div>
-            <label className="mb-4 block font-semibold text-slate-900">
-              Subjects
-            </label>
+        </div>
+      </main>
 
-            <div className="flex gap-10 text-slate-900">
-              <label>
-                <input type="checkbox" />
-                <span className="ml-2">Mathematics</span>
-              </label>
-
-              <label>
-                <input type="checkbox" />
-                <span className="ml-2">Science</span>
-              </label>
-            </div>
-          </div>
-
-          <div>
-            <label className="mb-2 block font-semibold text-slate-900">
-              Preferred Day
-            </label>
-
-            <select className="w-full rounded-xl border border-slate-300 bg-white px-6 py-4 text-slate-900">
-              <option>Monday</option>
-              <option>Tuesday</option>
-              <option>Wednesday</option>
-              <option>Thursday</option>
-              <option>Friday</option>
-              <option>Saturday</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="mb-2 block font-semibold text-slate-900">
-              Preferred Time
-            </label>
-
-            <select className="w-full rounded-xl border border-slate-300 bg-white px-6 py-4 text-slate-900">
-              <option>4:00 PM - 6:00 PM</option>
-              <option>4:30 PM - 6:30 PM</option>
-              <option>5:00 PM - 7:00 PM</option>
-            </select>
-          </div>
-
-          <button className="w-full rounded-xl bg-slate-900 py-5 text-lg font-bold text-white transition hover:bg-slate-800">
-            Book My Discovery Session
-          </button>
-        </form>
-      </div>
-    </main>
+      <Footer />
+    </>
   );
 }
