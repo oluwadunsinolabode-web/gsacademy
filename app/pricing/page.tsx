@@ -30,23 +30,7 @@ export default function PricingPage() {
   className="mx-auto mt-16 block max-w-3xl cursor-pointer rounded-3xl bg-slate-900 p-10 text-center shadow-xl transition duration-300 hover:-translate-y-1 hover:bg-slate-800 hover:shadow-2xl"
 >
 
-  <p className="text-lg font-bold uppercase tracking-widest text-yellow-500">
-    FREE TRIAL
-  </p>
-
-  <h2 className="mt-3 text-5xl font-extrabold text-white">
-    1 Week
-  </h2>
-
-  <p className="mt-5 text-lg text-slate-300">
-    Experience GS Academy completely FREE before enrolling.
-  </p>
-
-  <div className="mt-8 inline-flex items-center rounded-xl bg-yellow-500 px-8 py-4 font-bold text-slate-900 transition hover:bg-yellow-400">
-    Book Your FREE Week →
-  </div>
-
-</Link>
+  
 
     <p className="text-lg font-bold uppercase tracking-widest text-yellow-500">
       FREE TRIAL
@@ -63,9 +47,7 @@ export default function PricingPage() {
     <div className="mt-8 inline-flex items-center rounded-xl bg-yellow-500 px-8 py-4 font-bold text-slate-900 transition hover:bg-yellow-400">
       Book Your FREE Week →
     </div>
-
-  </div>
-
+  
 </Link>
           {/* NIGERIA */}
 
