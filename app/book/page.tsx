@@ -175,9 +175,10 @@ const internationalPackage =
 
 const timeSlots = [
   "10:00 AM - 12:00 PM",
-  "12:00 PM - 2:00 PM",
+  "1:00 PM - 3:00 PM",
   "2:00 PM - 4:00 PM",
   "3:00 PM - 5:00 PM",
+  "4:00 PM - 6:00 PM",
   "5:00 PM - 7:00 PM",
 ];
 const lessonDays = [
@@ -281,6 +282,8 @@ const [selectedTime, setSelectedTime] =
   useState("");
   const [selectedDay, setSelectedDay] =
   useState("");
+  const [scheduleError, setScheduleError] =
+  useState("");
   /* Additional Notes */
 
   const [additionalNotes, setAdditionalNotes] =
@@ -320,13 +323,50 @@ const [selectedTime, setSelectedTime] =
   value: string
 ) => {
 
+  setScheduleError("");
+
   setSubjectSchedules((previous) => {
 
-    const existing = previous.find(
+    const currentSubject = previous.find(
       (item) => item.subject === subject
     );
 
-    if (existing) {
+    const newDay =
+      field === "day"
+        ? value
+        : currentSubject?.day || "";
+
+    const newTime =
+      field === "time"
+        ? value
+        : currentSubject?.time || "";
+
+
+    const conflict = previous.find(
+      (item) =>
+        item.subject !== subject &&
+        item.day === newDay &&
+        item.time === newTime &&
+        newDay !== "" &&
+        newTime !== ""
+    );
+
+
+    if (conflict) {
+      setScheduleError(
+        `${newDay} ${newTime} is already assigned to ${conflict.subject}. Please choose another time.`
+      );
+
+      return previous;
+    }
+
+
+    const exists = previous.find(
+      (item) => item.subject === subject
+    );
+
+
+    if (exists) {
 
       return previous.map((item) =>
         item.subject === subject
@@ -338,6 +378,7 @@ const [selectedTime, setSelectedTime] =
       );
 
     }
+
 
     return [
       ...previous,
@@ -351,7 +392,6 @@ const [selectedTime, setSelectedTime] =
   });
 
 };
-
 return (
     <>
       <Navbar />
@@ -674,6 +714,11 @@ Select Time
 
 </div>
 
+)}
+{scheduleError && (
+  <div className="rounded-xl bg-red-100 p-4 text-red-700">
+    {scheduleError}
+  </div>
 )}
             {/* Additional Notes */}
 
