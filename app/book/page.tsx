@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 
@@ -276,27 +276,15 @@ export default function BookingPage() {
       time: string;
     }[]
   >([]);
-/* Lesson Time */
+  const [scheduleError, setScheduleError] = useState("");
 
-const [selectedTime, setSelectedTime] =
-  useState("");
-  const [selectedDay, setSelectedDay] =
-  useState("");
-  const [scheduleError, setScheduleError] =
-  useState("");
+
   /* Additional Notes */
 
   const [additionalNotes, setAdditionalNotes] =
     useState("");
 
-  /* Success & Loading */
-
-  const [loading, setLoading] =
-    useState(false);
-
-  const [success, setSuccess] =
-    useState("");
-
+  
   /* ===========================
      LOGIC VARIABLES
   =========================== */
@@ -317,6 +305,97 @@ const [selectedTime, setSelectedTime] =
   packageRules[
     selectedPackage as keyof typeof packageRules
   ];
+const validateSchedule = () => {
+
+  if (!currentPackageRule?.scheduleSelection) {
+    setScheduleError("");
+    return true;
+  }
+
+
+  const selectedDays = [
+    ...new Set(
+      subjectSchedules
+        .filter(item => item.day !== "")
+        .map(item => item.day)
+    ),
+  ];
+
+
+  if (selectedDays.length > currentPackageRule.maxDays) {
+
+    setScheduleError(
+      `You can only select a maximum of ${currentPackageRule.maxDays} days per week.`
+    );
+
+    return false;
+  }
+
+
+  const dayCount: Record<string, number> = {};
+
+
+  subjectSchedules.forEach(item => {
+
+    if (item.day) {
+
+      dayCount[item.day] =
+        (dayCount[item.day] || 0) + 1;
+
+    }
+
+  });
+
+
+  for (const day in dayCount) {
+
+    if (dayCount[day] > currentPackageRule.maxSessionsPerDay) {
+
+      setScheduleError(
+        `${day} has too many lessons. Maximum allowed is ${currentPackageRule.maxSessionsPerDay}.`
+      );
+
+      return false;
+
+    }
+
+  }
+
+
+  for (const subject of selectedSubjects) {
+
+    const count =
+      subjectSchedules.filter(
+        item =>
+          item.subject === subject &&
+          item.day !== ""
+      ).length;
+
+
+    const required =
+      subject === "Mathematics"
+        ? currentPackageRule.mathsSessions
+        : currentPackageRule.otherSubjectSessions;
+
+
+    if (count < required) {
+
+      setScheduleError(
+        `${subject} needs ${required} lesson(s) per week. You selected ${count}.`
+      );
+
+      return false;
+
+    }
+
+  }
+
+
+  setScheduleError("");
+
+  return true;
+
+};
   const updateSubjectSchedule = (
   subject: string,
   field: "day" | "time",
@@ -389,9 +468,21 @@ const [selectedTime, setSelectedTime] =
       },
     ];
 
-  });
+    });
+
+
+  setTimeout(() => {
+    validateSchedule();
+  }, 50);
 
 };
+
+  
+
+ 
+useEffect(() => {
+  validateSchedule();
+}, [subjectSchedules]);
 return (
     <>
       <Navbar />
@@ -533,9 +624,11 @@ return (
 
               <select
                 value={selectedPackage}
-                onChange={(e) =>
-                  setSelectedPackage(e.target.value)
-                }
+               onChange={(e) => {
+  setSelectedPackage(e.target.value);
+  setSubjectSchedules([]);
+  setScheduleError("");
+}}
                 className="w-full rounded-xl border border-slate-300 px-6 py-4 focus:border-yellow-500 focus:outline-none"
               >
                 <option value="">
@@ -580,11 +673,17 @@ return (
                             subject,
                           ]);
                         } else {
-                          setSelectedSubjects(
-                            selectedSubjects.filter(
-                              (s) => s !== subject
-                            )
-                          );
+                         setSelectedSubjects(
+  selectedSubjects.filter(
+    (s) => s !== subject
+  )
+);
+
+setSubjectSchedules(
+  subjectSchedules.filter(
+    (item) => item.subject !== subject
+  )
+);
                         }
 
                       }}
@@ -650,12 +749,15 @@ subjectSchedules.find(
 )?.day || ""
 }
 
-onChange={(e)=>
+onChange={(e)=>{
+
 updateSubjectSchedule(
 subject,
 "day",
 e.target.value
-)}
+);
+
+}}
 >
 
 <option value="">
@@ -683,12 +785,15 @@ subjectSchedules.find(
 )?.time || ""
 }
 
-onChange={(e)=>
+onChange={(e)=>{
+
 updateSubjectSchedule(
 subject,
 "time",
 e.target.value
-)}
+);
+
+}}
 
 >
 
@@ -715,10 +820,15 @@ Select Time
 </div>
 
 )}
+
 {scheduleError && (
-  <div className="rounded-xl bg-red-100 p-4 text-red-700">
-    {scheduleError}
-  </div>
+
+<div className="mt-4 rounded-xl bg-red-100 p-4 text-red-700 font-semibold">
+
+⚠️ {scheduleError}
+
+</div>
+
 )}
             {/* Additional Notes */}
 
@@ -736,7 +846,18 @@ Select Time
   />
 </div>
 <button
-  type="submit"
+  type="button"
+  onClick={() => {
+
+    const valid = validateSchedule();
+
+    if (!valid) {
+      return;
+    }
+
+    alert("Schedule is valid. Continue booking.");
+
+  }}
   className="w-full rounded-xl bg-slate-900 py-5 text-lg font-bold text-white transition hover:bg-slate-800"
 >
   Continue Booking
