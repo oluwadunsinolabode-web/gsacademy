@@ -268,14 +268,14 @@ export default function BookingPage() {
 
   const [selectedSubjects, setSelectedSubjects] =
     useState<string[]>([]);
-    const [subjectSchedules, setSubjectSchedules] =
-  useState<
-    {
-      subject: string;
-      day: string;
-      time: string;
-    }[]
-  >([]);
+  const [subjectSchedules, setSubjectSchedules] = useState<
+  {
+    subject: string;
+    lessonIndex: number;
+    day: string;
+    time: string;
+  }[]
+>([]);
   const [scheduleError, setScheduleError] = useState("");
 
 
@@ -313,13 +313,17 @@ const validateSchedule = () => {
   }
 
 
-  const selectedDays = [
-    ...new Set(
-      subjectSchedules
-        .filter(item => item.day !== "")
-        .map(item => item.day)
-    ),
-  ];
+ const selectedDays = [
+  ...new Set(
+    subjectSchedules
+      .filter(
+        item =>
+          item.day !== "" &&
+          item.time !== ""
+      )
+      .map(item => item.day)
+  ),
+];
 
 
   if (selectedDays.length > currentPackageRule.maxDays) {
@@ -336,8 +340,7 @@ const validateSchedule = () => {
 
 
   subjectSchedules.forEach(item => {
-
-    if (item.day) {
+  if (item.day && item.time) {
 
       dayCount[item.day] =
         (dayCount[item.day] || 0) + 1;
@@ -365,11 +368,12 @@ const validateSchedule = () => {
   for (const subject of selectedSubjects) {
 
     const count =
-      subjectSchedules.filter(
-        item =>
-          item.subject === subject &&
-          item.day !== ""
-      ).length;
+  subjectSchedules.filter(
+    item =>
+      item.subject === subject &&
+      item.day !== "" &&
+      item.time !== ""
+  ).length;
 
 
     const required =
@@ -396,8 +400,9 @@ const validateSchedule = () => {
   return true;
 
 };
-  const updateSubjectSchedule = (
+ const updateSubjectSchedule = (
   subject: string,
+  lessonIndex: number,
   field: "day" | "time",
   value: string
 ) => {
@@ -406,79 +411,56 @@ const validateSchedule = () => {
 
   setSubjectSchedules((previous) => {
 
-    const currentSubject = previous.find(
-      (item) => item.subject === subject
+    const exists = previous.find(
+      (item) =>
+        item.subject === subject &&
+        item.lessonIndex === lessonIndex
     );
 
-    const newDay =
-      field === "day"
-        ? value
-        : currentSubject?.day || "";
+    const current = exists ?? {
+      subject,
+      lessonIndex,
+      day: "",
+      time: "",
+    };
 
-    const newTime =
-      field === "time"
-        ? value
-        : currentSubject?.time || "";
-
+    const updated = {
+      ...current,
+      [field]: value,
+    };
 
     const conflict = previous.find(
       (item) =>
         item.subject !== subject &&
-        item.day === newDay &&
-        item.time === newTime &&
-        newDay !== "" &&
-        newTime !== ""
+        item.day === updated.day &&
+        item.time === updated.time &&
+        updated.day !== "" &&
+        updated.time !== ""
     );
-
 
     if (conflict) {
       setScheduleError(
-        `${newDay} ${newTime} is already assigned to ${conflict.subject}. Please choose another time.`
+        `${updated.day} ${updated.time} is already assigned to ${conflict.subject}. Please choose another time.`
       );
-
       return previous;
     }
 
-
-    const exists = previous.find(
-      (item) => item.subject === subject
-    );
-
-
     if (exists) {
-
       return previous.map((item) =>
-        item.subject === subject
-          ? {
-              ...item,
-              [field]: value,
-            }
+        item.subject === subject &&
+        item.lessonIndex === lessonIndex
+          ? updated
           : item
       );
-
     }
 
-
-    return [
-      ...previous,
-      {
-        subject,
-        day: field === "day" ? value : "",
-        time: field === "time" ? value : "",
-      },
-    ];
-
-    });
-
+    return [...previous, updated];
+  });
 
   setTimeout(() => {
     validateSchedule();
   }, 50);
-
 };
-
-  
-
  
 useEffect(() => {
   validateSchedule();
@@ -717,118 +699,93 @@ setSubjectSchedules(
               )}
 
             </div>
-           {/* Subject Schedule */}
+          {/* Subject Schedule */}
 
 {currentPackageRule?.scheduleSelection &&
- selectedSubjects.length > 0 && (
+  selectedSubjects.length > 0 && (
+    <div className="mt-6 space-y-4">
+      <h3 className="font-bold text-slate-900">
+        Choose Lesson Schedule
+      </h3>
 
-<div className="mt-6 space-y-4">
+      {selectedSubjects.map((subject) => {
+        const requiredLessons =
+          subject === "Mathematics"
+            ? currentPackageRule.mathsSessions
+            : currentPackageRule.otherSubjectSessions;
 
-<h3 className="font-bold text-slate-900">
-  Choose Lesson Schedule
-</h3>
+        return (
+          <div key={subject} className="space-y-4">
+            {Array.from({ length: requiredLessons }).map((_, index) => {
+              const schedule = subjectSchedules.find(
+                (item) =>
+                  item.subject === subject &&
+                  item.lessonIndex === index
+              );
 
-{selectedSubjects.map((subject) => (
+              return (
+                <div
+                  key={`${subject}-${index}`}
+                  className="rounded-xl border border-slate-300 p-5"
+                >
+                  <p className="mb-3 font-semibold text-slate-900">
+                    {subject} Lesson {index + 1}
+                  </p>
 
-<div
-key={subject}
-className="rounded-xl border border-slate-300 p-5"
->
+                  <select
+                    className="mb-3 w-full rounded-xl border border-slate-300 px-5 py-3"
+                    value={schedule?.day || ""}
+                    onChange={(e) =>
+                      updateSubjectSchedule(
+                        subject,
+                        index,
+                        "day",
+                        e.target.value
+                      )
+                    }
+                  >
+                    <option value="">Select Day</option>
 
-<p className="mb-3 font-semibold text-slate-900">
-{subject}
-</p>
+                    {lessonDays.map((day) => (
+                      <option key={day} value={day}>
+                        {day}
+                      </option>
+                    ))}
+                  </select>
 
+                  <select
+                    className="w-full rounded-xl border border-slate-300 px-5 py-3"
+                    value={schedule?.time || ""}
+                    onChange={(e) =>
+                      updateSubjectSchedule(
+                        subject,
+                        index,
+                        "time",
+                        e.target.value
+                      )
+                    }
+                  >
+                    <option value="">Select Time</option>
 
-<select
-className="mb-3 w-full rounded-xl border border-slate-300 px-5 py-3"
+                    {timeSlots.map((time) => (
+                      <option key={time} value={time}>
+                        {time}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              );
+            })}
+          </div>
+        );
+      })}
 
-value={
-subjectSchedules.find(
-(item)=>item.subject===subject
-)?.day || ""
-}
-
-onChange={(e)=>{
-
-updateSubjectSchedule(
-subject,
-"day",
-e.target.value
-);
-
-}}
->
-
-<option value="">
-Select Day
-</option>
-
-{lessonDays.map((day)=>(
-
-<option key={day} value={day}>
-{day}
-</option>
-
-))}
-
-</select>
-
-
-<select
-
-className="w-full rounded-xl border border-slate-300 px-5 py-3"
-
-value={
-subjectSchedules.find(
-(item)=>item.subject===subject
-)?.time || ""
-}
-
-onChange={(e)=>{
-
-updateSubjectSchedule(
-subject,
-"time",
-e.target.value
-);
-
-}}
-
->
-
-<option value="">
-Select Time
-</option>
-
-
-{timeSlots.map((time)=>(
-
-<option key={time} value={time}>
-{time}
-</option>
-
-))}
-
-</select>
-
-
-</div>
-
-))}
-
-</div>
-
-)}
-
-{scheduleError && (
-
-<div className="mt-4 rounded-xl bg-red-100 p-4 text-red-700 font-semibold">
-
-⚠️ {scheduleError}
-
-</div>
-
+      {scheduleError && (
+        <div className="rounded-xl bg-red-100 p-4 font-semibold text-red-700">
+          ⚠️ {scheduleError}
+        </div>
+      )}
+    </div>
 )}
             {/* Additional Notes */}
 
