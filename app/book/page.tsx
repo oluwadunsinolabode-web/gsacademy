@@ -180,7 +180,14 @@ const timeSlots = [
   "3:00 PM - 5:00 PM",
   "5:00 PM - 7:00 PM",
 ];
-
+const lessonDays = [
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+];
 /* ===========================
    PACKAGE RULES
 =========================== */
@@ -260,9 +267,19 @@ export default function BookingPage() {
 
   const [selectedSubjects, setSelectedSubjects] =
     useState<string[]>([]);
+    const [subjectSchedules, setSubjectSchedules] =
+  useState<
+    {
+      subject: string;
+      day: string;
+      time: string;
+    }[]
+  >([]);
 /* Lesson Time */
 
 const [selectedTime, setSelectedTime] =
+  useState("");
+  const [selectedDay, setSelectedDay] =
   useState("");
   /* Additional Notes */
 
@@ -297,6 +314,43 @@ const [selectedTime, setSelectedTime] =
   packageRules[
     selectedPackage as keyof typeof packageRules
   ];
+  const updateSubjectSchedule = (
+  subject: string,
+  field: "day" | "time",
+  value: string
+) => {
+
+  setSubjectSchedules((previous) => {
+
+    const existing = previous.find(
+      (item) => item.subject === subject
+    );
+
+    if (existing) {
+
+      return previous.map((item) =>
+        item.subject === subject
+          ? {
+              ...item,
+              [field]: value,
+            }
+          : item
+      );
+
+    }
+
+    return [
+      ...previous,
+      {
+        subject,
+        day: field === "day" ? value : "",
+        time: field === "time" ? value : "",
+      },
+    ];
+
+  });
+
+};
 
 return (
     <>
@@ -310,7 +364,7 @@ return (
               Book a Discovery Session
             </h1>
 
-            <p className="mt-4 text-lg text-slate-600">
+            <p className="mt-4 text-lg text-slate-800">
               Complete the form below to begin your GS Academy journey.
             </p>
           </div>
@@ -524,6 +578,103 @@ return (
               )}
 
             </div>
+           {/* Subject Schedule */}
+
+{currentPackageRule?.scheduleSelection &&
+ selectedSubjects.length > 0 && (
+
+<div className="mt-6 space-y-4">
+
+<h3 className="font-bold text-slate-900">
+  Choose Lesson Schedule
+</h3>
+
+{selectedSubjects.map((subject) => (
+
+<div
+key={subject}
+className="rounded-xl border border-slate-300 p-5"
+>
+
+<p className="mb-3 font-semibold text-slate-900">
+{subject}
+</p>
+
+
+<select
+className="mb-3 w-full rounded-xl border border-slate-300 px-5 py-3"
+
+value={
+subjectSchedules.find(
+(item)=>item.subject===subject
+)?.day || ""
+}
+
+onChange={(e)=>
+updateSubjectSchedule(
+subject,
+"day",
+e.target.value
+)}
+>
+
+<option value="">
+Select Day
+</option>
+
+{lessonDays.map((day)=>(
+
+<option key={day} value={day}>
+{day}
+</option>
+
+))}
+
+</select>
+
+
+<select
+
+className="w-full rounded-xl border border-slate-300 px-5 py-3"
+
+value={
+subjectSchedules.find(
+(item)=>item.subject===subject
+)?.time || ""
+}
+
+onChange={(e)=>
+updateSubjectSchedule(
+subject,
+"time",
+e.target.value
+)}
+
+>
+
+<option value="">
+Select Time
+</option>
+
+
+{timeSlots.map((time)=>(
+
+<option key={time} value={time}>
+{time}
+</option>
+
+))}
+
+</select>
+
+
+</div>
+
+))}
+
+</div>
+
+)}
             {/* Additional Notes */}
 
 <div>
