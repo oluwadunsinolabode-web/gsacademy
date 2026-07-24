@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import { supabase } from "@/lib/supabase";
 
 /* ===========================
    COUNTRY LIST
@@ -293,7 +294,9 @@ useEffect(() => {
 
   const [additionalNotes, setAdditionalNotes] =
     useState("");
-
+const [loading, setLoading] = useState(false);
+const [success, setSuccess] = useState(false);
+const [bookingReference, setBookingReference] = useState("");
   
   /* ===========================
      LOGIC VARIABLES
@@ -454,6 +457,178 @@ if (
 return schedules;
   });
 };   // <-- closes updateSchedule()
+const handleSubmit = async (
+  e: React.FormEvent<HTMLFormElement>
+) => {
+  e.preventDefault();
+
+  if (!parentName.trim())
+    return alert("Please enter parent name.");
+
+  if (!studentName.trim())
+    return alert("Please enter student name.");
+
+  if (!email.trim())
+    return alert("Please enter email.");
+
+  if (!whatsapp.trim())
+    return alert("Please enter WhatsApp number.");
+
+  if (!studentLevel)
+    return alert("Please select academic level.");
+
+  if (!selectedPackage)
+    return alert("Please select a package.");
+
+  if (selectedSubjects.length === 0)
+    return alert("Please select at least one subject.");
+
+  if (currentRule?.allowSchedule) {
+    const expectedLessons = selectedSubjects.reduce(
+      (sum, subject) => sum + getLessonCount(subject),
+      0
+    );
+
+    if (subjectSchedules.length < expectedLessons) {
+      return alert(
+        "Please complete all lesson schedules."
+      );
+    }
+  }
+
+  try {
+    setLoading(true);
+
+    let totalAmount = 0;
+
+if (country === "Nigeria") {
+  if (selectedPackage === "Package 1 - Small Group") {
+    totalAmount =
+      selectedSubjects.length >= 5
+        ? selectedSubjects.length * 7000
+        : selectedSubjects.length * 10000;
+  }
+
+  if (selectedPackage === "Package 2 - Private Coaching") {
+    totalAmount = selectedSubjects.length * 40000;
+  }
+
+  if (selectedPackage === "Package 3 - Premium Coaching") {
+    totalAmount = selectedSubjects.length * 50000;
+  }
+} else {
+  totalAmount =
+    selectedSubjects.length >= 3
+      ? selectedSubjects.length * 30
+      : selectedSubjects.length * 35;
+}
+
+    const { data, error } = await supabase
+  .from("bookings")
+  .insert({
+    parent_name: parentName,
+    student_name: studentName,
+    email,
+    whatsapp,
+    country,
+    student_level: studentLevel,
+    package: selectedPackage,
+    subjects: selectedSubjects,
+    lesson_schedule: subjectSchedules,
+    additional_notes: additionalNotes,
+    total_amount: totalAmount,
+    currency: country === "Nigeria" ? "NGN" : "USD",
+    payment_status: "Pending",
+    booking_status: "Pending",
+  })
+  .select()
+  .single();
+
+
+if (error) throw error;
+
+
+// Send confirmation email
+await fetch("/api/booking", {
+  method: "POST",
+
+  headers: {
+    "Content-Type": "application/json",
+  },
+
+  body: JSON.stringify({
+
+    parentName,
+    studentName,
+    email,
+    whatsapp,
+    country,
+    studentLevel,
+    selectedPackage,
+    selectedSubjects,
+    subjectSchedules,
+    additionalNotes,
+    bookingReference: data.booking_reference,
+
+  }),
+});
+
+
+setBookingReference(data.booking_reference);
+
+setSuccess(true);
+  } catch (err: any) {
+    alert(err.message);
+  } finally {
+    setLoading(false);
+  }
+};
+if (success) {
+  return (
+    <>
+      <Navbar />
+
+      <main className="min-h-screen bg-slate-50 flex items-center justify-center px-6">
+
+        <div className="max-w-xl rounded-3xl bg-white p-10 text-center shadow-xl">
+
+          <div className="text-6xl">
+            ✅
+          </div>
+
+          <h1 className="mt-6 text-3xl font-extrabold">
+            Booking Submitted Successfully
+          </h1>
+
+          <p className="mt-4 text-slate-700">
+            Thank you for choosing GS Academy.
+          </p>
+
+          <div className="mt-6 rounded-xl bg-slate-100 p-5">
+
+            <p className="font-semibold">
+              Booking Reference
+            </p>
+
+            <p className="mt-2 text-2xl font-bold text-blue-700">
+              {bookingReference}
+            </p>
+
+          </div>
+
+          <p className="mt-6 text-slate-600">
+            A confirmation email will be sent shortly.
+          </p>
+
+        </div>
+
+      </main>
+
+      <Footer />
+    </>
+  );
+}
+
 
 return (
     <>
@@ -472,7 +647,10 @@ return (
   </p>
 </div>
 
-          <form className="mt-12 space-y-8">
+         <form
+  onSubmit={handleSubmit}
+  className="mt-12 space-y-8"
+>
 
             {/* Parent Name */}
 
@@ -841,6 +1019,17 @@ return (
     placeholder="Tell us anything we should know about the student..."
     className="w-full rounded-xl border border-slate-300 px-6 py-4 focus:border-yellow-500 focus:outline-none"
   />
+</div>
+<div className="pt-6">
+  <button
+    type="submit"
+    disabled={loading}
+    className="w-full rounded-xl bg-yellow-500 px-6 py-4 text-lg font-bold text-slate-900 transition hover:bg-yellow-400 disabled:opacity-50"
+  >
+    {loading
+      ? "Submitting..."
+      : "Complete Enrollment"}
+  </button>
 </div>
 
           </form>
