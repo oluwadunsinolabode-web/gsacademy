@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 
@@ -279,9 +279,6 @@ const [subjectSchedules, setSubjectSchedules] = useState<
 >([]);
 const [scheduleError, setScheduleError] = useState("");
 
-useEffect(() => {
-  setSubjectSchedules([]);
-}, [selectedPackage, selectedSubjects]);
 
   /* Additional Notes */
 
@@ -343,7 +340,10 @@ const updateSchedule = (
 
 const conflict = previous.find(
   (item) =>
-    item.subject !== subject &&
+    !(
+      item.subject === subject &&
+      item.lesson === lesson
+    ) &&
     item.day === updated.day &&
     item.time === updated.time &&
     updated.day &&
@@ -358,6 +358,24 @@ if (conflict) {
 }
 
 setScheduleError("");
+if (
+  subject === "Mathematics" &&
+  updated.day
+) {
+  const mathsSameDay = previous.find(
+    (item) =>
+      item.subject === "Mathematics" &&
+      item.lesson !== lesson &&
+      item.day === updated.day
+  );
+
+  if (mathsSameDay) {
+    setScheduleError(
+      "Mathematics lessons must be on different days."
+    );
+    return previous;
+  }
+}
 const schedules =
   existing
     ? previous.map((item) =>
@@ -495,12 +513,14 @@ return (
 
               <select
                 value={country}
-                onChange={(e) => {
-                  setCountry(e.target.value);
-                  setStudentLevel("");
-                  setSelectedPackage("");
-                  setSelectedSubjects([]);
-                }}
+               onChange={(e) => {
+  setCountry(e.target.value);
+  setStudentLevel("");
+  setSelectedPackage("");
+  setSelectedSubjects([]);
+  setSubjectSchedules([]);
+  setScheduleError("");
+}}
                 className="w-full rounded-xl border border-slate-300 px-6 py-4 focus:border-yellow-500 focus:outline-none"
               >
                 {countries.map((item) => (
@@ -544,7 +564,11 @@ return (
 
               <select
                 value={selectedPackage}
-          onChange={(e) => setSelectedPackage(e.target.value)}
+          onChange={(e) => {
+  setSelectedPackage(e.target.value);
+  setSubjectSchedules([]);
+  setScheduleError("");
+}}
                 className="w-full rounded-xl border border-slate-300 px-6 py-4 focus:border-yellow-500 focus:outline-none"
               >
                 <option value="">
@@ -581,24 +605,24 @@ return (
                     <input
                       type="checkbox"
                       checked={selectedSubjects.includes(subject)}
-                      onChange={(e) => {
+                     onChange={(e) => {
+  if (e.target.checked) {
+    setSelectedSubjects((prev) => [
+      ...prev,
+      subject,
+    ]);
+  } else {
+    setSelectedSubjects((prev) =>
+      prev.filter((s) => s !== subject)
+    );
 
-                        if (e.target.checked) {
-                          setSelectedSubjects([
-                            ...selectedSubjects,
-                            subject,
-                          ]);
-                        } else {
-                         setSelectedSubjects(
-  selectedSubjects.filter(
-    (s) => s !== subject
-  )
-);
-
-
-                        }
-
-                      }}
+    setSubjectSchedules((prev) =>
+      prev.filter(
+        (item) => item.subject !== subject
+      )
+    );
+  }
+}}
                       className="h-5 w-5 accent-yellow-500"
                     />
 
@@ -671,11 +695,26 @@ return (
 >
               <option>Select Day</option>
 
-              {lessonDays.map((day) => (
-                <option key={day}>
-                  {day}
-                </option>
-              ))}
+              {lessonDays.map((day) => {
+  const usedByMaths =
+    subject === "Mathematics" &&
+    subjectSchedules.some(
+      (item) =>
+        item.subject === "Mathematics" &&
+        item.lesson !== lesson &&
+        item.day === day
+    );
+
+  return (
+    <option
+      key={day}
+      value={day}
+      disabled={usedByMaths}
+    >
+      {day}
+    </option>
+  );
+})}
 
             </select>
 
