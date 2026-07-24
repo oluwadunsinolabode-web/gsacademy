@@ -459,7 +459,7 @@ return (
     <>
       <Navbar />
 
-      <main className="min-h-screen bg-slate-50 py-16 px-6">
+      <main className="min-h-screen bg-slate-50 pt-4 pb-16 px-6">
         <div className="mx-auto max-w-4xl rounded-3xl bg-white p-10 shadow-xl">
 
          <div className="text-center">
@@ -468,7 +468,7 @@ return (
   </h1>
 
   <p className="mt-4 text-lg text-slate-700">
-    Complete the form below to enroll your child at GS Academy and reserve their preferred lesson schedule.
+    Complete the form below to enroll your child at GS Academy.
   </p>
 </div>
 
@@ -696,9 +696,9 @@ return (
 
       <div key={subject} className="rounded-xl bg-slate-50 p-5">
 
-        <h3 className="mb-4 font-bold">
-          {subject}
-        </h3>
+       <h3 className="mb-4 text-lg font-black text-black">
+  {subject}
+</h3>
 
         {Array.from({
           length: getLessonCount(subject),
