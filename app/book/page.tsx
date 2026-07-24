@@ -462,15 +462,15 @@ return (
       <main className="min-h-screen bg-slate-50 py-16 px-6">
         <div className="mx-auto max-w-4xl rounded-3xl bg-white p-10 shadow-xl">
 
-          <div className="text-center">
-            <h1 className="text-4xl font-extrabold text-slate-900">
-              Book a Discovery Session
-            </h1>
+         <div className="text-center">
+  <h1 className="text-4xl font-extrabold text-slate-900">
+    Student Enrollment Form
+  </h1>
 
-            <p className="mt-4 text-lg text-slate-800">
-              Complete the form below to begin your GS Academy journey.
-            </p>
-          </div>
+  <p className="mt-4 text-lg text-slate-700">
+    Complete the form below to enroll your child at GS Academy and reserve their preferred lesson schedule.
+  </p>
+</div>
 
           <form className="mt-12 space-y-8">
 
@@ -660,7 +660,7 @@ return (
                       className="h-5 w-5 accent-yellow-500"
                     />
 
-                    <span className="ml-3 font-medium text-slate-800">
+                    <span className="ml-3 text-base font-bold text-slate-900">
                       {subject}
                     </span>
 
@@ -729,21 +729,47 @@ return (
 >
               <option>Select Day</option>
 
-              {lessonDays.map((day) => {
-  const usedByMaths =
-    subject === "Mathematics" &&
+             {lessonDays.map((day) => {
+  let disabled = false;
+
+  // Prevent the SAME subject from using the same day twice
+  const sameSubjectSelected =
     subjectSchedules.some(
       (item) =>
-        item.subject === "Mathematics" &&
+        item.subject === subject &&
         item.lesson !== lesson &&
         item.day === day
     );
+
+  if (sameSubjectSelected) {
+    disabled = true;
+  }
+
+  // International package:
+  // only ONE lesson can exist on any day
+  if (
+    selectedPackage === "One-on-One Coaching"
+  ) {
+    const dayAlreadyUsed =
+      subjectSchedules.some(
+        (item) =>
+          item.day === day &&
+          !(
+            item.subject === subject &&
+            item.lesson === lesson
+          )
+      );
+
+    if (dayAlreadyUsed) {
+      disabled = true;
+    }
+  }
 
   return (
     <option
       key={day}
       value={day}
-      disabled={usedByMaths}
+      disabled={disabled}
     >
       {day}
     </option>
