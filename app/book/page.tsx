@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 
@@ -278,7 +278,16 @@ const [subjectSchedules, setSubjectSchedules] = useState<
   }[]
 >([]);
 const [scheduleError, setScheduleError] = useState("");
+const errorRef = useRef<HTMLDivElement>(null);
 
+useEffect(() => {
+  if (scheduleError && errorRef.current) {
+    errorRef.current.scrollIntoView({
+      behavior: "smooth",
+      block: "center",
+    });
+  }
+}, [scheduleError]);
 
   /* Additional Notes */
 
@@ -356,27 +365,51 @@ if (conflict) {
   );
   return previous;
 }
-
 setScheduleError("");
-if (
-  subject === "Mathematics" &&
-  updated.day
-) {
-  const mathsSameDay = previous.find(
+
+// ===============================
+// Prevent same subject twice
+// ===============================
+if (updated.day) {
+  const sameSubjectSameDay = previous.find(
     (item) =>
-      item.subject === "Mathematics" &&
+      item.subject === subject &&
       item.lesson !== lesson &&
       item.day === updated.day
   );
 
-  if (mathsSameDay) {
+  if (sameSubjectSameDay) {
     setScheduleError(
-      "Mathematics lessons must be on different days."
+      `${subject} lessons must be on different days.`
     );
     return previous;
   }
 }
-const schedules =
+
+// ===============================
+// International Package
+// Only ONE lesson per day
+// ===============================
+if (
+  selectedPackage === "One-on-One Coaching" &&
+  updated.day
+) {
+  const lessonAlreadyExists = previous.find(
+    (item) =>
+      item.day === updated.day &&
+      !(
+        item.subject === subject &&
+        item.lesson === lesson
+      )
+  );
+
+  if (lessonAlreadyExists) {
+    setScheduleError(
+      "Only one lesson is allowed per day for the One-on-One Coaching package."
+    );
+    return previous;
+  }
+}const schedules =
   existing
     ? previous.map((item) =>
         item.subject === subject &&
@@ -420,7 +453,8 @@ if (
 
 return schedules;
   });
-};
+};   // <-- closes updateSchedule()
+
 return (
     <>
       <Navbar />
@@ -759,8 +793,11 @@ return (
 </div>
 
 {scheduleError && (
-  <div className="rounded-xl border border-red-300 bg-red-100 p-4 text-red-700 font-semibold">
-    {scheduleError}
+  <div
+    ref={errorRef}
+    className="rounded-xl border border-red-300 bg-red-100 p-4 text-red-700 font-semibold shadow-md"
+  >
+    ⚠️ {scheduleError}
   </div>
 )}
 
