@@ -532,7 +532,8 @@ if (country === "Nigeria") {
       : selectedSubjects.length * 35;
 }
 
-    console.log("Submitting booking...");
+  
+console.log("========== START INSERT ==========");
 
 const response = await supabase
   .from("bookings")
@@ -555,25 +556,25 @@ const response = await supabase
   .select()
   .single();
 
-console.log("SUPABASE RESPONSE:", response);
+console.log("FULL RESPONSE:", response);
 
 const { data, error } = response;
 
-
 if (error) {
- alert(JSON.stringify(error, null, 2));
+  console.error("SUPABASE ERROR:", error);
+  alert(JSON.stringify(error, null, 2));
   throw error;
 }
 
+console.log("INSERTED ROW:", data);
 
-// Send confirmation email
+setBookingReference(data.booking_reference ?? "");
+
 await fetch("/api/booking", {
   method: "POST",
-
   headers: {
     "Content-Type": "application/json",
   },
-
   body: JSON.stringify({
     parentName,
     studentName,
@@ -585,12 +586,11 @@ await fetch("/api/booking", {
     selectedSubjects,
     subjectSchedules,
     additionalNotes,
-    bookingReference: data?.booking_reference,
+    bookingReference: data.booking_reference,
   }),
 });
 
-// Save booking reference safely
-setBookingReference(data?.booking_reference || "");
+setSuccess(true);
 
 setSuccess(true);  } catch (err: any) {
     alert(err.message);
