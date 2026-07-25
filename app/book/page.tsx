@@ -532,7 +532,9 @@ if (country === "Nigeria") {
       : selectedSubjects.length * 35;
 }
 
-    const { data, error } = await supabase
+    console.log("Submitting booking...");
+
+const response = await supabase
   .from("bookings")
   .insert({
     parent_name: parentName,
@@ -553,6 +555,10 @@ if (country === "Nigeria") {
   .select()
   .single();
 
+console.log("SUPABASE RESPONSE:", response);
+
+const { data, error } = response;
+
 
 if (error) {
  alert(JSON.stringify(error, null, 2));
@@ -569,7 +575,6 @@ await fetch("/api/booking", {
   },
 
   body: JSON.stringify({
-
     parentName,
     studentName,
     email,
@@ -580,16 +585,14 @@ await fetch("/api/booking", {
     selectedSubjects,
     subjectSchedules,
     additionalNotes,
-    bookingReference: data.booking_reference,
-
+    bookingReference: data?.booking_reference,
   }),
 });
 
+// Save booking reference safely
+setBookingReference(data?.booking_reference || "");
 
-setBookingReference(data.booking_reference);
-
-setSuccess(true);
-  } catch (err: any) {
+setSuccess(true);  } catch (err: any) {
     alert(err.message);
   } finally {
     setLoading(false);
