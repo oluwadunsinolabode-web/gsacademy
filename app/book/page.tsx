@@ -545,7 +545,10 @@ if (country === "Nigeria") {
   .single();
 
 
-if (error) throw error;
+if (error) {
+  console.log("SUPABASE ERROR:", error);
+  throw error;
+}
 
 
 // Send confirmation email
