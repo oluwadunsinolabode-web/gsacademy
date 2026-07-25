@@ -1,4 +1,10 @@
 import { Resend } from "resend";
+import { createClient } from "@supabase/supabase-js";
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -7,18 +13,42 @@ export async function POST(request: Request) {
     const body = await request.json();
 
     const {
-      parentName,
-      studentName,
-      email,
-      whatsapp,
-      country,
-      studentLevel,
-      selectedPackage,
-      selectedSubjects,
-      subjectSchedules,
-      additionalNotes,
-      bookingReference,
-    } = body;
+  parentName,
+  studentName,
+  email,
+  whatsapp,
+  country,
+  studentLevel,
+  selectedPackage,
+  selectedSubjects,
+  subjectSchedules,
+  additionalNotes,
+} = body;
+const { data, error } = await supabase
+  .from("bookings")
+  .insert({
+    parent_name: parentName,
+    student_name: studentName,
+    email,
+    whatsapp,
+    country,
+    student_level: studentLevel,
+    package: selectedPackage,
+    subjects: selectedSubjects,
+    lesson_schedule: subjectSchedules,
+    additional_notes: additionalNotes,
+    payment_status: "Pending",
+    booking_status: "Pending",
+  })
+  .select()
+  .single();
+
+if (error) {
+  console.error(error);
+  return Response.json(error, { status: 500 });
+}
+
+const bookingReference = data.booking_reference;
 
     const scheduleHTML =
       subjectSchedules && subjectSchedules.length > 0
@@ -200,10 +230,10 @@ Website: https://gsacademyhub.com
 `,
     });
 
-    return Response.json({
-      success: true,
-      message: "Confirmation email sent successfully.",
-    });
+   return Response.json({
+  success: true,
+  bookingReference,
+});
   } catch (error) {
     console.error(error);
 

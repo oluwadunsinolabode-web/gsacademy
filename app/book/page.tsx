@@ -533,53 +533,36 @@ if (country === "Nigeria") {
 }
 
   
-console.log("========== START INSERT ==========");
-const { data: session } = await supabase.auth.getSession();
-
-console.log("SESSION:", session);
-
-const {
-  data: { user },
-} = await supabase.auth.getUser();
-
-console.log("USER:", user);
-console.log("Supabase client:", supabase);
-const response = await supabase
-  .from("bookings")
-  .insert({
-    parent_name: parentName,
-    student_name: studentName,
+const response = await fetch("/api/booking", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    parentName,
+    studentName,
     email,
     whatsapp,
     country,
-    student_level: studentLevel,
-    package: selectedPackage,
-    subjects: selectedSubjects,
-    lesson_schedule: subjectSchedules,
-    additional_notes: additionalNotes,
-    total_amount: totalAmount,
-    currency: country === "Nigeria" ? "NGN" : "USD",
-    payment_status: "Pending",
-    booking_status: "Pending",
-  })
-  .select()
-  .single();
+    studentLevel,
+    selectedPackage,
+    selectedSubjects,
+    subjectSchedules,
+    additionalNotes,
+  }),
+});
 
-console.dir(response);
+const result = await response.json();
 
-const { data, error } = response;
-
-if (error) {
- console.dir(error);
-console.log(JSON.stringify(error, null, 2));
-  alert(JSON.stringify(error, null, 2));
-  throw error;
+if (!response.ok) {
+  alert(JSON.stringify(result, null, 2));
+  throw new Error(result.message || "Booking failed");
 }
 
-console.log("INSERTED ROW:", data);
+setBookingReference(result.bookingReference);
+setSuccess(true);
 
-setBookingReference(data.booking_reference ?? "");
-
+return;
 await fetch("/api/booking", {
   method: "POST",
   headers: {
