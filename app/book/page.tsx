@@ -546,7 +546,7 @@ if (country === "Nigeria") {
 
 
 if (error) {
-  console.log("SUPABASE ERROR:", error);
+ alert(JSON.stringify(error, null, 2));
   throw error;
 }
 
