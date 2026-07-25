@@ -556,12 +556,13 @@ const response = await supabase
   .select()
   .single();
 
-console.log("FULL RESPONSE:", response);
+console.dir(response);
 
 const { data, error } = response;
 
 if (error) {
-  console.error("SUPABASE ERROR:", error);
+ console.dir(error);
+console.log(JSON.stringify(error, null, 2));
   alert(JSON.stringify(error, null, 2));
   throw error;
 }
@@ -592,7 +593,7 @@ await fetch("/api/booking", {
 
 setSuccess(true);
 
-setSuccess(true);  } catch (err: any) {
+} catch (err: any) {
     alert(err.message);
   } finally {
     setLoading(false);
