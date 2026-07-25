@@ -579,8 +579,7 @@ await fetch("/api/booking", {
     selectedSubjects,
     subjectSchedules,
     additionalNotes,
-    bookingReference: data.booking_reference,
-  }),
+      }),
 });
 
 setSuccess(true);
