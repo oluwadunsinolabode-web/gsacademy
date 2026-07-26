@@ -742,7 +742,9 @@ if (success) {
 
         </div>
 
-      </main>
+</div>
+
+</main>
 
       <Footer />
     </>
