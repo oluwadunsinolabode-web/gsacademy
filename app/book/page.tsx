@@ -595,116 +595,16 @@ if (success) {
             </p>
 
           </div>
-          <h2 className="mt-8 text-2xl font-bold text-slate-900">
-  What Happens Next?
-</h2>
-<div className="mt-5 rounded-xl bg-slate-50 p-6 text-left">
+          
 
-  {isPackage1 ? (
-
-    <ul className="space-y-3 text-slate-700">
-
-      <li>• Our academic team will prepare your class timetable.</li>
-
-      <li>• Your timetable and payment instructions will be emailed to you shortly.</li>
-
-      <li>• Once payment is confirmed, your student login details will be sent automatically.</li>
-
-    </ul>
-
-  ) : (
-
-    <ul className="space-y-3 text-slate-700">
-
-      <li>• Your lesson timetable has been confirmed and is shown below.</li>
-
-      <li>• Please complete payment using the instructions below.</li>
-
-      <li>• Once payment is confirmed, your student login details will be sent automatically.</li>
-
-    </ul>
-
-  )}
-
-</div>
-{!isPackage1 && (
-  <div className="mt-8 rounded-2xl border border-blue-200 bg-blue-50 p-6">
-
-    <h2 className="text-2xl font-bold text-slate-900">
-      Confirmed Lesson Timetable
-    </h2>
-
-    <p className="mt-2 text-slate-600">
-      Please review your confirmed lesson schedule below.
-    </p>
-
-    <div className="mt-6 space-y-4">
-
-      {subjectSchedules.map((lesson, index) => (
-
-        <div
-          key={index}
-          className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
-        >
-
-          <h3 className="text-lg font-bold text-slate-900">
-            {lesson.subject}
-          </h3>
-
-          <p className="mt-2 text-slate-700">
-            📅 {lesson.day}
-          </p>
-
-          <p className="text-slate-700">
-            🕒 {lesson.time}
-          </p>
-
-        </div>
-
-      ))}
-
-    </div>
-
-  </div>
-)}
-
-{!isPackage1 && (
-  <div className="mt-8 rounded-2xl border border-yellow-300 bg-yellow-50 p-6">
-
-    <h2 className="text-2xl font-bold text-slate-900">
-      Payment Instructions
-    </h2>
-
-    <div className="mt-5 space-y-2 text-slate-700">
-
-      <p>
-        <strong>Bank:</strong> Guaranty Trust Bank (GTBank)
-      </p>
-
-      <p>
-        <strong>Account Name:</strong> Olabode Oluwadunsin Samuel
-      </p>
-
-      <p>
-        <strong>Account Number:</strong> 0218031668
-      </p>
-
-    </div>
-
-    <p className="mt-5 text-sm text-slate-600">
-      Kindly use your Booking Reference as your payment narration. Once payment is confirmed, your student login details will be sent automatically.
-    </p>
-
-  </div>
-)}
- 
-</div>
+      </div>
 
 </main>
 
-      <Footer />
-    </>
-  );
+<Footer />
+
+</>
+);
 }
 
 
