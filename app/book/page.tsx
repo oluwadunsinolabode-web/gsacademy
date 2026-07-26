@@ -697,51 +697,7 @@ if (success) {
 
   </div>
 )}
-      <p className="mt-6 text-slate-600">
-  Your confirmation email has been sent successfully.
-  Please check your inbox (and Spam/Junk folder if necessary).
-</p>
-<div className="mt-6 rounded-xl bg-green-50 border border-green-200 p-4">
-
-  <p className="font-semibold text-slate-900">
-    Need help?
-  </p>
-
-  <p className="mt-2 text-slate-700">
-    Reply to this email or contact us on WhatsApp:
-  </p>
-
-  <p className="mt-2 font-bold text-green-700">
-    +234 706 458 6878
-  </p>
-
-</div>
-<div className="mt-8 border-t border-slate-200 pt-6 text-center">
-
-  <h3 className="text-lg font-bold text-slate-900">
-    GS Academy
-  </h3>
-
-  <p className="mt-3 text-slate-700">
-    📧 gsacademyadmin@gmail.com
-  </p>
-
-  <p className="text-slate-700">
-    🌐 https://gsacademyhub.com
-  </p>
-
-</div>
-<div className="mt-8">
-
-  <a
-    href="/"
-    className="inline-block rounded-xl bg-blue-600 px-8 py-3 font-bold text-white transition hover:bg-blue-700"
-  >
-    Return to Homepage
-  </a>
-
-        </div>
-
+ 
 </div>
 
 </main>
