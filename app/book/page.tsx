@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { supabase } from "@/lib/supabase";
+
 
 /* ===========================
    COUNTRY LIST
@@ -242,16 +242,7 @@ const timeSlots = [
 =========================== */
 
 export default function BookingPage() {
-  console.log(
-  "SUPABASE URL:",
-  process.env.NEXT_PUBLIC_SUPABASE_URL
-);
-
-console.log(
-  "SUPABASE KEY START:",
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.substring(0, 20)
-);
-
+ 
   /* Parent Information */
 
   const [parentName, setParentName] = useState("");
@@ -306,6 +297,9 @@ useEffect(() => {
 const [loading, setLoading] = useState(false);
 const [success, setSuccess] = useState(false);
 const [bookingReference, setBookingReference] = useState("");
+const isPackage1 =
+  country === "Nigeria" &&
+  selectedPackage === "Package 1 - Small Group";
   
   /* ===========================
      LOGIC VARIABLES
@@ -576,23 +570,23 @@ if (success) {
 
       <main className="min-h-screen bg-slate-50 flex items-center justify-center px-6">
 
-        <div className="max-w-xl rounded-3xl bg-white p-10 text-center shadow-xl">
+       <div className="max-w-2xl rounded-3xl bg-white p-10 text-center shadow-xl">
 
-          <div className="text-6xl">
-            ✅
-          </div>
+          <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-blue-100 text-5xl">
+  🎓
+</div>
 
-          <h1 className="mt-6 text-3xl font-extrabold">
-            Booking Submitted Successfully
-          </h1>
+          <h1 className="mt-6 text-3xl font-black text-slate-900">
+  Enrollment Successfully Submitted
+</h1>
 
           <p className="mt-4 text-slate-700">
-            Thank you for choosing GS Academy.
-          </p>
+  Thank you for choosing GS Academy. Your enrollment has been successfully received.
+</p>
 
-          <div className="mt-6 rounded-xl bg-slate-100 p-5">
+          <div className="mt-6 rounded-2xl border border-blue-200 bg-blue-50 p-6">
 
-            <p className="font-semibold">
+            <p className="text-sm font-semibold uppercase tracking-wide text-slate-600">
               Booking Reference
             </p>
 
@@ -601,10 +595,150 @@ if (success) {
             </p>
 
           </div>
+          <h2 className="mt-8 text-2xl font-bold text-slate-900">
+  What Happens Next?
+</h2>
+<div className="mt-5 rounded-xl bg-slate-50 p-6 text-left">
 
-          <p className="mt-6 text-slate-600">
-            A confirmation email will be sent shortly.
+  {isPackage1 ? (
+
+    <ul className="space-y-3 text-slate-700">
+
+      <li>• Our academic team will prepare your class timetable.</li>
+
+      <li>• Your timetable and payment instructions will be emailed to you shortly.</li>
+
+      <li>• Once payment is confirmed, your student login details will be sent automatically.</li>
+
+    </ul>
+
+  ) : (
+
+    <ul className="space-y-3 text-slate-700">
+
+      <li>• Your lesson timetable has been confirmed and is shown below.</li>
+
+      <li>• Please complete payment using the instructions below.</li>
+
+      <li>• Once payment is confirmed, your student login details will be sent automatically.</li>
+
+    </ul>
+
+  )}
+
+</div>
+{!isPackage1 && (
+  <div className="mt-8 rounded-2xl border border-blue-200 bg-blue-50 p-6">
+
+    <h2 className="text-2xl font-bold text-slate-900">
+      Confirmed Lesson Timetable
+    </h2>
+
+    <p className="mt-2 text-slate-600">
+      Please review your confirmed lesson schedule below.
+    </p>
+
+    <div className="mt-6 space-y-4">
+
+      {subjectSchedules.map((lesson, index) => (
+
+        <div
+          key={index}
+          className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+        >
+
+          <h3 className="text-lg font-bold text-slate-900">
+            {lesson.subject}
+          </h3>
+
+          <p className="mt-2 text-slate-700">
+            📅 {lesson.day}
           </p>
+
+          <p className="text-slate-700">
+            🕒 {lesson.time}
+          </p>
+
+        </div>
+
+      ))}
+
+    </div>
+
+  </div>
+)}
+
+{!isPackage1 && (
+  <div className="mt-8 rounded-2xl border border-yellow-300 bg-yellow-50 p-6">
+
+    <h2 className="text-2xl font-bold text-slate-900">
+      Payment Instructions
+    </h2>
+
+    <div className="mt-5 space-y-2 text-slate-700">
+
+      <p>
+        <strong>Bank:</strong> Guaranty Trust Bank (GTBank)
+      </p>
+
+      <p>
+        <strong>Account Name:</strong> Olabode Oluwadunsin Samuel
+      </p>
+
+      <p>
+        <strong>Account Number:</strong> 0218031668
+      </p>
+
+    </div>
+
+    <p className="mt-5 text-sm text-slate-600">
+      Kindly use your Booking Reference as your payment narration. Once payment is confirmed, your student login details will be sent automatically.
+    </p>
+
+  </div>
+)}
+      <p className="mt-6 text-slate-600">
+  Your confirmation email has been sent successfully.
+  Please check your inbox (and Spam/Junk folder if necessary).
+</p>
+<div className="mt-6 rounded-xl bg-green-50 border border-green-200 p-4">
+
+  <p className="font-semibold text-slate-900">
+    Need help?
+  </p>
+
+  <p className="mt-2 text-slate-700">
+    Reply to this email or contact us on WhatsApp:
+  </p>
+
+  <p className="mt-2 font-bold text-green-700">
+    +234 706 458 6878
+  </p>
+
+</div>
+<div className="mt-8 border-t border-slate-200 pt-6 text-center">
+
+  <h3 className="text-lg font-bold text-slate-900">
+    GS Academy
+  </h3>
+
+  <p className="mt-3 text-slate-700">
+    📧 gsacademyadmin@gmail.com
+  </p>
+
+  <p className="text-slate-700">
+    🌐 https://gsacademyhub.com
+  </p>
+
+</div>
+<div className="mt-8">
+
+  <a
+    href="/"
+    className="inline-block rounded-xl bg-blue-600 px-8 py-3 font-bold text-white transition hover:bg-blue-700"
+  >
+    Return to Homepage
+  </a>
 
         </div>
 

@@ -1,14 +1,20 @@
 import { Resend } from "resend";
 import { createClient } from "@supabase/supabase-js";
 
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+if (!supabaseUrl) {
+  throw new Error("NEXT_PUBLIC_SUPABASE_URL is missing");
+}
+
+if (!serviceRoleKey) {
+  throw new Error("SUPABASE_SERVICE_ROLE_KEY is missing");
+}
+
 const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-console.log("Service role exists:", !!process.env.SUPABASE_SERVICE_ROLE_KEY);
-console.log(
-  "Service role starts with:",
-  process.env.SUPABASE_SERVICE_ROLE_KEY?.substring(0, 15)
+  supabaseUrl,
+  serviceRoleKey
 );
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -48,8 +54,15 @@ const { data, error } = await supabase
   .single();
 
 if (error) {
-  console.error(error);
-  return Response.json(error, { status: 500 });
+  console.error("Supabase Error:", error);
+
+  return Response.json(
+    {
+      success: false,
+      message: error.message,
+    },
+    { status: 500 }
+  );
 }
 
 const bookingReference = data.booking_reference;
@@ -89,7 +102,7 @@ const bookingReference = data.booking_reference;
     await resend.emails.send({
       from: "GS Academy <booking@gsacademyhub.com>",
       to: email,
-      subject: "Booking Confirmation • GS Academy",
+      subject: `Booking Confirmation • ${studentName} • GS Academy`,
       html: `
 <!DOCTYPE html>
 <html>
@@ -111,15 +124,29 @@ Grooming Scholars
 
 <div style="padding:40px;">
 
+<div style="background:#fef9c3;border:1px solid #facc15;border-radius:12px;padding:20px;text-align:center;margin-bottom:35px;">
+
+  <div style="font-size:42px;">
+    🎓
+  </div>
+
+  <h2 style="margin:10px 0 5px 0;color:#0f172a;font-size:30px;">
+    Enrollment Successfully Confirmed
+  </h2>
+
+  <p style="margin:0;color:#475569;font-size:16px;">
+    Thank you for choosing <strong>GS Academy</strong>. We're delighted to welcome you to our learning community.
+  </p>
+
+</div>
+
 <h2 style="color:#0f172a;">
 Hello ${parentName},
 </h2>
 
 <p style="font-size:16px;color:#334155;line-height:1.8;">
-Thank you for choosing <strong>GS Academy</strong>.
-We are pleased to inform you that we have successfully received your enrollment request.
+Your enrollment for <strong>${studentName}</strong> has been successfully received and confirmed. Below is a summary of the enrollment details and the next steps.
 </p>
-
 <div style="margin:30px 0;padding:20px;background:#f8fafc;border-left:5px solid #facc15;">
 
 <h3 style="margin-top:0;color:#0f172a;">
@@ -176,7 +203,7 @@ ${
   subjectSchedules?.length > 0
     ? `
 <h3 style="margin-top:40px;color:#0f172a;">
-Preferred Lesson Schedule
+Confirmed Lesson Timetable
 </h3>
 
 ${scheduleHTML}
@@ -197,7 +224,9 @@ ${additionalNotes}
 `
     : ""
 }
-
+${
+selectedPackage === "Package 1 - Small Group"
+? `
 <hr style="margin:40px 0;border:none;border-top:1px solid #e5e7eb;" />
 
 <h3 style="color:#0f172a;">
@@ -205,25 +234,125 @@ What Happens Next?
 </h3>
 
 <ol style="color:#475569;line-height:1.9;">
-<li>Your enrollment will be reviewed by our academic team.</li>
-<li>Your lesson schedule will be confirmed.</li>
-<li>You will receive payment instructions.</li>
-<li>After payment confirmation, your classes will officially begin.</li>
+<li>Your enrollment has been confirmed.</li>
+<li>Our academic team will prepare your group lesson timetable.</li>
+<li>Your timetable and payment instructions will be sent to you shortly.</li>
+<li>After payment confirmation, your Student Portal login details will be sent automatically so your child can begin classes.</li>
 </ol>
+`
+: `
+<hr style="margin:40px 0;border:none;border-top:1px solid #e5e7eb;" />
 
-<p style="margin-top:35px;color:#475569;">
-If you have any questions, simply reply to this email or contact us via WhatsApp.
+<h3 style="color:#0f172a;">
+What Happens Next?
+</h3>
+
+<p style="color:#475569;">
+Your lesson timetable is shown above and has been successfully confirmed.
+</p>
+
+<p style="color:#475569;">
+The next step is to complete your tuition payment using the account details below.
+</p>
+
+<div style="margin:25px 0;padding:20px;background:#f8fafc;border:1px solid #e5e7eb;border-radius:10px;">
+
+<h3 style="margin-top:0;color:#0f172a;">
+Bank Payment Details
+</h3>
+
+<p style="margin:8px 0;">
+<strong>Bank:</strong> Guaranty Trust Bank (GTBank)
+</p>
+
+<p style="margin:8px 0;">
+<strong>Account Name:</strong> Olabode Oluwadunsin Samuel
+</p>
+
+<p style="margin:8px 0;">
+<strong>Account Number:</strong> 0218031668
+</p>
+
+<p style="margin-top:18px;color:#b91c1c;font-weight:bold;">
+IMPORTANT:
+</p>
+
+<p style="color:#475569;">
+After making payment, kindly send your payment receipt via WhatsApp to <strong>07064586878</strong> for confirmation.
+</p>
+
+<p style="color:#475569;">
+Immediately your payment has been verified, your Student Portal login details will be sent automatically, allowing your child to begin classes.
 </p>
 
 </div>
+`
+}
 
-<div style="background:#f8fafc;padding:25px;text-align:center;font-size:14px;color:#64748b;">
+<hr style="margin:40px 0;border:none;border-top:1px solid #e5e7eb;" />
 
-<strong>GS Academy</strong><br/>
 
-Email: gsacademyadmin@gmail.com<br/>
 
-Website: https://gsacademyhub.com
+<p style="margin-top:35px;color:#475569;">
+If you have any questions, simply reply to this email or contact us on WhatsApp.
+</p>
+
+<p style="font-size:18px;font-weight:bold;">
+📱 <a
+href="https://wa.me/2347064586878"
+style="color:#16a34a;text-decoration:none;"
+target="_blank"
+>
+Chat with us on WhatsApp (+234 706 458 6878)
+</a>
+</p>
+</div>
+
+<div style="background:#0f172a;padding:30px;text-align:center;">
+
+<h2 style="margin:0;color:#facc15;">
+GS Academy
+</h2>
+
+<p style="margin:8px 0;color:#ffffff;">
+Grooming Scholars
+</p>
+
+<p style="margin:18px 0;">
+📧
+<a
+href="mailto:gsacademyadmin@gmail.com"
+style="color:#ffffff;text-decoration:none;"
+>
+gsacademyadmin@gmail.com
+</a>
+</p>
+
+<p style="margin:18px 0;">
+🌐
+<a
+href="https://gsacademyhub.com"
+style="color:#ffffff;text-decoration:none;"
+target="_blank"
+>
+www.gsacademyhub.com
+</a>
+</p>
+
+<p style="margin:18px 0;">
+📱
+<a
+href="https://wa.me/2347064586878"
+style="color:#25D366;text-decoration:none;font-weight:bold;"
+target="_blank"
+>
+Chat with us on WhatsApp
+</a>
+</p>
+
+<p style="margin-top:25px;font-size:12px;color:#cbd5e1;">
+© 2026 GS Academy. All rights reserved.
+</p>
 
 </div>
 
@@ -239,16 +368,19 @@ Website: https://gsacademyhub.com
   bookingReference,
 });
   } catch (error) {
-    console.error(error);
+  console.error(error);
 
-    return Response.json(
-      {
-        success: false,
-        message: "Unable to send confirmation email.",
-      },
-      {
-        status: 500,
-      }
-    );
-  }
+  return Response.json(
+    {
+      success: false,
+      message:
+        error instanceof Error
+          ? error.message
+          : "Unable to send confirmation email.",
+    },
+    {
+      status: 500,
+    }
+  );
+}
 }
