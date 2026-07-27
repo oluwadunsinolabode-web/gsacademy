@@ -166,7 +166,7 @@ export default function Navbar() {
               onClick={() => setMenuOpen(false)}
               className="mt-4 rounded-xl bg-yellow-500 py-3 text-center font-semibold text-slate-900 transition hover:bg-yellow-400"
             >
-              Book Now
+              Enroll Now
             </Link>
 
           </div>
