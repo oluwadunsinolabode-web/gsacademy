@@ -40,7 +40,7 @@ export default function Footer() {
 
             <li>
               <Link href="/book" className="hover:text-yellow-400">
-                Book Free Week
+                Enroll Now
               </Link>
             </li>
           </ul>

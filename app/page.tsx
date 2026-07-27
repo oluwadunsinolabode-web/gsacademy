@@ -31,11 +31,11 @@ export default function Home() {
   <div className="mt-10 space-y-5">
 
   <div className="flex items-center gap-4">
-    <div className="h-6 w-1 rounded-full bg-yellow-500"></div>
-    <span className="text-lg font-medium text-slate-700">
-      Start with a <span className="font-bold text-slate-900">FREE Week</span>
-    </span>
-  </div>
+  <div className="h-6 w-1 rounded-full bg-yellow-500"></div>
+  <span className="text-lg font-medium text-slate-700">
+    Flexible Learning Packages
+  </span>
+</div>
 
   <div className="flex items-center gap-4">
     <div className="h-6 w-1 rounded-full bg-yellow-500"></div>
@@ -67,7 +67,7 @@ export default function Home() {
     href="/book"
     className="rounded-xl bg-slate-900 px-8 py-4 font-semibold text-white transition hover:bg-slate-800"
   >
-    Book Now
+    Enroll Now
   </Link>
 
   <Link
@@ -122,12 +122,12 @@ export default function Home() {
         </div>
 
         <h3 className="text-2xl font-bold text-slate-900">
-          Book Your Free Week
-        </h3>
+  Complete Your Enrollment
+</h3>
 
-        <p className="mt-4 leading-8 text-slate-600">
-          Start with a FREE one-week trial and discover how GS Academy can support your child's success.
-        </p>
+<p className="mt-4 leading-8 text-slate-600">
+  Choose your preferred learning package and complete your enrollment to begin your personalised learning journey with GS Academy.
+</p>
 
       </div>
 
@@ -160,8 +160,8 @@ export default function Home() {
         </h3>
 
         <p className="mt-4 leading-8 text-slate-600">
-          Follow your child's progress with regular assessments and performance reports throughout their learning journey.
-        </p>
+Receive regular assessments, personalised feedback and detailed progress reports that keep parents informed every step of the journey.
+</p>
 
       </div>
 

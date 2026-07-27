@@ -92,15 +92,14 @@ export default function ContactPage() {
             </h2>
 
             <p className="mx-auto mt-5 max-w-2xl text-lg text-slate-300">
-              Book a free discovery session and let us create a personalised
-              learning plan for your academic goals.
+              Enroll today and let us create a personalised learning plan for your child.
             </p>
 
             <Link
               href="/book"
               className="mt-8 inline-block rounded-xl bg-yellow-500 px-10 py-4 font-bold text-slate-900 transition hover:bg-yellow-400"
             >
-              Book a Discovery Session
+               Enroll Now
             </Link>
 
           </section>
