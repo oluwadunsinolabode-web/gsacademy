@@ -158,10 +158,13 @@ export default function PricingPage() {
               <ul className="mt-8 space-y-3 text-slate-700">
 
                 <li>✔ One-on-One Coaching</li>
+                <li>✔ Flexible Schedule</li>
                 <li>✔ Extended Lesson Duration</li>
+                <li>✔ Homework & Classwork</li>
+                <li>✔ Monthly Mock Assessment</li>
                 <li>✔ Intensive Exam Preparation</li>
-                <li>✔ Priority Tutor Support</li>
                 <li>✔ Personalised Academic Mentoring</li>
+                <li>✔ Parent Progress Reports</li>
 
               </ul>
 
