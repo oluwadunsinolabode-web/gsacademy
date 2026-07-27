@@ -13,22 +13,19 @@ export default function PricingPage() {
 
           <div className="text-center">
 
-            <h1 className="text-5xl font-extrabold text-slate-900">
-              Choose Your Learning Plan
-            </h1>
+  <h1 className="text-5xl font-extrabold text-slate-900">
+    Choose Your Learning Plan
+  </h1>
 
-            <p className="mt-6 text-lg text-slate-600">
-              Flexible coaching packages designed to suit every learner's needs and every parent's budget.
-            </p>
+  <p className="mt-6 text-lg text-slate-600">
+    Flexible coaching packages designed to suit every learner's needs and every parent's budget.
+  </p>
 
-          </div>
+</div>
 
-        
-          {/* NIGERIA */}
-
-          <h2 className="mt-20 text-4xl font-extrabold text-slate-900">
-            🇳🇬 Nigeria
-          </h2>
+<h2 className="mt-12 text-4xl font-extrabold text-slate-900">
+  🇳🇬 Nigeria
+</h2>
 
           <div className="mt-10 grid gap-8 lg:grid-cols-3">
 
