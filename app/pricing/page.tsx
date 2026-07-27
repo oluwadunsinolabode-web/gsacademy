@@ -23,17 +23,7 @@ export default function PricingPage() {
 
           </div>
 
-          <div className="mx-auto mt-16 max-w-4xl rounded-3xl bg-slate-900 p-10 text-center shadow-xl">
-
-  <h2 className="text-4xl font-extrabold text-white">
-    Flexible Learning Packages
-  </h2>
-
-  <p className="mt-5 text-lg text-slate-300">
-    Choose the coaching package that best suits your child's academic goals, learning style and budget.
-  </p>
-
-</div>
+        
           {/* NIGERIA */}
 
           <h2 className="mt-20 text-4xl font-extrabold text-slate-900">
@@ -242,16 +232,24 @@ export default function PricingPage() {
 
           </div>
 
-          <div className="mt-16 text-center">
+         <section className="mt-20 rounded-3xl bg-slate-900 px-8 py-14 text-center text-white">
 
-            <Link
-              href="/book"
-              className="inline-block rounded-xl bg-yellow-500 px-10 py-5 text-lg font-bold text-slate-900 transition hover:bg-yellow-400"
-            >
-              Enroll Now
-            </Link>
+  <h2 className="text-3xl font-bold md:text-4xl">
+    Ready to Get Started?
+  </h2>
 
-          </div>
+  <p className="mx-auto mt-5 max-w-2xl text-lg text-slate-300">
+    Choose the learning package that suits your child's needs and complete your enrollment in just a few minutes.
+  </p>
+
+  <Link
+    href="/book"
+    className="mt-8 inline-block rounded-xl bg-yellow-500 px-10 py-4 font-bold text-slate-900 transition hover:bg-yellow-400"
+  >
+    Enroll Now
+  </Link>
+
+</section>
 
         </section>
 

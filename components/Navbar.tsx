@@ -72,7 +72,7 @@ export default function Navbar() {
             href="/book"
             className="rounded-xl bg-yellow-500 px-5 py-3 font-semibold text-slate-900 transition hover:bg-yellow-400"
           >
-            Book Now
+            Enroll Now
           </Link>
 
         </div>
