@@ -249,6 +249,8 @@ export default function BookingPage() {
   const [studentName, setStudentName] = useState("");
   const [email, setEmail] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
+  const [totalAmount, setTotalAmount] = useState(0);
+const [currency, setCurrency] = useState("");
 
   /* Country */
 
@@ -556,6 +558,8 @@ if (!response.ok) {
 }
 
 setBookingReference(result.bookingReference);
+setTotalAmount(result.totalAmount);
+setCurrency(result.currency);
 setSuccess(true);
 
 return;
@@ -595,6 +599,16 @@ if (success) {
             <p className="mt-2 text-2xl font-bold text-blue-700">
               {bookingReference}
             </p>
+            <div className="mt-6 rounded-2xl border border-green-200 bg-green-50 p-6">
+  <p className="text-sm font-semibold uppercase tracking-wide text-slate-600">
+    Estimated Tuition
+  </p>
+
+  <p className="mt-2 text-3xl font-bold text-green-700">
+    {currency}
+    {Number(totalAmount).toLocaleString()}
+  </p>
+</div>
 
           </div>
           

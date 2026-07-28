@@ -33,9 +33,39 @@ export async function POST(request: Request) {
   selectedSubjects,
   subjectSchedules,
   additionalNotes,
-  totalAmount,
-  currency,
-} = body;
+  } = body;
+  // ===============================
+// Calculate Tuition Automatically
+// ===============================
+
+let totalAmount = 0;
+let currency = "";
+
+if (country === "Nigeria") {
+  currency = "₦";
+
+  if (selectedPackage === "Package 1 - Small Group") {
+    totalAmount =
+      selectedSubjects.length >= 5
+        ? selectedSubjects.length * 7000
+        : selectedSubjects.length * 10000;
+  }
+
+  if (selectedPackage === "Package 2 - Private Coaching") {
+    totalAmount = selectedSubjects.length * 40000;
+  }
+
+  if (selectedPackage === "Package 3 - Premium Coaching") {
+    totalAmount = selectedSubjects.length * 50000;
+  }
+} else {
+  currency = "$";
+
+  totalAmount =
+    selectedSubjects.length >= 3
+      ? selectedSubjects.length * 30
+      : selectedSubjects.length * 35;
+}
 const { data, error } = await supabase
   .from("bookings")
   .insert({
@@ -49,6 +79,8 @@ const { data, error } = await supabase
     subjects: selectedSubjects,
     lesson_schedule: subjectSchedules,
     additional_notes: additionalNotes,
+    total_amount: totalAmount,
+currency,
     payment_status: "Pending",
     booking_status: "Pending",
   })
@@ -133,7 +165,7 @@ Grooming Scholars
   </div>
 
   <h2 style="margin:10px 0 5px 0;color:#0f172a;font-size:30px;">
-    Enrollment Successfully Confirmed
+    Booking Successfully Received
   </h2>
 
   <p style="margin:0;color:#475569;font-size:16px;">
@@ -164,7 +196,6 @@ ${bookingReference ?? "Will be generated"}
 <h3 style="color:#0f172a;">
 Student Information
 </h3>
-
 <table style="width:100%;border-collapse:collapse;">
 
 <tr>
@@ -239,6 +270,7 @@ What Happens Next?
 <li>Your enrollment has been confirmed.</li>
 <li>Our academic team will prepare your group lesson timetable.</li>
 <li>Your timetable and payment instructions will be sent to you shortly.</li>
+
 <li>After payment confirmation, your Student Portal login details will be sent automatically so your child can begin classes.</li>
 </ol>
 `
@@ -375,9 +407,11 @@ Chat with us on WhatsApp
 `,
     });
 
-   return Response.json({
+ return Response.json({
   success: true,
   bookingReference,
+  totalAmount,
+  currency,
 });
   } catch (error) {
   console.error(error);
