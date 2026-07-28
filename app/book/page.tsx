@@ -543,6 +543,8 @@ const response = await fetch("/api/booking", {
     selectedSubjects,
     subjectSchedules,
     additionalNotes,
+totalAmount,
+currency: country === "Nigeria" ? "₦" : "$",
   }),
 });
 

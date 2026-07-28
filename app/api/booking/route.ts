@@ -22,7 +22,7 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
 
-    const {
+   const {
   parentName,
   studentName,
   email,
@@ -33,6 +33,8 @@ export async function POST(request: Request) {
   selectedSubjects,
   subjectSchedules,
   additionalNotes,
+  totalAmount,
+  currency,
 } = body;
 const { data, error } = await supabase
   .from("bookings")
@@ -256,7 +258,17 @@ The next step is to complete your tuition payment using the account details belo
 </p>
 
 <div style="margin:25px 0;padding:20px;background:#f8fafc;border:1px solid #e5e7eb;border-radius:10px;">
+<div style="margin:25px 0;padding:20px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;">
 
+<h3 style="margin-top:0;color:#0f172a;">
+Tuition Fee
+</h3>
+
+<p style="font-size:34px;font-weight:bold;color:#2563eb;margin:0;">
+${currency}${Number(totalAmount).toLocaleString()}
+</p>
+
+</div>
 <h3 style="margin-top:0;color:#0f172a;">
 Bank Payment Details
 </h3>
