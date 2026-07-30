@@ -1,3 +1,7 @@
+--------------------------------------------------
+-- SUBJECTS
+--------------------------------------------------
+
 insert into subjects(name)
 values
 
@@ -18,12 +22,15 @@ on conflict do nothing;
 
 
 
-insert into packages(
+--------------------------------------------------
+-- PACKAGES
+--------------------------------------------------
 
-package_name,
-lessons_per_week,
-type
-
+insert into packages
+(
+    package_name,
+    lessons_per_week,
+    type
 )
 
 values
@@ -32,6 +39,8 @@ values
 
 ('Package 2',2,'Private'),
 
-('Package 3',2,'Premium')
+('Package 3',2,'Premium'),
+
+('International One-on-One',2,'International')
 
 on conflict do nothing;

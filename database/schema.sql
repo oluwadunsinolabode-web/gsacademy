@@ -85,6 +85,26 @@ create table if not exists packages (
 
 );
 --------------------------------------------------
+-- STUDENT PACKAGES
+--------------------------------------------------
+
+create table if not exists student_packages (
+
+    id uuid primary key default uuid_generate_v4(),
+
+    student_id uuid
+        references students(id)
+        on delete cascade,
+
+    package_id uuid
+        references packages(id),
+
+    active boolean default true,
+
+    created_at timestamptz default now()
+
+);
+--------------------------------------------------
 -- TUTOR ASSIGNMENTS
 --------------------------------------------------
 
@@ -97,9 +117,7 @@ create table if not exists tutor_assignments (
     student_id uuid references students(id) on delete cascade,
 
     subject_id uuid references subjects(id),
-
-    package_id uuid references packages(id),
-
+   
     active boolean default true,
 
     created_at timestamptz default now()
@@ -141,12 +159,13 @@ create table if not exists homework (
     tutor_assignment_id uuid references tutor_assignments(id),
 
     title text,
+    description text,
 
     instructions text,
 
     due_date date,
 
-    attachment_url text,
+    file_url text,
 
     created_at timestamptz default now()
 
@@ -165,7 +184,28 @@ create table if not exists classwork (
 
     instructions text,
 
-    attachment_url text,
+    file_url text,
+
+    created_at timestamptz default now()
+
+);
+--------------------------------------------------
+-- LESSON NOTES
+--------------------------------------------------
+
+create table if not exists lesson_notes (
+
+    id uuid primary key default uuid_generate_v4(),
+
+    tutor_assignment_id uuid
+        references tutor_assignments(id)
+        on delete cascade,
+
+    title text,
+
+    topic text,
+
+    file_url text,
 
     created_at timestamptz default now()
 
@@ -182,6 +222,7 @@ create table if not exists resources (
     tutor_assignment_id uuid references tutor_assignments(id),
 
     title text,
+    description text,
 
     resource_type text,
 
@@ -208,29 +249,7 @@ create table if not exists announcements (
     created_at timestamptz default now()
 
 );
---------------------------------------------------
--- SCORES
---------------------------------------------------
 
-create table if not exists scores (
-
-    id uuid primary key default uuid_generate_v4(),
-
-    classwork_submission_id uuid,
-
-    score integer,
-
-    total integer,
-
-    percentage integer,
-
-    feedback text,
-
-    correction_url text,
-
-    created_at timestamptz default now()
-
-);
 
 --------------------------------------------------
 -- NOTIFICATIONS

@@ -69,6 +69,12 @@ export default function AdminDashboardLayout({
                 <Link href="/admin-dashboard/students" className="block rounded-xl px-5 py-3 hover:bg-slate-800">
                   Students
                 </Link>
+                <Link
+  href="/admin-dashboard/bookings"
+  className="block rounded-xl px-5 py-3 hover:bg-slate-800"
+>
+  Booking Requests
+</Link>
 
                 <Link href="/admin-dashboard/tutors" className="block rounded-xl px-5 py-3 hover:bg-slate-800">
                   Tutors
@@ -137,6 +143,11 @@ export default function AdminDashboardLayout({
 
                 <MenuItem href="/admin-dashboard" icon={<LayoutDashboard size={20} />} title="Dashboard" />
                 <MenuItem href="/admin-dashboard/students" icon={<GraduationCap size={20} />} title="Students" />
+                <MenuItem
+  href="/admin-dashboard/bookings"
+  icon={<ClipboardCheck size={20} />}
+  title="Booking Requests"
+/>
                 <MenuItem href="/admin-dashboard/tutors" icon={<Users size={20} />} title="Tutors" />
                 <MenuItem href="/admin-dashboard/assignments" icon={<UserCheck size={20} />} title="Assign Tutors" />
                 <MenuItem href="/admin-dashboard/timetable" icon={<CalendarDays size={20} />} title="Timetable" />

@@ -5,8 +5,15 @@ import {
   GraduationCap,
   ChevronRight,
 } from "lucide-react";
+import { getStudents } from "@/lib/services/admin";
 
-export default function AdminStudentsPage() {
+export default async function AdminStudentsPage() {
+  const { data: students, error } = await getStudents();
+
+  if (error) {
+    console.error(error);
+  }
+
   return (
     <div className="mx-auto max-w-7xl">
 
@@ -63,39 +70,60 @@ export default function AdminStudentsPage() {
 
         </div>
 
-        <Link
-          href="/admin-dashboard/students/1"
-          className="flex items-center justify-between p-6 hover:bg-slate-50"
-        >
+        {students && students.length > 0 ? (
 
-          <div className="flex items-center gap-5">
+          students.map((student: any) => (
 
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-yellow-100">
+            <Link
+              key={student.id}
+              href={`/admin-dashboard/students/${student.id}`}
+              className="flex items-center justify-between p-6 hover:bg-slate-50 border-b border-slate-100"
+            >
 
-              <GraduationCap
-                className="text-yellow-600"
-                size={28}
-              />
+              <div className="flex items-center gap-5">
 
-            </div>
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-yellow-100">
 
-            <div>
+                  <GraduationCap
+                    className="text-yellow-600"
+                    size={28}
+                  />
 
-              <h3 className="text-xl font-bold text-slate-900">
-                Samuel Johnson
-              </h3>
+                </div>
 
-              <p className="text-slate-600">
-                Mathematics • Package 2
-              </p>
+                <div>
 
-            </div>
+                  <h3 className="text-xl font-bold text-slate-900">
+                    {student.full_name}
+                  </h3>
+
+                  <p className="text-slate-600">
+                    {student.email}
+                  </p>
+
+                  <p className="text-sm text-slate-500">
+                    {student.academic_level}
+                  </p>
+
+                </div>
+
+              </div>
+
+              <ChevronRight className="text-slate-400" />
+
+            </Link>
+
+          ))
+
+        ) : (
+
+          <div className="p-10 text-center text-slate-500">
+
+            No students have been created yet.
 
           </div>
 
-          <ChevronRight className="text-slate-400" />
-
-        </Link>
+        )}
 
       </div>
 
