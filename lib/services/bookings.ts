@@ -1,4 +1,9 @@
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@supabase/supabase-js";
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
 export async function getBookings() {
   return await supabase
@@ -7,24 +12,10 @@ export async function getBookings() {
     .order("created_at", { ascending: false });
 }
 
-export async function approveBooking(id: string) {
+export async function getBooking(id: string) {
   return await supabase
     .from("bookings")
-    .update({
-      status: "Approved",
-    })
+    .select("*")
     .eq("id", id)
-    .select()
-    .single();
-}
-
-export async function rejectBooking(id: string) {
-  return await supabase
-    .from("bookings")
-    .update({
-      status: "Rejected",
-    })
-    .eq("id", id)
-    .select()
     .single();
 }
