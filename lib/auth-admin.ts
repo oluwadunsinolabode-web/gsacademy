@@ -17,11 +17,12 @@ export async function isAdmin() {
   }
 
   // Check if user exists in admins table
-  const { data: admin } = await supabase
-    .from("admins")
-    .select("*")
-    .eq("auth_id", user.id)
-    .single();
+ const { data: admin } = await supabase
+  .from("admins")
+  .select("*")
+  .eq("email", user.email)
+  .eq("active", true)
+  .single();
 
   return {
     authenticated: true,
