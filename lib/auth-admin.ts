@@ -1,7 +1,7 @@
 import { createServerSupabase } from "@/lib/supabase-server";
 
 export async function isAdmin() {
-  const supabase = createServerSupabase();
+  const supabase = await createServerSupabase();
 
   // Get logged-in user
   const {
