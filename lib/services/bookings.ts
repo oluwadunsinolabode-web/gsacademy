@@ -6,10 +6,17 @@ const supabase = createClient(
 );
 
 export async function getBookings() {
-  return await supabase
+  const result = await supabase
     .from("bookings")
     .select("*")
     .order("created_at", { ascending: false });
+
+  console.log("================================");
+  console.log("BOOKINGS RESULT");
+  console.log(result);
+  console.log("================================");
+
+  return result;
 }
 
 export async function getBooking(id: string) {
