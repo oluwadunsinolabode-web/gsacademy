@@ -34,9 +34,7 @@ if (error) {
   return;
 }
 
-router.refresh();
-
-router.push("/admin-dashboard");
+window.location.href = "/admin-dashboard";
   }
 
   return (
