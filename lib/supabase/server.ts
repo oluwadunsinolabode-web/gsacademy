@@ -12,9 +12,7 @@ export async function createClient() {
         getAll() {
           return cookieStore.getAll();
         },
-        setAll() {
-          // Cookies are handled by middleware/proxy
-        },
+        setAll() {},
       },
     }
   );
