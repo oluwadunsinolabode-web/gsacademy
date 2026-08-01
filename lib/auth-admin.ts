@@ -8,22 +8,18 @@ export async function isAdmin() {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    throw new Error("NO_USER");
+    return { authenticated: false, admin: false };
   }
 
   const { data: admin } = await supabase
     .from("admins")
-    .select("*")
-    .eq("auth_id", user.id)
+    .select("id")
+    .eq("email", user.email!)
     .eq("active", true)
     .maybeSingle();
 
-  if (!admin) {
-    throw new Error("NOT_ADMIN");
-  }
-
   return {
     authenticated: true,
-    admin: true,
+    admin: !!admin,
   };
 }
