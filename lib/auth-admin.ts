@@ -8,7 +8,7 @@ export async function isAdmin() {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    return { authenticated: false, admin: false };
+    throw new Error("NO_USER");
   }
 
   const { data: admin } = await supabase
@@ -18,8 +18,12 @@ export async function isAdmin() {
     .eq("active", true)
     .maybeSingle();
 
+  if (!admin) {
+    throw new Error("NOT_ADMIN");
+  }
+
   return {
     authenticated: true,
-    admin: !!admin,
+    admin: true,
   };
 }
