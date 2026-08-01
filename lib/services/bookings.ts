@@ -1,7 +1,7 @@
 import { createServerSupabase } from "@/lib/supabase-server";
 
 export async function getBookings() {
-  const supabase = createServerSupabase();
+  const supabase = await createServerSupabase();
 
   return await supabase
     .from("bookings")
@@ -10,7 +10,7 @@ export async function getBookings() {
 }
 
 export async function getBooking(id: string) {
-  const supabase = createServerSupabase();
+  const supabase = await createServerSupabase();
 
   return await supabase
     .from("bookings")
