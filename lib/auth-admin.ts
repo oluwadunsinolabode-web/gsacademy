@@ -20,8 +20,8 @@ export async function isAdmin() {
   const { data: admin, error } = await supabase
     .from("admins")
     .select("*")
-    .eq("email", user.email)
-    .eq("active", true)
+    .eq("auth_id", user.id)
+.eq("active", true)
     .single();
 
   console.log("ADMIN RECORD:", admin);
