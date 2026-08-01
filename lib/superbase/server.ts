@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
-export async function createServerSupabase() {
+export async function createClient() {
   const cookieStore = await cookies();
 
   return createServerClient(
@@ -13,8 +13,7 @@ export async function createServerSupabase() {
           return cookieStore.getAll();
         },
         setAll() {
-          // Read-only on the server.
-          // Middleware will handle refreshing auth cookies.
+          // Cookies are handled by middleware/proxy
         },
       },
     }

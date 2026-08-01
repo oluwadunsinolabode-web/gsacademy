@@ -2,13 +2,13 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase/client";;
 import Navbar from "@/components/Navbar";
 import { Eye, EyeOff } from "lucide-react";
 
 export default function AdminLoginPage() {
   const router = useRouter();
-
+const supabase = createClient();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
@@ -23,7 +23,7 @@ export default function AdminLoginPage() {
     setLoading(true);
     setError("");
 
-   const { data, error } = await supabase.auth.signInWithPassword({
+   const { error } = await supabase.auth.signInWithPassword({
   email,
   password,
 });
@@ -34,7 +34,8 @@ if (error) {
   return;
 }
 
-window.location.href = "/admin-dashboard";
+router.push("/admin-dashboard");
+router.refresh();
   }
 
   return (

@@ -9,11 +9,7 @@ export default async function Layout({
 }) {
   const auth = await isAdmin();
 
-  if (!auth.authenticated) {
-    redirect("/login/admin");
-  }
-
-  if (!auth.admin) {
+  if (!auth.authenticated || !auth.admin) {
     redirect("/login/admin");
   }
 

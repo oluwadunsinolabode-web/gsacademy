@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",
-    "@supabase/supabase-js": "^2.110.1",
+    "@supabase/supabase-js": "^2.111.0",
     "countries-and-timezones": "^3.9.0",
     "countries-list": "^3.4.1",
     "lucide-react": "^1.25.0",
