@@ -3,10 +3,11 @@ import { createServerSupabase } from "@/lib/supabase-server";
 export async function isAdmin() {
   const supabase = await createServerSupabase();
 
-  // Get logged-in user
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
+  console.log("SERVER USER:", user);
 
   if (!user) {
     return {
@@ -16,13 +17,15 @@ export async function isAdmin() {
     };
   }
 
-  // Check if user exists in admins table
- const { data: admin } = await supabase
-  .from("admins")
-  .select("*")
-  .eq("email", user.email)
-  .eq("active", true)
-  .single();
+  const { data: admin, error } = await supabase
+    .from("admins")
+    .select("*")
+    .eq("email", user.email)
+    .eq("active", true)
+    .single();
+
+  console.log("ADMIN RECORD:", admin);
+  console.log("ADMIN ERROR:", error);
 
   return {
     authenticated: true,
