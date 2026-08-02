@@ -16,6 +16,7 @@ import { getStudentByAuthId } from "@/lib/services/student";
 export default function DashboardPage() {
 
   const [student, setStudent] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
 
   useEffect(() => {
@@ -27,7 +28,11 @@ export default function DashboardPage() {
       } = await supabase.auth.getUser();
 
 
+      console.log("AUTH USER:", user);
+
+
       if (!user) {
+        setLoading(false);
         return;
       }
 
@@ -35,13 +40,19 @@ export default function DashboardPage() {
       const { data, error } = await getStudentByAuthId(user.id);
 
 
+      console.log("STUDENT DATA:", data);
+      console.log("STUDENT ERROR:", error);
+
+
       if (error) {
         console.log(error);
+        setLoading(false);
         return;
       }
 
 
       setStudent(data);
+      setLoading(false);
 
     }
 
@@ -52,8 +63,21 @@ export default function DashboardPage() {
 
 
 
+  if (loading) {
+    return (
+      <div className="flex min-h-[400px] items-center justify-center">
+        <p className="text-lg font-semibold text-slate-600">
+          Loading dashboard...
+        </p>
+      </div>
+    );
+  }
+
+
+
   return (
     <>
+
 
       <h1 className="text-4xl font-extrabold text-slate-900">
         Welcome {student?.full_name || ""}
@@ -81,10 +105,6 @@ export default function DashboardPage() {
             {student?.lesson_schedule || "No upcoming lesson"}
           </h3>
 
-          <p className="mt-3 text-slate-700">
-            Your next class will appear here.
-          </p>
-
         </div>
 
 
@@ -101,10 +121,6 @@ export default function DashboardPage() {
           <h3 className="mt-3 text-xl font-extrabold text-slate-900">
             {student?.package || "Not assigned"}
           </h3>
-
-          <p className="mt-3 text-slate-700">
-            Your coaching package.
-          </p>
 
         </div>
 
@@ -123,10 +139,6 @@ export default function DashboardPage() {
             {student?.tutors?.full_name || "Not assigned"}
           </h3>
 
-          <p className="mt-3 text-slate-700">
-            Your assigned tutor.
-          </p>
-
         </div>
 
 
@@ -143,10 +155,6 @@ export default function DashboardPage() {
           <h3 className="mt-3 text-xl font-extrabold text-slate-900">
             Getting started
           </h3>
-
-          <p className="mt-3 text-slate-700">
-            Your progress will appear here.
-          </p>
 
         </div>
 
@@ -188,19 +196,38 @@ export default function DashboardPage() {
 
 
 
-       <a
-  href={student?.google_meet_link || "#"}
-  target="_blank"
-  rel="noopener noreferrer"
-  className="
-  mt-8 inline-block rounded-xl 
-  bg-yellow-500 px-8 py-4
-  font-bold text-slate-900
-  transition hover:bg-yellow-400
-  "
->
-  Join Class
-</a>
+          {
+            student?.google_meet_link ? (
+
+              <a
+                href={student.google_meet_link}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="
+                mt-8 inline-block rounded-xl
+                bg-yellow-500 px-8 py-4
+                font-bold text-slate-900
+                transition hover:bg-yellow-400
+                "
+              >
+                Join Class
+              </a>
+
+            ) : (
+
+              <button
+                disabled
+                className="
+                mt-8 rounded-xl
+                bg-slate-300 px-8 py-4
+                font-bold text-slate-600
+                "
+              >
+                Class Link Not Available
+              </button>
+
+            )
+          }
 
 
         </div>
@@ -236,6 +263,7 @@ export default function DashboardPage() {
 
 
         </div>
+
 
 
       </div>
