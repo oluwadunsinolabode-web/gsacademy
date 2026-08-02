@@ -8,12 +8,17 @@ export async function POST(request: Request) {
 
   const { full_name, email, phone, subjects } = body;
 
+const subjectsArray = subjects
+  .split(",")
+  .map((s: string) => s.trim())
+  .filter(Boolean);
+
   const { error } = await supabase.from("tutors").insert([
     {
       full_name,
       email,
       phone,
-      subjects,
+      subjects: subjectsArray,
       status: "active",
     },
   ]);
