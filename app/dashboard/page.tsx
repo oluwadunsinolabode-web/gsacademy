@@ -37,23 +37,34 @@ export default function DashboardPage() {
       }
 
 
-      const { data, error } = await getStudentByAuthId(user.id);
+      const { data, error } = await supabase
+  .from("students")
+  .select(`
+    *,
+    tutors (
+      id,
+      full_name,
+      email,
+      phone,
+      subjects
+    )
+  `)
+  .eq("auth_id", user.id)
+  .single();
 
+console.log("AUTH ID:", user.id);
+console.log("STUDENT:", data);
+console.log("ERROR:", error);
 
-      console.log("STUDENT DATA:", data);
-      console.log("STUDENT ERROR:", error);
+if (error) {
+  console.log(error);
+  setLoading(false);
+  return;
+}
 
-
-      if (error) {
-        console.log(error);
-        setLoading(false);
-        return;
-      }
-
-
-      setStudent(data);
-      setLoading(false);
-
+setStudent(data);
+setLoading(false);
+     
     }
 
 
