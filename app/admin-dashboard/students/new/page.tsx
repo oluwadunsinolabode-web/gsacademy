@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createStudent } from "@/lib/services/students";
+import { createStudent } from "@/lib/services/student";
 
 export default function AddStudentPage() {
   const router = useRouter();
