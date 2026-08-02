@@ -188,16 +188,19 @@ export default function DashboardPage() {
 
 
 
-          <button
-            className="
-            mt-8 rounded-xl 
-            bg-yellow-500 px-8 py-4
-            font-bold text-slate-900
-            transition hover:bg-yellow-400
-            "
-          >
-            Join Class
-          </button>
+       <a
+  href={student?.google_meet_link || "#"}
+  target="_blank"
+  rel="noopener noreferrer"
+  className="
+  mt-8 inline-block rounded-xl 
+  bg-yellow-500 px-8 py-4
+  font-bold text-slate-900
+  transition hover:bg-yellow-400
+  "
+>
+  Join Class
+</a>
 
 
         </div>
