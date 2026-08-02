@@ -7,8 +7,22 @@ export async function isAdmin() {
     data: { user },
   } = await supabase.auth.getUser();
 
+  if (!user) {
+    return {
+      authenticated: false,
+      admin: false,
+    };
+  }
+
+  const { data: admin } = await supabase
+    .from("admins")
+    .select("*")
+    .eq("auth_id", user.id)
+    .eq("active", true)
+    .single();
+
   return {
-    authenticated: !!user,
-    admin: !!user,
+    authenticated: true,
+    admin: !!admin,
   };
 }
