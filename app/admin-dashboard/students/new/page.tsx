@@ -1,4 +1,11 @@
+"use client";
+
+import { createStudent } from "@/lib/services/students";
 export default function AddStudentPage() {
+
+  async function handleSave() {
+    alert("Next task: save student");
+  }
   return (
     <div className="mx-auto max-w-4xl">
 
@@ -36,9 +43,12 @@ export default function AddStudentPage() {
 
         </div>
 
-        <button className="mt-8 rounded-xl bg-yellow-500 px-10 py-4 font-bold text-slate-900 hover:bg-yellow-400">
-          Save Student
-        </button>
+    <button
+  onClick={handleSave}
+  className="mt-8 rounded-xl bg-yellow-500 px-10 py-4 font-bold text-slate-900 hover:bg-yellow-400"
+>
+  Save Student
+</button>
 
       </div>
 
