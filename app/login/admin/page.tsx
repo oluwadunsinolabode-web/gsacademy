@@ -23,7 +23,7 @@ const supabase = createClient();
     setLoading(true);
     setError("");
 
-   const { error } = await supabase.auth.signInWithPassword({
+  const { error } = await supabase.auth.signInWithPassword({
   email,
   password,
 });
@@ -34,8 +34,9 @@ if (error) {
   return;
 }
 
-router.push("/admin-dashboard");
-router.refresh();
+await supabase.auth.refreshSession();
+
+window.location.href = "/admin-dashboard";
   }
 
   return (
