@@ -234,7 +234,55 @@ router.refresh();
   placeholder="Academic Level (e.g. JSS 2, Year 8)"
   className="rounded-xl border border-slate-300 px-5 py-4 outline-none focus:border-yellow-500"
 />
+<div className="space-y-4">
+
+<label className="font-bold">
+Lesson Schedule
+</label>
+
+
 <select
+value={selectedDay}
+onChange={(e)=>setSelectedDay(e.target.value)}
+className="w-full rounded-xl border border-slate-300 px-5 py-4"
+>
+
+<option value="">
+Select Day
+</option>
+
+{days.map((day)=>(
+<option key={day} value={day}>
+{day}
+</option>
+))}
+
+</select>
+
+
+
+<select
+value={selectedTime}
+onChange={(e)=>setSelectedTime(e.target.value)}
+className="w-full rounded-xl border border-slate-300 px-5 py-4"
+>
+
+<option value="">
+Select Time
+</option>
+
+
+{times.map((time)=>(
+<option key={time} value={time}>
+{time}
+</option>
+))}
+
+
+</select>
+
+
+</div><select
   value={studentPackage}
   onChange={(e) => setStudentPackage(e.target.value)}
   className="rounded-xl border border-slate-300 px-5 py-4 outline-none focus:border-yellow-500"
