@@ -10,8 +10,6 @@ import {
 } from "lucide-react";
 
 import { supabase } from "@/lib/supabase";
-import { getStudentByAuthId } from "@/lib/services/student";
-
 
 export default function DashboardPage() {
 
@@ -37,16 +35,23 @@ export default function DashboardPage() {
       }
 
 
-      const { data, error } = await supabase
+    const { data, error } = await supabase
   .from("students")
   .select(`
     *,
-    tutors (
+    tutor_assignments (
       id,
-      full_name,
-      email,
-      phone,
-      subjects
+      active,
+      subjects (
+        id,
+        name
+      ),
+      tutors (
+        id,
+        full_name,
+        email,
+        phone
+      )
     )
   `)
   .eq("auth_id", user.id)
@@ -146,9 +151,37 @@ setLoading(false);
             Tutor
           </p>
 
-          <h3 className="mt-3 text-xl font-extrabold text-slate-900">
-            {student?.tutors?.full_name || "Not assigned"}
-          </h3>
+         <div className="mt-3 space-y-2">
+
+{
+student?.tutor_assignments?.length > 0 ? (
+
+student.tutor_assignments.map((item:any)=>(
+<div key={item.id}
+className="rounded-xl bg-slate-100 p-3">
+
+<p className="font-bold">
+{item.subjects?.name}
+</p>
+
+<p className="text-slate-600">
+Tutor: {item.tutors?.full_name}
+</p>
+
+</div>
+))
+
+):(
+
+<p>
+No tutor assigned
+</p>
+
+)
+
+}
+
+</div>
 
         </div>
 
@@ -180,71 +213,58 @@ setLoading(false);
 
 
 
-        <div className="rounded-3xl bg-white p-6 shadow-sm">
+       <div className="rounded-3xl bg-white p-6 shadow-sm">
 
+  <div className="flex items-center gap-3">
 
-          <div className="flex items-center gap-3">
+    <CalendarDays
+      size={30}
+      className="text-yellow-600"
+    />
 
-            <CalendarDays
-              size={30}
-              className="text-yellow-600"
-            />
+    <h2 className="text-2xl font-bold text-slate-900">
+      Upcoming Lesson
+    </h2>
 
-            <h2 className="text-2xl font-bold text-slate-900">
-              Upcoming Lesson
-            </h2>
+  </div>
 
-          </div>
+<p className="mt-5 leading-8 text-slate-700">
+  {student?.lesson_schedule ||
+  "Your next live class will appear here."}
+</p>
 
+{student?.google_meet_link ? (
 
+<a
+  href={student.google_meet_link}
+  target="_blank"
+  rel="noopener noreferrer"
+  className="
+  mt-8 inline-block rounded-xl
+  bg-yellow-500 px-8 py-4
+  font-bold text-slate-900
+  transition hover:bg-yellow-400
+  "
+>
+  Join Class
+</a>
 
-          <p className="mt-5 leading-8 text-slate-700">
+) : (
 
-            {student?.lesson_schedule ||
-            "Your next live class will appear here."}
+<button
+disabled
+className="
+mt-8 rounded-xl
+bg-slate-300 px-8 py-4
+font-bold text-slate-600
+"
+>
+Class Link Not Available
+</button>
 
-          </p>
-
-
-
-          {
-            student?.google_meet_link ? (
-
-              <a
-                href={student.google_meet_link}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="
-                mt-8 inline-block rounded-xl
-                bg-yellow-500 px-8 py-4
-                font-bold text-slate-900
-                transition hover:bg-yellow-400
-                "
-              >
-                Join Class
-              </a>
-
-            ) : (
-
-              <button
-                disabled
-                className="
-                mt-8 rounded-xl
-                bg-slate-300 px-8 py-4
-                font-bold text-slate-600
-                "
-              >
-                Class Link Not Available
-              </button>
-
-            )
-          }
-
+)}
 
         </div>
-
-
-
 
 
         <div className="rounded-3xl bg-white p-6 shadow-sm">

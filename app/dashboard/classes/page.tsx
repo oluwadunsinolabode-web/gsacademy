@@ -1,94 +1,133 @@
-import Link from "next/link";
+"use client";
 
-export default function ClassesPage() {
-  return (
-    <>
-      <h1 className="text-4xl font-extrabold text-slate-900">
-        My Classes
-      </h1>
+import {useEffect,useState} from "react";
+import {supabase} from "@/lib/supabase";
+import {getStudentClasses} from "@/lib/services/studentClasses";
 
-      <p className="mt-3 text-slate-600">
-        View your upcoming lessons and access today's classwork.
-      </p>
 
-      <div className="mt-10 space-y-8">
+export default function ClassesPage(){
 
-        {/* Upcoming Lesson */}
+const [classes,setClasses]=useState<any[]>([]);
+const [loading,setLoading]=useState(true);
 
-        <div className="rounded-3xl bg-white p-8 shadow-sm">
 
-          <div className="flex flex-col justify-between gap-8 lg:flex-row">
 
-            <div>
+useEffect(()=>{
 
-              <p className="font-semibold text-yellow-600">
-                Upcoming Lesson
-              </p>
 
-              <h2 className="mt-2 text-3xl font-bold text-slate-900">
-                Mathematics
-              </h2>
+async function load(){
 
-              <div className="mt-5 space-y-2 text-slate-600">
+const {
+data:{user}
+}=await supabase.auth.getUser();
 
-                <p>
-                  <strong>Tutor:</strong> Great Sam
-                </p>
 
-                <p>
-                  <strong>Date:</strong> Tuesday, 28 July
-                </p>
+if(!user)return;
 
-                <p>
-                  <strong>Time:</strong> 6:00 PM
-                </p>
 
-                <p>
-                  <strong>Duration:</strong> 1 Hour
-                </p>
+const {data:student}=await supabase
+.from("students")
+.select("id")
+.eq("auth_id",user.id)
+.single();
 
-              </div>
 
-            </div>
 
-            <div className="flex flex-col gap-4">
+if(student){
 
-              <button className="rounded-xl bg-yellow-500 px-8 py-4 font-bold text-slate-900 transition hover:bg-yellow-400">
-                Join Class
-              </button>
+const {data}=await getStudentClasses(student.id);
 
-              <Link
-                href="/dashboard/classwork"
-                className="rounded-xl bg-slate-900 px-8 py-4 text-center font-bold text-white transition hover:bg-slate-800"
-              >
-                Open Today's Classwork
-              </Link>
+setClasses(data || []);
 
-            </div>
+}
 
-          </div>
 
-        </div>
+setLoading(false);
 
-        {/* Previous Lesson */}
 
-        <div className="rounded-3xl bg-white p-8 shadow-sm">
+}
 
-          <p className="font-semibold text-slate-500">
-            Previous Lesson
-          </p>
 
-          <h2 className="mt-2 text-2xl font-bold text-slate-900">
-            English Language
-          </h2>
+load();
 
-          <p className="mt-4 text-green-600 font-semibold">
-            ✓ Completed Successfully
-          </p>
 
-        </div>
+},[]);
 
-      </div>
-    </>
-  );
+
+
+if(loading){
+
+return <p>Loading classes...</p>
+
+}
+
+
+
+return(
+
+<div>
+
+
+<h1 className="text-4xl font-extrabold">
+My Classes
+</h1>
+
+
+
+<div className="mt-10 grid gap-6">
+
+
+{
+classes.map((item)=>(
+
+
+<div
+key={item.id}
+className="rounded-3xl bg-white p-8 shadow"
+>
+
+
+<h2 className="text-2xl font-bold">
+
+{item.subjects?.name}
+
+</h2>
+
+
+
+<p className="mt-3">
+
+Tutor:
+{item.tutors?.full_name}
+
+</p>
+
+
+
+<a
+href="/dashboard/classwork"
+className="mt-6 inline-block rounded-xl bg-yellow-500 px-6 py-3 font-bold"
+>
+
+Open Classwork
+
+</a>
+
+
+</div>
+
+
+))
+}
+
+
+
+</div>
+
+
+</div>
+
+
+)
+
 }
