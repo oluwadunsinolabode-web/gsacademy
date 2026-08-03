@@ -136,8 +136,12 @@ export async function POST(request: Request) {
             "Active",
 
 
-          auth_id:
-            authUser.user.id,
+          auth_id: authUser.user.id,
+
+temporary_password:
+temporaryPassword,
+password_changed:
+false,
 
 
         })

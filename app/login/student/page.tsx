@@ -39,7 +39,26 @@ export default function LoginPage() {
 
     setLoading(false);
 
-    router.push("/dashboard");
+
+// Check if student has changed password before
+
+const { data: student } = await supabase
+  .from("students")
+  .select("password_changed")
+  .eq("email", email)
+  .single();
+
+
+if(student?.password_changed === false){
+
+  router.push("/change-password");
+
+  return;
+
+}
+
+
+router.push("/dashboard");
   };
 
 
