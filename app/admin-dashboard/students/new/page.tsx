@@ -55,33 +55,49 @@ useEffect(() => {
   const total = Number(totalFee) || 0;
 const paid = Number(amountPaid) || 0;
 
-const { error } = await createStudent({
-  full_name: studentName,
-  email,
-  phone,
-  parent_name: parentName,
-  parent_phone: parentPhone,
-  country,
-  academic_level: academicLevel,
-  package: studentPackage,
-  tutor_id: selectedTutor,
-  subjects: selectedSubjects,
-  amount_paid: paid,
-  outstanding_balance:
-    Number(outstandingBalance) || Math.max(total - paid, 0),
-  payment_due_date: paymentDueDate,
-  google_meet_link: googleMeetLink,
-  lesson_schedule: lessonSchedule,
+const response = await fetch("/api/admin/students", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    full_name: studentName,
+    email,
+    phone,
+    parent_name: parentName,
+    parent_phone: parentPhone,
+    country,
+    academic_level: academicLevel,
+    package: studentPackage,
+    tutor_id: selectedTutor,
+    subjects: selectedSubjects,
+    amount_paid: paid,
+    outstanding_balance:
+      Number(outstandingBalance) || Math.max(total - paid, 0),
+    payment_due_date: paymentDueDate,
+    google_meet_link: googleMeetLink,
+    lesson_schedule: lessonSchedule,
+  }),
 });
-  if (error) {
-    alert(error.message);
-    return;
-  }
 
-  alert("Student added successfully!");
+const result = await response.json();
 
-  router.push("/admin-dashboard/students");
-  router.refresh();
+if (!response.ok) {
+  alert(result.error);
+  return;
+}
+
+alert(
+  `Student created successfully!
+
+Temporary Password:
+${result.temporaryPassword}
+
+Please save this password before closing this message.`
+);
+
+router.push("/admin-dashboard/students");
+router.refresh();
 }
 
   return (

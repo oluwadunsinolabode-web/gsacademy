@@ -133,14 +133,34 @@ export default async function StudentProfilePage({
         </h2>
 
 
-        <p className="mt-4 text-slate-700">
+       {student.tutors ? (
+  <div className="mt-4 space-y-2 text-slate-700">
 
-          {student.tutor_id
-            ? "Tutor assigned"
-            : "No tutor assigned"}
+    <p>
+      <strong>Name:</strong> {student.tutors.full_name}
+    </p>
 
-        </p>
+    <p>
+      <strong>Email:</strong> {student.tutors.email}
+    </p>
 
+    <p>
+      <strong>Phone:</strong> {student.tutors.phone}
+    </p>
+
+    <p>
+      <strong>Subjects:</strong>{" "}
+      {Array.isArray(student.tutors.subjects)
+        ? student.tutors.subjects.join(", ")
+        : student.tutors.subjects}
+    </p>
+
+  </div>
+) : (
+  <p className="mt-4 text-slate-700">
+    No tutor assigned.
+  </p>
+)}
 
       </div>
 
