@@ -41,7 +41,24 @@ export default function ChangePasswordPage() {
       password: password
 
     });
+const {
+  data: { user }
+} = await supabase.auth.getUser();
 
+if (user) {
+  await supabase
+    .from("students")
+    .update({
+      await supabase
+  .from("students")
+  .update({
+    password_changed: true,
+    temporary_password: null
+  })
+  .eq("auth_id", user.id);
+    })
+    .eq("auth_id", user.id);
+}
 
 
     if(error){

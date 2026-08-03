@@ -74,10 +74,28 @@ export default async function StudentProfilePage({
           <div className="flex-1">
 
 
-            <h1 className="text-4xl font-extrabold text-slate-900">
-              {student.full_name}
-            </h1>
+          <div className="flex items-center justify-between">
 
+  <h1 className="text-4xl font-extrabold text-slate-900">
+    {student.full_name}
+  </h1>
+
+  <Link
+    href={`/admin-dashboard/students/${id}/edit`}
+    className="
+      rounded-xl
+      bg-yellow-500
+      px-6
+      py-3
+      font-bold
+      text-slate-900
+      hover:bg-yellow-400
+    "
+  >
+    Edit Student
+  </Link>
+
+</div>
 
 
             <div className="mt-6 grid gap-4 md:grid-cols-2">
