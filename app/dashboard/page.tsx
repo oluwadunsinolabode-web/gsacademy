@@ -160,11 +160,11 @@ student.tutor_assignments.map((item:any)=>(
 <div key={item.id}
 className="rounded-xl bg-slate-100 p-3">
 
-<p className="font-bold">
+<p className="font-extrabold text-slate-900">
 {item.subjects?.name}
 </p>
 
-<p className="text-slate-600">
+<p className="mt-1 font-semibold text-slate-800">
 Tutor: {item.tutors?.full_name}
 </p>
 
@@ -228,7 +228,7 @@ No tutor assigned
 
   </div>
 
-<p className="mt-5 leading-8 text-slate-700">
+<p className="mt-5 text-lg font-semibold text-slate-900">
   {student?.lesson_schedule ||
   "Your next live class will appear here."}
 </p>
@@ -285,12 +285,12 @@ Class Link Not Available
 
 
 
-          <p className="mt-5 leading-8 text-slate-700">
+        <p className="mt-5 text-lg font-semibold leading-8 text-slate-900">
 
-            Welcome to GS Academy. Your lessons and updates
-            will appear here.
+Welcome to GS Academy. Your lessons and updates
+will appear here.
 
-          </p>
+</p>
 
 
         </div>
