@@ -1,26 +1,47 @@
 import { supabase } from "@/lib/supabase";
 
 
-export async function getStudentClasses(studentId:string){
+export async function getStudentClasses(studentId:string) {
 
-return await supabase
-.from("tutor_assignments")
-.select(`
-id,
-active,
 
-subjects(
- id,
- name
-),
+  const { data, error } = await supabase
+    .from("tutor_assignments")
+    .select(`
+      id,
 
-tutors(
- id,
- full_name
-)
+      subjects (
+        id,
+        name
+      ),
 
-`)
-.eq("student_id", studentId)
-.eq("active", true);
+      tutors (
+        id,
+        full_name,
+        email
+      )
+    `)
+    .eq("student_id", studentId)
+    .eq("active", true);
+
+
+
+  if(error){
+
+    console.log(error);
+
+    return {
+      data: [],
+      error
+    };
+
+  }
+
+
+
+  return {
+    data,
+    error:null
+  };
+
 
 }
