@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 
 export default function EditTutorPage() {
-  const { id } = useParams();
   const router = useRouter();
+  const params = useParams();
+
+  const id = params.id as string;
 
   const [loading, setLoading] = useState(true);
 
@@ -13,17 +15,18 @@ export default function EditTutorPage() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [subjects, setSubjects] = useState("");
+  const [status, setStatus] = useState("active");
 
   useEffect(() => {
     async function loadTutor() {
       const res = await fetch(`/api/admin/tutors/${id}`);
+      const tutor = await res.json();
 
-      const data = await res.json();
-
-      setFullName(data.full_name ?? "");
-      setEmail(data.email ?? "");
-      setPhone(data.phone ?? "");
-      setSubjects((data.subjects || []).join(", "));
+      setFullName(tutor.full_name);
+      setEmail(tutor.email);
+      setPhone(tutor.phone);
+      setSubjects((tutor.subjects || []).join(", "));
+      setStatus(tutor.status);
 
       setLoading(false);
     }
@@ -41,7 +44,11 @@ export default function EditTutorPage() {
         full_name: fullName,
         email,
         phone,
-        subjects,
+        status,
+        subjects: subjects
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean),
       }),
     });
 
@@ -55,9 +62,7 @@ export default function EditTutorPage() {
     }
   }
 
-  if (loading) {
-    return <p>Loading...</p>;
-  }
+  if (loading) return <p className="p-10">Loading...</p>;
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -72,37 +77,46 @@ export default function EditTutorPage() {
 
           <input
             value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
+            onChange={(e)=>setFullName(e.target.value)}
             placeholder="Tutor Name"
-            className="rounded-xl border border-slate-300 px-5 py-4"
+            className="rounded-xl border px-5 py-4"
           />
 
           <input
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="Email"
-            className="rounded-xl border border-slate-300 px-5 py-4"
+            onChange={(e)=>setEmail(e.target.value)}
+            placeholder="Tutor Email"
+            className="rounded-xl border px-5 py-4"
           />
 
           <input
             value={phone}
-            onChange={(e) => setPhone(e.target.value)}
+            onChange={(e)=>setPhone(e.target.value)}
             placeholder="Phone"
-            className="rounded-xl border border-slate-300 px-5 py-4"
+            className="rounded-xl border px-5 py-4"
           />
 
           <input
             value={subjects}
-            onChange={(e) => setSubjects(e.target.value)}
-            placeholder="Subjects"
-            className="rounded-xl border border-slate-300 px-5 py-4"
+            onChange={(e)=>setSubjects(e.target.value)}
+            placeholder="Maths, English, Physics"
+            className="rounded-xl border px-5 py-4"
           />
+
+          <select
+            value={status}
+            onChange={(e)=>setStatus(e.target.value)}
+            className="rounded-xl border px-5 py-4"
+          >
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+          </select>
 
         </div>
 
         <button
           onClick={updateTutor}
-          className="mt-8 rounded-xl bg-yellow-500 px-10 py-4 font-bold text-slate-900"
+          className="mt-8 rounded-xl bg-yellow-500 px-10 py-4 font-bold"
         >
           Update Tutor
         </button>
