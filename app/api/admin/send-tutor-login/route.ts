@@ -43,8 +43,64 @@ export async function POST(request: NextRequest) {
     const password = generatePassword();
 
     // Create Auth account
-    const { data: authUser, error: authError } =
-      await supabase.auth.admin.createUser({
+   const password = generatePassword();
+
+const { data: existingUsers } =
+  await supabase.auth.admin.listUsers();
+
+const existingUser = existingUsers.users.find(
+  (user) => user.email === tutor.email
+);
+
+
+let authId = "";
+
+
+if (existingUser) {
+
+  authId = existingUser.id;
+
+
+  await supabase.auth.admin.updateUserById(
+    existingUser.id,
+    {
+      password,
+    }
+  );
+
+
+} else {
+
+
+  const { data: newUser, error } =
+    await supabase.auth.admin.createUser({
+
+      email: tutor.email,
+
+      password,
+
+      email_confirm:true,
+
+      user_metadata:{
+        role:"tutor",
+      },
+
+    });
+
+
+  if(error){
+
+    return NextResponse.json(
+      {error:error.message},
+      {status:400}
+    );
+
+  }
+
+
+  authId = newUser.user.id;
+
+}
         email: tutor.email,
         password,
         email_confirm: true,
