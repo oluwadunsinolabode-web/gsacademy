@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function ResourcesPage() {
   return (
     <>
@@ -36,6 +38,7 @@ export default function ResourcesPage() {
 
 
 
+
         {/* Classwork */}
 
         <div className="rounded-3xl bg-white p-8 shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
@@ -50,11 +53,17 @@ export default function ResourcesPage() {
             Access questions given during lessons and submit your answers to your tutor.
           </p>
 
-          <button className="mt-8 w-full rounded-xl bg-slate-900 py-3 font-bold text-white transition hover:bg-slate-800">
+
+          <Link
+            href="/student-dashboard/classwork"
+            className="mt-8 block w-full rounded-xl bg-slate-900 py-3 text-center font-bold text-white transition hover:bg-slate-800"
+          >
             View Classwork
-          </button>
+          </Link>
+
 
         </div>
+
 
 
 
@@ -80,6 +89,7 @@ export default function ResourcesPage() {
 
 
 
+
         {/* Monthly Mock Exam */}
 
         <div className="rounded-3xl bg-white p-8 shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
@@ -102,6 +112,7 @@ export default function ResourcesPage() {
 
 
 
+
         {/* My Submissions */}
 
         <div className="rounded-3xl bg-white p-8 shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
@@ -116,9 +127,14 @@ export default function ResourcesPage() {
             View your uploaded answers, homework submissions and tutor feedback.
           </p>
 
-          <button className="mt-8 w-full rounded-xl bg-yellow-500 py-3 font-bold text-slate-900 transition hover:bg-yellow-400">
+
+          <Link
+            href="/student-dashboard/submissions"
+            className="mt-8 block w-full rounded-xl bg-yellow-500 py-3 text-center font-bold text-slate-900 transition hover:bg-yellow-400"
+          >
             View Submissions
-          </button>
+          </Link>
+
 
         </div>
 

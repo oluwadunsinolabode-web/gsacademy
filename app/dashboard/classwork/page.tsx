@@ -6,10 +6,38 @@ import { Upload, Camera, FileText, X, CheckCircle } from "lucide-react";
 
 export default function ClassworkPage() {
   const [files, setFiles] = useState<File[]>([]);
-  const subject = "Mathematics";
+const [classwork, setClasswork] = useState<any>(null);
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [message, setMessage] = useState("");
+  useEffect(() => {
+
+  async function loadClasswork(){
+
+    const params = new URLSearchParams(window.location.search);
+
+    const id = params.get("id");
+
+    if(!id) return;
+
+
+    const { data, error } = await supabase
+      .from("classwork")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+
+    if(!error){
+      setClasswork(data);
+    }
+
+  }
+
+
+  loadClasswork();
+
+}, []);
 
   const previews = useMemo(
     () =>
@@ -56,7 +84,10 @@ export default function ClassworkPage() {
       return;
     }
 
-
+if (!classwork) {
+  setMessage("Classwork information is still loading. Please wait.");
+  return;
+}
     setUploading(true);
     setProgress(0);
     setMessage("");
@@ -106,11 +137,12 @@ export default function ClassworkPage() {
         await supabase
           .from("classwork_submissions")
           .insert({
-            student_email: user?.email,
-            subject,
-            image_url: publicData.publicUrl,
-          });
-
+  student_id: user?.id,
+  student_email: user?.email,
+  title: classwork?.title,
+  image_url: publicData.publicUrl,
+  status: "Submitted",
+});
 
 
       if (dbError) {
@@ -133,7 +165,7 @@ export default function ClassworkPage() {
 
     setFiles([]);
     setProgress(100);
-    setMessage("Your Mathematics classwork has been submitted successfully.");
+    setMessage("Your classwork has been submitted successfully.");
     setUploading(false);
 
   }
@@ -167,13 +199,13 @@ export default function ClassworkPage() {
 
 
         <h2 className="mt-2 text-3xl font-bold text-slate-900">
-          Mathematics
-        </h2>
+  {classwork?.title || "Loading..."}
+</h2>
 
 
         <p className="mt-3 text-slate-700">
-          Upload your completed answers for today's lesson.
-        </p>
+  {classwork?.instructions}
+</p>
 
 
       </div>
