@@ -1,13 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter, useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 
 export default function EditTutorPage() {
+  const { id } = useParams();
   const router = useRouter();
-  const params = useParams();
-
-  const id = params.id as string;
 
   const [loading, setLoading] = useState(true);
 
@@ -17,36 +15,43 @@ export default function EditTutorPage() {
   const [subjects, setSubjects] = useState("");
   const [status, setStatus] = useState("active");
 
-  const [sending, setSending] = useState(false);
+  const tutorId = id as string;
 
 
   useEffect(() => {
     async function loadTutor() {
 
-      const res = await fetch(`/api/admin/tutors/${id}`);
+      const res = await fetch(
+        `/api/admin/tutors/${tutorId}`
+      );
 
       const tutor = await res.json();
 
 
       setFullName(tutor.full_name || "");
+
       setEmail(tutor.email || "");
+
       setPhone(tutor.phone || "");
 
       setSubjects(
-        (tutor.subjects || []).join(", ")
+        Array.isArray(tutor.subjects)
+          ? tutor.subjects.join(", ")
+          : ""
       );
 
       setStatus(tutor.status || "active");
 
 
       setLoading(false);
-
     }
 
 
-    loadTutor();
+    if (tutorId) {
+      loadTutor();
+    }
 
-  }, [id]);
+  }, [tutorId]);
 
 
 
@@ -54,95 +59,32 @@ export default function EditTutorPage() {
 
   async function updateTutor() {
 
-
-    const res = await fetch(`/api/admin/tutors/${id}`, {
-
-      method:"PUT",
-
-      headers:{
-        "Content-Type":"application/json",
-      },
-
-
-      body:JSON.stringify({
-
-        full_name:fullName,
-
-        email,
-
-        phone,
-
-        status,
-
-
-        subjects:subjects
-          .split(",")
-          .map((s)=>s.trim())
-          .filter(Boolean),
-
-      }),
-
-
-    });
-
-
-
-
-    if(res.ok){
-
-      alert("Tutor updated successfully.");
-
-      router.push("/admin-dashboard/tutors");
-
-      router.refresh();
-
-
-    }else{
-
-
-      const data = await res.json();
-
-      alert(data.error);
-
-
-    }
-
-  }
-
-
-
-
-
-
-
-  async function createTutorLogin(){
-
-
-    setSending(true);
-
-
     const res = await fetch(
-      "/api/admin/tutors/create-login",
+      `/api/admin/tutors/${tutorId}`,
       {
-
-        method:"POST",
+        method: "PUT",
 
         headers:{
           "Content-Type":"application/json",
         },
 
-
         body:JSON.stringify({
 
-          tutorId:id,
+          full_name: fullName,
 
           email,
 
-          fullName,
+          phone,
+
+          subjects:
+            subjects
+              .split(",")
+              .map((s)=>s.trim())
+              .filter(Boolean),
+
+          status,
 
         }),
-
-
       }
     );
 
@@ -154,27 +96,64 @@ export default function EditTutorPage() {
 
     if(res.ok){
 
+      alert("Tutor updated successfully.");
 
-      alert(
-        "Tutor login invitation sent successfully."
+      router.push(
+        "/admin-dashboard/tutors"
       );
 
+      router.refresh();
 
     }else{
 
-
       alert(data.error);
-
 
     }
 
-
-
-    setSending(false);
-
-
   }
 
+
+
+
+
+  async function sendTutorLogin(){
+
+    const res = await fetch(
+      "/api/admin/send-tutor-login",
+      {
+        method:"POST",
+
+        headers:{
+          "Content-Type":"application/json",
+        },
+
+        body:JSON.stringify({
+
+          tutorId,
+
+        }),
+      }
+    );
+
+
+
+    const data = await res.json();
+
+
+
+    if(res.ok){
+
+      alert(
+        "Tutor login details sent successfully."
+      );
+
+    }else{
+
+      alert(data.error);
+
+    }
+
+  }
 
 
 
@@ -194,7 +173,6 @@ export default function EditTutorPage() {
 
 
 
-
   return (
 
     <div className="mx-auto max-w-5xl">
@@ -203,8 +181,6 @@ export default function EditTutorPage() {
       <h1 className="text-4xl font-extrabold">
         Edit Tutor
       </h1>
-
-
 
 
 
@@ -218,61 +194,63 @@ export default function EditTutorPage() {
 
           <input
             value={fullName}
-            onChange={(e)=>setFullName(e.target.value)}
-            placeholder="Tutor Name"
+            onChange={(e)=>
+              setFullName(e.target.value)
+            }
             className="rounded-xl border px-5 py-4"
+            placeholder="Tutor Name"
           />
 
 
 
           <input
-            type="email"
             value={email}
-            onChange={(e)=>setEmail(e.target.value)}
-            placeholder="Tutor Email"
+            onChange={(e)=>
+              setEmail(e.target.value)
+            }
             className="rounded-xl border px-5 py-4"
+            placeholder="Tutor Email"
           />
 
 
 
           <input
             value={phone}
-            onChange={(e)=>setPhone(e.target.value)}
-            placeholder="Phone"
+            onChange={(e)=>
+              setPhone(e.target.value)
+            }
             className="rounded-xl border px-5 py-4"
+            placeholder="Phone"
           />
 
 
 
           <input
             value={subjects}
-            onChange={(e)=>setSubjects(e.target.value)}
-            placeholder="Maths, English, Physics"
+            onChange={(e)=>
+              setSubjects(e.target.value)
+            }
             className="rounded-xl border px-5 py-4"
+            placeholder="Maths, Physics, Chemistry"
           />
 
 
 
-
           <select
-
             value={status}
-
-            onChange={(e)=>setStatus(e.target.value)}
-
+            onChange={(e)=>
+              setStatus(e.target.value)
+            }
             className="rounded-xl border px-5 py-4"
-
           >
 
             <option value="active">
               Active
             </option>
 
-
             <option value="inactive">
               Inactive
             </option>
-
 
           </select>
 
@@ -284,55 +262,40 @@ export default function EditTutorPage() {
 
 
 
-        <div className="mt-8 flex flex-col gap-4 md:flex-row">
+        <button
 
+          onClick={updateTutor}
 
+          className="mt-8 rounded-xl bg-yellow-500 px-10 py-4 font-bold text-slate-900 hover:bg-yellow-400"
 
-          <button
+        >
 
-            onClick={updateTutor}
+          Update Tutor
 
-            className="rounded-xl bg-yellow-500 px-10 py-4 font-bold text-slate-900 hover:bg-yellow-400"
-
-          >
-
-            Update Tutor
-
-          </button>
+        </button>
 
 
 
 
 
+        <button
 
-          <button
+          onClick={sendTutorLogin}
 
-            onClick={createTutorLogin}
+          className="mt-5 ml-4 rounded-xl bg-slate-900 px-10 py-4 font-bold text-white hover:bg-slate-800"
 
-            disabled={sending}
+        >
 
-            className="rounded-xl bg-slate-900 px-10 py-4 font-bold text-white hover:bg-slate-800 disabled:opacity-50"
+          Send Tutor Login Details
 
-          >
-
-            {
-              sending
-              ? "Sending..."
-              : "Create Login & Send Email"
-            }
-
-
-          </button>
-
-
-
-        </div>
+        </button>
 
 
 
 
 
       </div>
+
 
 
     </div>
