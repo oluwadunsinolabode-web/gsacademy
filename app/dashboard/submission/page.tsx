@@ -282,7 +282,7 @@ export default function StudentSubmissionsPage() {
 
 
             {
-              {submission.auto_feedback && (
+              submission.auto_feedback && (
 
 
               <div className="mt-6 rounded-2xl bg-slate-100 p-6">
