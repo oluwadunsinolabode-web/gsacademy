@@ -93,7 +93,8 @@ if (student) {
   setCountry(student.country || "Nigeria");
   setAcademicLevel(student.academic_level || "");
   setStudentPackage(student.package || "");
-  setSelectedSubjects(student.subjects || []);
+ setSelectedSubjects(student.subjects || []);
+  setAssignments(student.tutor_assignments || []);
   setAmountPaid(String(student.amount_paid || ""));
   setOutstandingBalance(
     String(student.outstanding_balance || "")

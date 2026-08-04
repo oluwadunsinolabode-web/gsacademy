@@ -15,11 +15,17 @@ export async function GET(
 ) {
   const { id } = await params;
 
-  const { data, error } = await supabaseAdmin
-    .from("students")
-    .select("*")
-    .eq("id", id)
-    .single();
+ const { data, error } = await supabaseAdmin
+  .from("students")
+  .select(`
+    *,
+    tutor_assignments(
+      subject_id,
+      tutor_id
+    )
+  `)
+  .eq("id", id)
+  .single();
 
   if (error) {
     return NextResponse.json(
@@ -34,7 +40,7 @@ export async function GET(
 // ==========================
 // UPDATE STUDENT
 // ==========================
-export async function PUT(
+export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
