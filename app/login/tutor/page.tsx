@@ -34,17 +34,19 @@ export default function TutorLoginPage() {
 
     const user = data.user;
 
-    const role = user?.user_metadata?.role;
+const role = user?.user_metadata?.role;
 
-    if (role !== "tutor") {
-      await supabase.auth.signOut();
+if (role !== "tutor") {
+  await supabase.auth.signOut();
 
-      setError("This account is not registered as a tutor.");
-      setLoading(false);
-      return;
-    }
+  setError("This account is not registered as a tutor.");
+  setLoading(false);
+  return;
+}
 
-    router.push("/tutor-dashboard");
+setLoading(false);
+
+router.push("/tutor-dashboard");
   }
 
   return (
