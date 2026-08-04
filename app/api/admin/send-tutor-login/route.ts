@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
     const { tutorId } = await request.json();
 
 
-    const { data: tutor, error: tutorError } =
+    const { data: tutor, error } =
       await supabase
         .from("tutors")
         .select("*")
@@ -46,14 +46,14 @@ export async function POST(request: NextRequest) {
 
 
 
-    if (tutorError || !tutor) {
+    if(error || !tutor){
 
       return NextResponse.json(
         {
-          error: "Tutor not found."
+          error:"Tutor not found"
         },
         {
-          status: 404
+          status:404
         }
       );
 
@@ -65,15 +65,17 @@ export async function POST(request: NextRequest) {
 
 
 
-    const { data:userList } =
+    const { data:userData } =
       await supabase.auth.admin.listUsers();
 
 
 
     const existingUser =
-      userList.users.find(
-        (user) =>
-          user.email === tutor.email
+      userData.users.find(
+        (user)=>
+          user.email?.toLowerCase()
+          ===
+          tutor.email.toLowerCase()
       );
 
 
@@ -85,43 +87,62 @@ export async function POST(request: NextRequest) {
     if(existingUser){
 
 
+      const {error:updateError} =
+        await supabase.auth.admin.updateUserById(
+          existingUser.id,
+          {
+            password,
+            user_metadata:{
+              role:"tutor"
+            }
+          }
+        );
+
+
+      if(updateError){
+
+        return NextResponse.json(
+          {
+            error:updateError.message
+          },
+          {
+            status:400
+          }
+        );
+
+      }
+
+
       authId = existingUser.id;
 
-
-      await supabase.auth.admin.updateUserById(
-        existingUser.id,
-        {
-          password,
-        }
-      );
 
 
     } else {
 
 
 
-      const { data:newUser, error } =
+      const {data:newUser,error:createError} =
         await supabase.auth.admin.createUser({
 
-          email: tutor.email,
+          email:tutor.email,
 
           password,
 
           email_confirm:true,
 
           user_metadata:{
-            role:"tutor",
-          },
+            role:"tutor"
+          }
 
         });
 
 
 
-      if(error){
+      if(createError){
 
         return NextResponse.json(
           {
-            error:error.message
+            error:createError.message
           },
           {
             status:400
@@ -142,7 +163,9 @@ export async function POST(request: NextRequest) {
     await supabase
       .from("tutors")
       .update({
-        auth_id: authId,
+
+        auth_id:authId
+
       })
       .eq(
         "id",
@@ -152,63 +175,74 @@ export async function POST(request: NextRequest) {
 
 
 
-    await resend.emails.send({
 
-      from:
+    const emailResult =
+      await resend.emails.send({
+
+        from:
         "GS Academy <noreply@gsacademyhub.com>",
 
-      to:tutor.email,
 
-      subject:
+        to:tutor.email,
+
+
+        subject:
         "Your GS Academy Tutor Login",
 
 
-      html:`
+        html:`
 
-      <h2>Welcome to GS Academy</h2>
+        <h2>Welcome to GS Academy</h2>
 
-      <p>Hello ${tutor.full_name}</p>
+        <p>Hello ${tutor.full_name},</p>
 
-      <p>Your tutor account is ready.</p>
+        <p>Your tutor account has been created.</p>
 
-      <p>
-      Email:
-      <strong>${tutor.email}</strong>
-      </p>
 
-      <p>
-      Temporary Password:
-      <strong>${password}</strong>
-      </p>
+        <p>
+        <b>Email:</b> ${tutor.email}
+        </p>
 
-      <p>
-      Login:
-      https://gsacademyhub.com/login/tutor
-      </p>
 
-      <p>
-      Please change your password after login.
-      </p>
+        <p>
+        <b>Temporary Password:</b> ${password}
+        </p>
 
-      <br/>
 
-      <p>
-      GS Academy
-      </p>
+        <p>
+        Login:
+        https://gsacademyhub.com/login/tutor
+        </p>
 
-      `
 
-    });
+        <p>
+        Please change your password after login.
+        </p>
+
+
+        <br/>
+
+        <p>
+        GS Academy
+        </p>
+
+        `
+
+      });
 
 
 
     return NextResponse.json({
-      success:true
+
+      success:true,
+
+      emailResult
+
     });
 
 
 
-  } catch(err:any) {
+  } catch(err:any){
 
 
     return NextResponse.json(
