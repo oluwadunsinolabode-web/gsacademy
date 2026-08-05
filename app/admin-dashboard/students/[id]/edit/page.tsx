@@ -1020,26 +1020,81 @@ text-slate-800
 
 
 
-        {selectedSubjects.map((subjectName)=>{
+       {selectedSubjects.map((subjectName) => {
 
+  const subject = subjects.find(
+    (item: any) => item.name === subjectName
+  );
 
-      const subject =
-subjects.find(
-(item:any)=>
-item.id === assignment.subject_id
-);
+  if (!subject) return null;
 
+  const currentAssignment = assignments.find(
+    (item: any) => item.subject_id === subject.id
+  );
 
-          if(!subject) return null;
+  return (
 
+    <div
+      key={subject.id}
+      className="
+      grid
+      gap-4
+      md:grid-cols-2
+      rounded-xl
+      border
+      border-slate-200
+      p-4
+      "
+    >
 
+      <div
+        className="
+        rounded-xl
+        bg-slate-100
+        px-5
+        py-4
+        font-semibold
+        "
+      >
+        {subject.name}
+      </div>
 
-          const currentAssignment =
-            assignments.find(
-              (item)=>
-                item.subject_id === subject.id
-            );
+      <select
+        value={currentAssignment?.tutor_id || ""}
+        onChange={(e) =>
+          updateTutorAssignment(
+            subject.id,
+            e.target.value
+          )
+        }
+        className="
+        rounded-xl
+        border
+        border-slate-300
+        px-5
+        py-4
+        "
+      >
+        <option value="">
+          Select Tutor
+        </option>
 
+        {tutors.map((tutor) => (
+          <option
+            key={tutor.id}
+            value={tutor.id}
+          >
+            {tutor.full_name}
+          </option>
+        ))}
+
+      </select>
+
+    </div>
+
+  );
+
+})}
 
 
           return (
