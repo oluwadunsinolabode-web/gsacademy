@@ -1020,8 +1020,7 @@ text-slate-800
 
 
 
-       {selectedSubjects.map((subjectName) => {
-
+      {selectedSubjects.map((subjectName) => {
   const subject = subjects.find(
     (item: any) => item.name === subjectName
   );
@@ -1033,7 +1032,6 @@ text-slate-800
   );
 
   return (
-
     <div
       key={subject.id}
       className="
@@ -1046,7 +1044,6 @@ text-slate-800
       p-4
       "
     >
-
       <div
         className="
         rounded-xl
@@ -1062,10 +1059,7 @@ text-slate-800
       <select
         value={currentAssignment?.tutor_id || ""}
         onChange={(e) =>
-          updateTutorAssignment(
-            subject.id,
-            e.target.value
-          )
+          updateTutorAssignment(subject.id, e.target.value)
         }
         className="
         rounded-xl
@@ -1075,115 +1069,19 @@ text-slate-800
         py-4
         "
       >
-        <option value="">
-          Select Tutor
-        </option>
+        <option value="">Select Tutor</option>
 
         {tutors.map((tutor) => (
-          <option
-            key={tutor.id}
-            value={tutor.id}
-          >
+          <option key={tutor.id} value={tutor.id}>
             {tutor.full_name}
           </option>
         ))}
-
       </select>
-
     </div>
-
   );
-
 })}
-
-
-          return (
-
-            <div
-              key={subject.id}
-              className="
-              grid
-              gap-4
-              md:grid-cols-2
-              rounded-xl
-              border
-              border-slate-200
-              p-4
-              "
-            >
-
-
-              <div
-                className="
-                rounded-xl
-                bg-slate-100
-                px-5
-                py-4
-                font-semibold
-                "
-              >
-
-                {subject.name}
-
-              </div>
-
-
-
-              <select
-
-                value={
-                  currentAssignment?.tutor_id || ""
-                }
-
-
-                onChange={(e)=>
-                  updateTutorAssignment(
-                    subject.id,
-                    e.target.value
-                  )
-                }
-
-
-                className="
-                rounded-xl
-                border
-                border-slate-300
-                px-5
-                py-4
-                "
-              >
-
-                <option value="">
-                  Select Tutor
-                </option>
-
-
-                {tutors.map((tutor)=>(
-
-                  <option
-                    key={tutor.id}
-                    value={tutor.id}
-                  >
-
-                    {tutor.full_name}
-
-                  </option>
-
-                ))}
-
-
-              </select>
-
-
-
-            </div>
-
-          );
-
-
-        })}
-
-
+      
+      
       </div>
       {/* Lesson Timetable */}
 
