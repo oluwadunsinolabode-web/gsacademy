@@ -292,11 +292,15 @@ setLessonSchedule(
       subjectNames
     );
 
+try {
+
 const scheduleResponse =
 await fetch(
 `/api/admin/students/${studentId}/schedules`
 );
 
+
+if(scheduleResponse.ok){
 
 const scheduleData =
 await scheduleResponse.json();
@@ -305,6 +309,24 @@ await scheduleResponse.json();
 setSchedules(
 scheduleData || []
 );
+
+}else{
+
+setSchedules([]);
+
+}
+
+}
+catch(error){
+
+console.log(
+"Schedule loading error:",
+error
+);
+
+setSchedules([]);
+
+}
 
   }
 
