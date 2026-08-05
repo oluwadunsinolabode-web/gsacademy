@@ -1023,8 +1023,8 @@ text-slate-800
         {selectedSubjects.map((subjectName)=>{
 
 
-         const subject =
-subjectList.find(
+      const subject =
+subjects.find(
 (item:any)=>
 item.id === assignment.subject_id
 );
