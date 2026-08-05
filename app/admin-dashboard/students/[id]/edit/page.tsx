@@ -1476,8 +1476,11 @@ md:col-span-2
 
         Update Student
 
-      </button>
-          </div>
+           </button>
+
+    </div>
 
   </div>
 );
+
+}
