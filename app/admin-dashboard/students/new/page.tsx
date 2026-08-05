@@ -1113,7 +1113,6 @@ Final Review
 </div>
 
 </div>
-
 <button
 
 onClick={handleSave}
@@ -1126,6 +1125,8 @@ Save Student
 
 </button>
 
+
+</div>
 
 </div>
 
