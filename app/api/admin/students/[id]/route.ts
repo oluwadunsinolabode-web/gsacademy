@@ -17,13 +17,21 @@ export async function GET(
 
  const { data, error } = await supabaseAdmin
   .from("students")
-  .select(`
-    *,
-    tutor_assignments(
-      subject_id,
-      tutor_id
+ .select(`
+  *,
+  tutor_assignments(
+    subject_id,
+    tutor_id,
+    tutors(
+      full_name,
+      email,
+      phone
+    ),
+    subjects(
+      name
     )
-  `)
+  )
+`)
   .eq("id", id)
   .single();
 

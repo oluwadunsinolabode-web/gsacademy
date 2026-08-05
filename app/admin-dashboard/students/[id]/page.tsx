@@ -151,35 +151,54 @@ export default async function StudentProfilePage({
         </h2>
 
 
-       {student.tutors ? (
-  <div className="mt-4 space-y-2 text-slate-700">
+      {student.tutor_assignments &&
+student.tutor_assignments.length > 0 ? (
 
-    <p>
-      <strong>Name:</strong> {student.tutors.full_name}
-    </p>
+<div className="mt-4 space-y-5 text-slate-700">
 
-    <p>
-      <strong>Email:</strong> {student.tutors.email}
-    </p>
+{student.tutor_assignments.map(
+(assignment:any,index:number)=>(
 
-    <p>
-      <strong>Phone:</strong> {student.tutors.phone}
-    </p>
+<div
+key={index}
+className="rounded-xl bg-slate-100 p-5"
+>
 
-    <p>
-      <strong>Subjects:</strong>{" "}
-      {Array.isArray(student.tutors.subjects)
-        ? student.tutors.subjects.join(", ")
-        : student.tutors.subjects}
-    </p>
+<p>
+<strong>Subject:</strong>{" "}
+{assignment.subjects?.name || "Unknown"}
+</p>
 
-  </div>
+<p>
+<strong>Tutor:</strong>{" "}
+{assignment.tutors?.full_name || "Not assigned"}
+</p>
+
+<p>
+<strong>Email:</strong>{" "}
+{assignment.tutors?.email || "No email"}
+</p>
+
+<p>
+<strong>Phone:</strong>{" "}
+{assignment.tutors?.phone || "No phone"}
+</p>
+
+</div>
+
+))
+
+}
+
+</div>
+
 ) : (
-  <p className="mt-4 text-slate-700">
-    No tutor assigned.
-  </p>
-)}
 
+<p className="mt-4 text-slate-700">
+No tutor assigned.
+</p>
+
+)}
       </div>
 
 
