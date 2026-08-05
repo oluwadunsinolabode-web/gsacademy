@@ -14,7 +14,11 @@ import { supabase } from "@/lib/supabase";
 export default function DashboardPage() {
 
   const [student, setStudent] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+
+const [schedules, setSchedules] =
+useState<any[]>([]);
+
+const [loading, setLoading] = useState(true);
 
 
   useEffect(() => {
@@ -68,6 +72,53 @@ if (error) {
 }
 
 setStudent(data);
+
+
+// Load timetable
+
+const { data: scheduleData, error: scheduleError } =
+await supabase
+.from("student_schedules")
+.select(`
+  id,
+  day,
+  time,
+
+  subjects(
+    id,
+    name
+  ),
+
+  tutors(
+    id,
+    full_name
+  ),
+
+  students(
+    google_meet_link
+  )
+`).eq(
+  "student_id",
+  data.id
+);
+
+
+
+console.log(
+"STUDENT SCHEDULE:",
+scheduleData
+);
+
+
+if(!scheduleError){
+
+  setSchedules(
+    scheduleData || []
+  );
+
+}
+
+
 setLoading(false);
      
     }
@@ -113,14 +164,27 @@ setLoading(false);
 
           <CalendarDays className="text-yellow-600" size={32}/>
 
-          <p className="mt-5 font-bold text-slate-700">
-            Next Lesson
-          </p>
+         <p className="mt-5 font-bold text-slate-700">
+  Next Lesson
+</p>
 
-          <h3 className="mt-3 text-xl font-extrabold text-slate-900">
-            {student?.lesson_schedule || "No upcoming lesson"}
-          </h3>
 
+<h3 className="mt-3 text-xl font-extrabold text-slate-900">
+
+{
+schedules.length > 0
+
+?
+
+`${schedules[0].day} - ${schedules[0].time}`
+
+:
+
+"No lesson scheduled"
+
+}
+
+</h3>
         </div>
 
 
@@ -228,10 +292,114 @@ No tutor assigned
 
   </div>
 
-<p className="mt-5 text-lg font-semibold text-slate-900">
-  {student?.lesson_schedule ||
-  "Your next live class will appear here."}
+<div className="mt-5 space-y-4">
+
+
+{
+schedules.length > 0 ? (
+
+
+schedules.map((lesson:any)=>(
+
+<div
+key={lesson.id}
+className="
+rounded-xl
+bg-slate-100
+p-4
+"
+>
+
+
+<p className="font-extrabold text-slate-900">
+
+{lesson.subjects?.name}
+
 </p>
+
+
+<p className="mt-2 font-semibold text-slate-700">
+
+📅 {lesson.day}
+
+</p>
+
+
+<p className="font-semibold text-slate-700">
+
+⏰ {lesson.time}
+
+</p>
+
+
+<p className="mt-2 font-semibold text-slate-800">
+
+Tutor:
+{lesson.tutors?.full_name}
+
+</p>
+
+{lesson.students?.google_meet_link ? (
+
+<a
+href={lesson.students.google_meet_link}
+target="_blank"
+rel="noopener noreferrer"
+className="
+mt-4
+inline-block
+rounded-xl
+bg-yellow-500
+px-5
+py-3
+font-bold
+text-slate-900
+hover:bg-yellow-400
+"
+>
+
+Join Class
+
+</a>
+
+):(
+
+<p className="
+mt-4
+text-sm
+font-semibold
+text-slate-500
+">
+
+Meeting link unavailable
+
+</p>
+
+)}
+</div>
+
+
+))
+
+
+)
+
+:(
+
+
+<p className="font-semibold text-slate-600">
+
+Your timetable will appear here.
+
+</p>
+
+
+)
+
+}
+
+
+</div>
 
 {student?.google_meet_link ? (
 
