@@ -23,7 +23,7 @@ export default function AddStudentPage() {
   const [totalFee, setTotalFee] = useState("");
   const [paymentDueDate, setPaymentDueDate] = useState("");
   const [googleMeetLink, setGoogleMeetLink] = useState("");
-const [selectedDay, setSelectedDay] = useState("");
+const [selectedDays, setSelectedDays] = useState<string[]>([]);
 const [selectedTime, setSelectedTime] = useState("");
 const [duration, setDuration] = useState("2");
 const [timetable, setTimetable] = useState<any[]>([]);
@@ -31,6 +31,7 @@ const [selectedTimetable, setSelectedTimetable] = useState("");
 const [outstandingBalance, setOutstandingBalance] = useState("");
   const [tutors, setTutors] = useState<any[]>([]);
   const [assignments, setAssignments] = useState<any[]>([]);
+  const [subjectSchedules, setSubjectSchedules] = useState<any>({});
 const days = [
   "Monday",
   "Tuesday",
@@ -86,6 +87,19 @@ function updateTutorAssignment(
   subjectId: string,
   tutorId: string
 ) {
+  function updateSubjectSchedule(
+  subjectId: string,
+  field: string,
+  value: any
+) {
+  setSubjectSchedules((prev: any) => ({
+    ...prev,
+    [subjectId]: {
+      ...prev[subjectId],
+      [field]: value,
+    },
+  }));
+}
   setAssignments((prev) => {
 
     const existing = prev.find(
@@ -148,7 +162,7 @@ const response = await fetch("/api/admin/students", {
     payment_due_date: paymentDueDate,
     google_meet_link: googleMeetLink,
     
-   lesson_schedule: `${selectedDay} | ${selectedTime}`,
+   lesson_schedule: `${selectedDays.join(", ")} | ${selectedTime}`,
   }),
 });
 
@@ -241,23 +255,44 @@ Lesson Schedule
 </label>
 
 
-<select
-value={selectedDay}
-onChange={(e)=>setSelectedDay(e.target.value)}
-className="w-full rounded-xl border border-slate-300 px-5 py-4"
->
+<div>
+  <label className="font-semibold mb-2 block">
+    Lesson Days
+  </label>
 
-<option value="">
-Select Day
-</option>
+  <div className="grid grid-cols-2 gap-2">
 
-{days.map((day)=>(
-<option key={day} value={day}>
-{day}
-</option>
-))}
+    {days.map((day) => (
 
-</select>
+      <label
+        key={day}
+        className="flex items-center gap-2 rounded-lg border p-2"
+      >
+
+        <input
+          type="checkbox"
+          checked={selectedDays.includes(day)}
+          onChange={(e) => {
+
+            if (e.target.checked) {
+              setSelectedDays([...selectedDays, day]);
+            } else {
+              setSelectedDays(
+                selectedDays.filter((d) => d !== day)
+              );
+            }
+
+          }}
+        />
+
+        {day}
+
+      </label>
+
+    ))}
+
+  </div>
+</div>
 
 
 
@@ -318,6 +353,20 @@ Select Time
   {subjects.map((subject) => (
     <option key={subject.id} value={subject.name}>
       {subject.name}
+     <div className="mt-3 space-y-2">
+
+  <button
+    type="button"
+    className="rounded-lg bg-blue-600 px-3 py-2 text-white"
+  >
+    + Add Lesson
+  </button>
+
+  <p className="text-sm text-slate-500">
+    No lesson schedule added yet.
+  </p>
+
+</div>
     </option>
   ))}
 </select>
