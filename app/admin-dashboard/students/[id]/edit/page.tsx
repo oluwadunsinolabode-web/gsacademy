@@ -28,8 +28,9 @@ const [outstandingBalance, setOutstandingBalance] = useState("");
   const [assignments, setAssignments] = useState<any[]>([]);
 
 useEffect(() => {
-  
+
   async function loadData() {
+
     // Tutors
     const { data: tutorData } = await getTutors();
 
@@ -37,55 +38,90 @@ useEffect(() => {
       setTutors(tutorData);
     }
 
+
     // Subjects
     const { data: subjectData } = await fetch("/api/admin/subjects")
       .then((r) => r.json());
 
-    if (subjectData) {
-      setSubjects(subjectData);
+
+    const availableSubjects = subjectData || [];
+
+    setSubjects(availableSubjects);
+
+
+
+    // Load Student
+    const studentResponse = await fetch(
+      `/api/admin/students/${studentId}`
+    );
+
+    const student = await studentResponse.json();
+
+
+
+    if (student) {
+
+      setStudentName(student.full_name || "");
+      setEmail(student.email || "");
+      setPhone(student.phone || "");
+      setParentName(student.parent_name || "");
+      setParentPhone(student.parent_phone || "");
+      setCountry(student.country || "Nigeria");
+      setAcademicLevel(student.academic_level || "");
+      setStudentPackage(student.package || "");
+
+
+      const studentAssignments =
+        student.tutor_assignments || [];
+
+
+      setAssignments(studentAssignments);
+
+
+      setSelectedSubjects(
+
+        studentAssignments.map((item:any)=>{
+
+          const subject = availableSubjects.find(
+            (s:any)=>s.id === item.subject_id
+          );
+
+
+          return subject?.name || "";
+
+        }).filter(Boolean)
+
+      );
+
+
+      setAmountPaid(
+        String(student.amount_paid || "")
+      );
+
+
+      setOutstandingBalance(
+        String(student.outstanding_balance || "")
+      );
+
+
+      setPaymentDueDate(
+        student.payment_due_date || ""
+      );
+
+
+      setGoogleMeetLink(
+        student.google_meet_link || ""
+      );
+
     }
 
-    // Timetable
-       // Load Student
-const studentResponse = await fetch(
-  `/api/admin/students/${studentId}`
-);
-
-const student = await studentResponse.json();
-
-if (student) {
-  setStudentName(student.full_name || "");
-  setEmail(student.email || "");
-  setPhone(student.phone || "");
-  setParentName(student.parent_name || "");
-  setParentPhone(student.parent_phone || "");
-  setCountry(student.country || "Nigeria");
-  setAcademicLevel(student.academic_level || "");
-  setStudentPackage(student.package || "");
- const studentAssignments = student.tutor_assignments || [];
-
-setAssignments(studentAssignments);
-
-setSelectedSubjects(
-  studentAssignments.map(
-    (item:any)=>item.subject_id
-  )
-);
-  setAssignments(student.tutor_assignments || []);
-  setAmountPaid(String(student.amount_paid || ""));
-  setOutstandingBalance(
-    String(student.outstanding_balance || "")
-  );
-  setPaymentDueDate(student.payment_due_date || "");
-  setGoogleMeetLink(student.google_meet_link || "");
-
- }
   }
 
-  loadData();
-  
-}, []); 
 
+  loadData();
+
+
+}, [studentId]);
 
 function updateTutorAssignment(
   subjectId: string,
@@ -155,7 +191,7 @@ const response = await fetch(
     payment_due_date: paymentDueDate,
     google_meet_link: googleMeetLink,
     
-   lesson_schedule: assignments,
+  lesson_schedule: student.lesson_schedule,
   }),
 });
 
