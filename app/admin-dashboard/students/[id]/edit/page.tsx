@@ -126,14 +126,17 @@ useEffect(() => {
       );
 
 
-    const subjectData =
-      await subjectResponse.json();
+  const subjectData =
+await subjectResponse.json();
 
 
-    setSubjects(
-      subjectData || []
-    );
+const subjectList =
+Array.isArray(subjectData)
+? subjectData
+: subjectData.subjects || [];
 
+
+setSubjects(subjectList);
 
 
 
@@ -248,9 +251,10 @@ setLessonSchedule(
     */
 
 
-    const existingAssignments =
-      student.tutor_assignments || [];
-
+  const existingAssignments =
+Array.isArray(student.tutor_assignments)
+? student.tutor_assignments
+: [];
 
 
     setAssignments(
@@ -1019,12 +1023,11 @@ text-slate-800
         {selectedSubjects.map((subjectName)=>{
 
 
-          const subject =
-            subjects.find(
-              (item)=>
-                item.name === subjectName
-            );
-
+         const subject =
+subjectList.find(
+(item:any)=>
+item.id === assignment.subject_id
+);
 
 
           if(!subject) return null;
