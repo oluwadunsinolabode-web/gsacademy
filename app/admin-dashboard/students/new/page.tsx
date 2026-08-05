@@ -203,7 +203,9 @@ academic_level:academicLevel,
 package:studentPackage,
 
 
-subjects:selectedSubjects,
+subjects: assignments.map(
+(item)=>item.subject_id
+),
 
 
 assignments,
@@ -442,53 +444,6 @@ Package 3 - Premium Coaching
 <option>
 One-on-One Coaching
 </option>
-
-
-</select>
-
-
-
-
-<label className="font-bold">
-Select Subjects
-</label>
-
-
-<select
-
-multiple
-
-value={selectedSubjects}
-
-onChange={(e)=>
-setSelectedSubjects(
-Array.from(
-e.target.selectedOptions,
-(option)=>option.value
-)
-)
-}
-
-className="w-full h-40 rounded-xl border px-5 py-4"
-
->
-
-
-{subjects.map((subject)=>(
-
-<option
-
-key={subject.id}
-
-value={subject.id}
-
->
-
-{subject.name}
-
-</option>
-
-))}
 
 
 </select>
