@@ -2,9 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { createStudent } from "@/lib/services/student";
 import { getTutors } from "@/lib/services/tutor";
-import { getTimetable } from "@/lib/services/timetable";
 export default function AddStudentPage() {
   const router = useRouter();
 const params = useParams();
@@ -24,35 +22,11 @@ const studentId = params.id as string;
   const [totalFee, setTotalFee] = useState("");
   const [paymentDueDate, setPaymentDueDate] = useState("");
   const [googleMeetLink, setGoogleMeetLink] = useState("");
-const [selectedDay, setSelectedDay] = useState("");
-const [selectedTime, setSelectedTime] = useState("");
-const [duration, setDuration] = useState("2");
-const [timetable, setTimetable] = useState<any[]>([]);
-const [selectedTimetable, setSelectedTimetable] = useState("");
+
 const [outstandingBalance, setOutstandingBalance] = useState("");
   const [tutors, setTutors] = useState<any[]>([]);
   const [assignments, setAssignments] = useState<any[]>([]);
-const days = [
-  "Monday",
-  "Tuesday",
-  "Wednesday",
-  "Thursday",
-  "Friday",
-  "Saturday",
-];
 
-const times = [
-  "8:00 AM - 10:00 AM",
-  "10:00 AM - 12:00 PM",
-  "10:00 AM - 11:30 AM",
-  "12:00 PM - 01:30 PM",
-  "12:00 PM - 02:00 PM",
-  "1:00 PM - 3:00 PM",
-  "2:00 PM - 4:00 PM",
-  "04:00 PM - 5:30 PM",
-  "4:00 PM - 6:00 PM",
-  "05:00 PM - 07:00 PM",
-];
 useEffect(() => {
   
   async function loadData() {
@@ -72,12 +46,7 @@ useEffect(() => {
     }
 
     // Timetable
-    const { data: timetableData } = await getTimetable();
-
-    if (timetableData) {
-      setTimetable(timetableData);
-    }
-    // Load Student
+       // Load Student
 const studentResponse = await fetch(
   `/api/admin/students/${studentId}`
 );
@@ -93,7 +62,15 @@ if (student) {
   setCountry(student.country || "Nigeria");
   setAcademicLevel(student.academic_level || "");
   setStudentPackage(student.package || "");
- setSelectedSubjects(student.subjects || []);
+ const studentAssignments = student.tutor_assignments || [];
+
+setAssignments(studentAssignments);
+
+setSelectedSubjects(
+  studentAssignments.map(
+    (item:any)=>item.subject_id
+  )
+);
   setAssignments(student.tutor_assignments || []);
   setAmountPaid(String(student.amount_paid || ""));
   setOutstandingBalance(
@@ -102,13 +79,7 @@ if (student) {
   setPaymentDueDate(student.payment_due_date || "");
   setGoogleMeetLink(student.google_meet_link || "");
 
-  if (student.lesson_schedule) {
-    const parts = student.lesson_schedule.split(" | ");
-
-    setSelectedDay(parts[0] || "");
-    setSelectedTime(parts[1] || "");
-  }
-}
+ }
   }
 
   loadData();
@@ -184,7 +155,7 @@ const response = await fetch(
     payment_due_date: paymentDueDate,
     google_meet_link: googleMeetLink,
     
-   lesson_schedule: `${selectedDay} | ${selectedTime}`,
+   lesson_schedule: assignments,
   }),
 });
 
@@ -265,50 +236,6 @@ router.refresh();
 />
 <div className="space-y-4">
 
-<label className="font-bold">
-Lesson Schedule
-</label>
-
-
-<select
-value={selectedDay}
-onChange={(e)=>setSelectedDay(e.target.value)}
-className="w-full rounded-xl border border-slate-300 px-5 py-4"
->
-
-<option value="">
-Select Day
-</option>
-
-{days.map((day)=>(
-<option key={day} value={day}>
-{day}
-</option>
-))}
-
-</select>
-
-
-
-<select
-value={selectedTime}
-onChange={(e)=>setSelectedTime(e.target.value)}
-className="w-full rounded-xl border border-slate-300 px-5 py-4"
->
-
-<option value="">
-Select Time
-</option>
-
-
-{times.map((time)=>(
-<option key={time} value={time}>
-{time}
-</option>
-))}
-
-
-</select>
 
 
 </div><select
@@ -334,22 +261,7 @@ Select Time
     One-on-One Coaching
   </option>
 </select>
-<select
-  multiple
-  value={selectedSubjects}
-  onChange={(e) =>
-    setSelectedSubjects(
-      Array.from(e.target.selectedOptions, (option) => option.value)
-    )
-  }
-  className="rounded-xl border border-slate-300 px-5 py-4 h-40 outline-none focus:border-yellow-500"
->
-  {subjects.map((subject) => (
-    <option key={subject.id} value={subject.name}>
-      {subject.name}
-    </option>
-  ))}
-</select>
+
 <div className="md:col-span-2 space-y-4">
   <h3 className="font-bold text-lg">
     Assign Tutors to Subjects
