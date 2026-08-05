@@ -191,8 +191,7 @@ const response = await fetch(
     payment_due_date: paymentDueDate,
     google_meet_link: googleMeetLink,
     
-  lesson_schedule: student.lesson_schedule,
-  }),
+    }),
 });
 
 const result = await response.json();
