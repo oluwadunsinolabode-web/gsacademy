@@ -475,249 +475,133 @@ function updateTutorAssignment(
 
 }
 async function handleSave() {
+  try {
+    if (!studentName) {
+      alert("Please enter the student's name.");
+      return;
+    }
 
+    if (!email) {
+      alert("Please enter the student's email.");
+      return;
+    }
 
-  if (!studentName) {
+    const total = Number(totalFee) || 0;
+    const paid = Number(amountPaid) || 0;
 
-    alert(
-      "Please enter the student's name."
-    );
+    console.log("Saving student...");
+    console.log("Assignments:", assignments);
+    console.log("Schedules:", schedules);
 
-    return;
+    // --------------------------
+    // STEP 1
+    // --------------------------
 
-  }
-
-
-
-  if (!email) {
-
-    alert(
-      "Please enter the student's email."
-    );
-
-    return;
-
-  }
-
-
-
-
-  const total =
-    Number(totalFee) || 0;
-
-
-  const paid =
-    Number(amountPaid) || 0;
-
-
-
-
-  // STEP 1
-  // Update student details
-
-
-  const response =
-    await fetch(
+    const response = await fetch(
       `/api/admin/students/${studentId}`,
       {
-
-        method:"PATCH",
-
-        headers:{
-          "Content-Type":
-          "application/json",
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
         },
-
-
-       body:JSON.stringify({
-
-full_name:
-studentName,
-
-email,
-
-phone,
-
-parent_name:
-parentName,
-
-parent_phone:
-parentPhone,
-
-country,
-
-academic_level:
-academicLevel,
-
-package:
-studentPackage,
-
-subjects:
-selectedSubjects,
-
-amount_paid:
-paid,
-
-outstanding_balance:
-Number(outstandingBalance) ||
-Math.max(
- total - paid,
- 0
-),
-
-payment_due_date:
-paymentDueDate,
-
-google_meet_link:
-googleMeetLink,
-
-lesson_schedule:
-lessonSchedule,
-
-assignments,
-
-})
+        body: JSON.stringify({
+          full_name: studentName,
+          email,
+          phone,
+          parent_name: parentName,
+          parent_phone: parentPhone,
+          country,
+          academic_level: academicLevel,
+          package: studentPackage,
+          subjects: selectedSubjects,
+          amount_paid: paid,
+          outstanding_balance:
+            Number(outstandingBalance) ||
+            Math.max(total - paid, 0),
+          payment_due_date: paymentDueDate,
+          google_meet_link: googleMeetLink,
+          lesson_schedule: lessonSchedule,
+        }),
       }
     );
 
+    const result = await response.json();
 
+    console.log("STEP 1:", result);
 
+    if (!response.ok) {
+      alert(result.error || "Student update failed");
+      return;
+    }
 
-  const result =
-    await response.json();
+    // --------------------------
+    // STEP 2
+    // --------------------------
 
-
-
-
-  if(!response.ok){
-
-
-    alert(
-      result.error ||
-      "Student update failed"
-    );
-
-
-    return;
-
-  }
-
-
-
-
-
-  // STEP 2
-  // Save tutor assignments
-
-
-  const assignmentResponse =
-    await fetch(
+    const assignmentResponse = await fetch(
       `/api/admin/students/${studentId}/assignments`,
       {
-
-        method:"POST",
-
-
-        headers:{
-          "Content-Type":
-          "application/json",
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
-
-
-        body:JSON.stringify({
-
-          assignments
-
+        body: JSON.stringify({
+          assignments,
         }),
-
       }
     );
 
+    const assignmentResult =
+      await assignmentResponse.json();
 
+    console.log("STEP 2:", assignmentResult);
 
+    if (!assignmentResponse.ok) {
+      alert(
+        assignmentResult.error ||
+          "Assignment update failed"
+      );
+      return;
+    }
 
-  const assignmentResult =
-    await assignmentResponse.json();
+    // --------------------------
+    // STEP 3
+    // --------------------------
 
-
-
-
-  if(!assignmentResponse.ok){
-
-
-    alert(
-      assignmentResult.error ||
-      "Assignment update failed"
+    const scheduleResponse = await fetch(
+      `/api/admin/students/${studentId}/schedules`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          schedules,
+        }),
+      }
     );
 
+    const scheduleResult =
+      await scheduleResponse.json();
 
-    return;
+    console.log("STEP 3:", scheduleResult);
 
+    if (!scheduleResponse.ok) {
+      alert(
+        scheduleResult.error ||
+          "Schedule update failed"
+      );
+      return;
+    }
+
+    alert("Student updated successfully.");
+
+    router.push("/admin-dashboard/students");
+    router.refresh();
+  } catch (error) {
+    console.error(error);
+    alert("Unexpected error occurred.");
   }
-// STEP 3
-// Save student timetable
-
-
-const scheduleResponse =
-await fetch(
-  `/api/admin/students/${studentId}/schedules`,
-  {
-
-    method:"POST",
-
-    headers:{
-      "Content-Type":
-      "application/json",
-    },
-
-
-    body:JSON.stringify({
-
-      schedules
-
-    }),
-
-  }
-);
-
-
-
-const scheduleResult =
-await scheduleResponse.json();
-
-
-
-if(!scheduleResponse.ok){
-
-
-alert(
-scheduleResult.error ||
-"Schedule update failed"
-);
-
-
-return;
-
-
-}
-
-
-
-  alert(
-    "Student updated successfully."
-  );
-
-
-
-  router.push(
-    "/admin-dashboard/students"
-  );
-
-
-  router.refresh();
-
-
-
 }
 return (
   <div className="mx-auto max-w-4xl">
