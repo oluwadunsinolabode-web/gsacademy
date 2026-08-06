@@ -561,19 +561,26 @@ async function handleSave() {
     // STEP 3
     // --------------------------
 
-    const scheduleResponse = await fetch(
-      `/api/admin/students/${studentId}/schedules`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          schedules,
-        }),
-      }
-    );
+   const validSchedules = schedules.filter(
+  (schedule) =>
+    schedule.subject_id &&
+    schedule.tutor_id &&
+    schedule.day &&
+    schedule.time
+);
 
+const scheduleResponse = await fetch(
+  `/api/admin/students/${studentId}/schedules`,
+  {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      schedules: validSchedules,
+    }),
+  }
+);
     const scheduleResult =
       await scheduleResponse.json();
 
