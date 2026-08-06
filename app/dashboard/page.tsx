@@ -4,8 +4,7 @@ import { useEffect, useState } from "react";
 import {
   CalendarDays,
   BookOpen,
-  ClipboardCheck,
-  TrendingUp,
+    TrendingUp,
   Bell,
 } from "lucide-react";
 
@@ -274,51 +273,7 @@ nextLesson
 
 
 
-        <div className="rounded-3xl bg-white p-6 shadow-sm">
-
-          <ClipboardCheck className="text-yellow-600" size={32}/>
-
-          <p className="mt-5 font-bold text-slate-700">
-            Tutor
-          </p>
-
-         <div className="mt-3 space-y-2">
-
-{
-student?.tutor_assignments?.length > 0 ? (
-
-student.tutor_assignments.map((item:any)=>(
-<div key={item.id}
-className="rounded-xl bg-slate-100 p-3">
-
-<p className="font-extrabold text-slate-900">
-{item.subjects?.name}
-</p>
-
-<p className="mt-1 font-semibold text-slate-800">
-Tutor: {item.tutors?.full_name}
-</p>
-
-</div>
-))
-
-):(
-
-<p>
-No tutor assigned
-</p>
-
-)
-
-}
-
-</div>
-
-        </div>
-
-
-
-
+       
         <div className="rounded-3xl bg-white p-6 shadow-sm">
 
           <TrendingUp className="text-yellow-600" size={32}/>
