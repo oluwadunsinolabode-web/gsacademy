@@ -95,9 +95,7 @@ export default function EditStudentPage() {
 
   const [googleMeetLink,setGoogleMeetLink] =
     useState("");
-    const [lessonSchedule,setLessonSchedule] =
-useState("");
-const [schedules,setSchedules] =
+   const [schedules,setSchedules] =
 useState<any[]>([]);
 useEffect(() => {
 
@@ -220,10 +218,6 @@ setSubjects(subjectList);
     setGoogleMeetLink(
       student.google_meet_link || ""
     );
-setLessonSchedule(
-  student.lesson_schedule || ""
-);
-
 
 
 
@@ -365,53 +359,53 @@ function toggleSubject(subjectName:string){
 
 
 }
+function addSchedule() {
 
-function addSchedule(){
-
-  setSchedules((previous)=>[
+  setSchedules((previous) => [
 
     ...previous,
 
     {
-      subject_id:"",
-      tutor_id:"",
-      day:"Monday",
-      time:"5:00 PM"
-    }
+      subject_id: "",
+      tutor_id: "",
+      day: "Monday",
+      time: "10:00 AM - 11:30 AM",
+    },
 
   ]);
 
+}function updateSchedule(
+  index: number,
+  field: string,
+  value: string
+) {
+  const updated = schedules.map((item, i) =>
+    i === index
+      ? {
+          ...item,
+          [field]: value,
+        }
+      : item
+  );
+
+  const current = updated[index];
+
+  const duplicate = updated.some(
+    (item, i) =>
+      i !== index &&
+      item.subject_id === current.subject_id &&
+      item.day === current.day
+  );
+
+  if (duplicate) {
+    alert(
+      "This subject already has a lesson on that day."
+    );
+    return;
+  }
+
+  setSchedules(updated);
 }
-function updateSchedule(
-index:number,
-field:string,
-value:string
-){
-
-setSchedules((previous)=>
-
-previous.map((item,i)=>
-
-i===index
-
-?
-
-{
-...item,
-[field]:value
-}
-
-:
-
-item
-
-)
-
-);
-
-
-}
-
 
 
 function updateTutorAssignment(
@@ -520,8 +514,7 @@ async function handleSave() {
             Math.max(total - paid, 0),
           payment_due_date: paymentDueDate,
           google_meet_link: googleMeetLink,
-          lesson_schedule: lessonSchedule,
-        }),
+                 }),
       }
     );
 
@@ -1004,13 +997,32 @@ md:grid-cols-4
 
 value={schedule.subject_id}
 
-onChange={(e)=>
-updateSchedule(
-index,
-"subject_id",
-e.target.value
-)
-}
+onChange={(e) => {
+
+  const subjectId = e.target.value;
+
+  updateSchedule(
+    index,
+    "subject_id",
+    subjectId
+  );
+
+  const assignment = assignments.find(
+    (item:any) =>
+      item.subject_id === subjectId
+  );
+
+  if (assignment) {
+
+    updateSchedule(
+      index,
+      "tutor_id",
+      assignment.tutor_id
+    );
+
+  }
+
+}}
 
 className="
 rounded-xl
@@ -1025,74 +1037,18 @@ py-3
 <option value="">
 Select Subject
 </option>
-
-
-{subjects.map((subject)=>(
-
-<option
-key={subject.id}
-value={subject.id}
->
-
-{subject.name}
-
-</option>
-
+{subjects
+  .filter((subject) =>
+    selectedSubjects.includes(subject.name)
+  )
+  .map((subject) => (
+    <option
+      key={subject.id}
+      value={subject.id}
+    >
+      {subject.name}
+    </option>
 ))}
-
-
-</select>
-
-
-
-
-
-{/* Tutor */}
-
-<select
-
-value={schedule.tutor_id}
-
-onChange={(e)=>
-updateSchedule(
-index,
-"tutor_id",
-e.target.value
-)
-}
-
-className="
-rounded-xl
-border
-border-slate-300
-px-4
-py-3
-"
-
->
-
-<option value="">
-Select Tutor
-</option>
-
-
-{tutors.map((tutor)=>(
-
-<option
-key={tutor.id}
-value={tutor.id}
->
-
-{tutor.full_name}
-
-</option>
-
-))}
-
-
-</select>
-
-
 
 
 
@@ -1136,37 +1092,33 @@ py-3
 
 
 {/* Time */}
-
 <select
-
-value={schedule.time}
-
-onChange={(e)=>
-updateSchedule(
-index,
-"time",
-e.target.value
-)
-}
-
-className="
-rounded-xl
-border
-border-slate-300
-px-4
-py-3
-"
-
+  value={schedule.time}
+  onChange={(e) =>
+    updateSchedule(index, "time", e.target.value)
+  }
+  className="
+  rounded-xl
+  border
+  border-slate-300
+  px-4
+  py-3
+  "
 >
-
-<option>5:00 PM</option>
-<option>6:00 PM</option>
-<option>7:00 PM</option>
-<option>8:00 PM</option>
-
-
+  <option>10:00 AM - 11:30 AM</option>
+  <option>10:00 AM - 12:00 PM</option>
+  <option>12:00 PM - 1:30 PM</option>
+  <option>12:00 PM - 2:00 PM</option>
+  <option>1:00 PM - 3:00 PM</option>
+  <option>1:30 PM - 3:30 PM</option>
+  <option>2:00 PM - 3:30 PM</option>
+  <option>2:00 PM - 4:00 PM</option>
+  <option>3:00 PM - 4:30 PM</option>
+  <option>3:00 PM - 5:00 PM</option> 
+  <option>4:00 PM - 5:30 PM</option> 
+  <option>4:00 PM - 6:00 PM</option>
+  <option>5:00 PM - 6:30 PM</option>
 </select>
-
 
 
 
@@ -1298,29 +1250,6 @@ text-white
           md:col-span-2
           "
         />
-<input
-
-value={lessonSchedule}
-
-onChange={(e)=>
-setLessonSchedule(
-e.target.value
-)
-}
-
-placeholder="Lesson Schedule (e.g Monday 5PM, Wednesday 6PM)"
-
-className="
-rounded-xl
-border
-border-slate-300
-px-5
-py-4
-md:col-span-2
-"
-
-/>
-
       </div>
             <button
         onClick={handleSave}

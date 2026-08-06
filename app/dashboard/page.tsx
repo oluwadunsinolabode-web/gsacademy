@@ -19,6 +19,76 @@ const [schedules, setSchedules] =
 useState<any[]>([]);
 
 const [loading, setLoading] = useState(true);
+const DAYS = [
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+];
+
+function getNextLesson(scheduleList: any[]) {
+  if (!scheduleList.length) return null;
+
+  const now = new Date();
+
+  const today = now.getDay();
+
+  const currentMinutes =
+    now.getHours() * 60 + now.getMinutes();
+
+  const lessons = scheduleList
+    .map((lesson) => {
+
+      const dayIndex = DAYS.indexOf(lesson.day);
+
+      const start =
+        lesson.time.split("-")[0].trim();
+
+      const [clock, period] =
+        start.split(" ");
+
+      let [hour, minute] =
+        clock.split(":").map(Number);
+
+      if (period === "PM" && hour !== 12)
+        hour += 12;
+
+      if (period === "AM" && hour === 12)
+        hour = 0;
+
+      const lessonMinutes =
+        hour * 60 + minute;
+
+      let diff =
+        (dayIndex - today + 7) % 7;
+
+      if (
+        diff === 0 &&
+        lessonMinutes < currentMinutes
+      ) {
+        diff = 7;
+      }
+
+      return {
+        ...lesson,
+        diff,
+        lessonMinutes,
+      };
+    })
+    .sort((a, b) => {
+
+      if (a.diff !== b.diff)
+        return a.diff - b.diff;
+
+      return a.lessonMinutes - b.lessonMinutes;
+
+    });
+
+  return lessons[0];
+}
 
 
   useEffect(() => {
@@ -128,7 +198,8 @@ setLoading(false);
 
   }, []);
 
-
+const nextLesson =
+  getNextLesson(schedules);
 
   if (loading) {
     return (
@@ -170,20 +241,16 @@ setLoading(false);
 
 
 <h3 className="mt-3 text-xl font-extrabold text-slate-900">
-
 {
-schedules.length > 0
-
+nextLesson
 ?
 
-`${schedules[0].day} - ${schedules[0].time}`
+`${nextLesson.day} - ${nextLesson.time}`
 
 :
 
 "No lesson scheduled"
-
 }
-
 </h3>
         </div>
 
@@ -296,13 +363,9 @@ No tutor assigned
 
 
 {
-schedules.length > 0 ? (
-
-
-schedules.map((lesson:any)=>(
+nextLesson ? (
 
 <div
-key={lesson.id}
 className="
 rounded-xl
 bg-slate-100
@@ -310,39 +373,26 @@ p-4
 "
 >
 
-
 <p className="font-extrabold text-slate-900">
-
-{lesson.subjects?.name}
-
+{nextLesson.subjects?.name}
 </p>
-
 
 <p className="mt-2 font-semibold text-slate-700">
-
-📅 {lesson.day}
-
+📅 {nextLesson.day}
 </p>
-
 
 <p className="font-semibold text-slate-700">
-
-⏰ {lesson.time}
-
+⏰ {nextLesson.time}
 </p>
-
 
 <p className="mt-2 font-semibold text-slate-800">
-
-Tutor:
-{lesson.tutors?.full_name}
-
+Tutor: {nextLesson.tutors?.full_name}
 </p>
 
-{lesson.students?.google_meet_link ? (
+{nextLesson.students?.google_meet_link ? (
 
 <a
-href={lesson.students.google_meet_link}
+href={nextLesson.students.google_meet_link}
 target="_blank"
 rel="noopener noreferrer"
 className="
@@ -357,30 +407,24 @@ text-slate-900
 hover:bg-yellow-400
 "
 >
-
 Join Class
-
 </a>
 
-):(
+) : (
 
-<p className="
+<p
+className="
 mt-4
 text-sm
 font-semibold
 text-slate-500
-">
-
+"
+>
 Meeting link unavailable
-
 </p>
 
 )}
 </div>
-
-
-))
-
 
 )
 
