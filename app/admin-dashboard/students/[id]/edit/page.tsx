@@ -1038,9 +1038,23 @@ py-3
 Select Subject
 </option>
 {subjects
-  .filter((subject) =>
-    selectedSubjects.includes(subject.name)
-  )
+  .filter((subject) => {
+  if (!selectedSubjects.includes(subject.name)) {
+    return false;
+  }
+
+  // Keep the current subject visible when editing this row
+  if (subject.id === schedule.subject_id) {
+    return true;
+  }
+
+  // Prevent the same subject from appearing in another timetable row
+  return !schedules.some(
+    (s, i) =>
+      i !== index &&
+      s.subject_id === subject.id
+  );
+})
   .map((subject) => (
     <option
       key={subject.id}
@@ -1049,7 +1063,7 @@ Select Subject
       {subject.name}
     </option>
 ))}
-
+</select>
 
 
 {/* Day */}
