@@ -360,21 +360,17 @@ function toggleSubject(subjectName:string){
 
 }
 function addSchedule() {
-
   setSchedules((previous) => [
-
     ...previous,
-
     {
       subject_id: "",
       tutor_id: "",
       day: "Monday",
       time: "10:00 AM - 11:30 AM",
     },
-
   ]);
-
-}function updateSchedule(
+}
+function updateSchedule(
   index: number,
   field: string,
   value: string
@@ -390,23 +386,24 @@ function addSchedule() {
 
   const current = updated[index];
 
+  // Only reject an EXACT duplicate
   const duplicate = updated.some(
     (item, i) =>
       i !== index &&
       item.subject_id === current.subject_id &&
-      item.day === current.day
+      item.day === current.day &&
+      item.time === current.time
   );
 
   if (duplicate) {
     alert(
-      "This subject already has a lesson on that day."
+      "This lesson already exists."
     );
     return;
   }
 
   setSchedules(updated);
 }
-
 
 function updateTutorAssignment(
   subjectId: string,
@@ -978,107 +975,134 @@ text-slate-900
 ">
 Lesson Timetable
 </h2>
-
-
-
-{schedules.map((schedule,index)=>(
-
+{schedules.map((schedule, index) => (
 
 <div
 key={index}
 className="
-grid
-gap-4
-rounded-xl
+rounded-2xl
 border
 border-slate-200
-p-5
-md:grid-cols-4
+bg-slate-50
+p-6
+shadow-sm
+space-y-5
 "
 >
 
+<div className="flex items-center justify-between">
 
-{/* Subject */}
+<h3 className="text-lg font-bold text-slate-900">
+Lesson {index + 1}
+</h3>
+
+<button
+type="button"
+onClick={() =>
+setSchedules(
+schedules.filter((_, i) => i !== index)
+)
+}
+className="
+rounded-lg
+bg-red-100
+px-3
+py-2
+text-sm
+font-semibold
+text-red-700
+hover:bg-red-200
+"
+>
+Remove Lesson
+</button>
+
+</div>
+
+<div className="grid gap-5 md:grid-cols-3">
+
+{/* SUBJECT */}
+
+<div>
+
+<label className="mb-2 block text-sm font-semibold text-slate-700">
+Subject
+</label>
 
 <select
-
 value={schedule.subject_id}
+onChange={(e)=>{
 
-onChange={(e) => {
+const subjectId=e.target.value;
 
-  const subjectId = e.target.value;
+updateSchedule(
+index,
+"subject_id",
+subjectId
+);
 
-  updateSchedule(
-    index,
-    "subject_id",
-    subjectId
-  );
+const assignment=
+assignments.find(
+(item:any)=>
+item.subject_id===subjectId
+);
 
-  const assignment = assignments.find(
-    (item:any) =>
-      item.subject_id === subjectId
-  );
+if(assignment){
 
-  if (assignment) {
+updateSchedule(
+index,
+"tutor_id",
+assignment.tutor_id
+);
 
-    updateSchedule(
-      index,
-      "tutor_id",
-      assignment.tutor_id
-    );
-
-  }
+}
 
 }}
-
 className="
+w-full
 rounded-xl
 border
 border-slate-300
 px-4
 py-3
 "
-
 >
 
 <option value="">
 Select Subject
 </option>
+
 {subjects
-  .filter((subject) => {
-  if (!selectedSubjects.includes(subject.name)) {
-    return false;
-  }
+.filter(subject=>
+selectedSubjects.includes(subject.name)
+)
+.map(subject=>(
 
-  // Keep the current subject visible when editing this row
-  if (subject.id === schedule.subject_id) {
-    return true;
-  }
+<option
+key={subject.id}
+value={subject.id}
+>
 
-  // Prevent the same subject from appearing in another timetable row
-  return !schedules.some(
-    (s, i) =>
-      i !== index &&
-      s.subject_id === subject.id
-  );
-})
-  .map((subject) => (
-    <option
-      key={subject.id}
-      value={subject.id}
-    >
-      {subject.name}
-    </option>
+{subject.name}
+
+</option>
+
 ))}
+
 </select>
 
+</div>
 
-{/* Day */}
+{/* DAY */}
+
+<div>
+
+<label className="mb-2 block text-sm font-semibold text-slate-700">
+Day
+</label>
 
 <select
-
 value={schedule.day}
-
 onChange={(e)=>
 updateSchedule(
 index,
@@ -1086,15 +1110,14 @@ index,
 e.target.value
 )
 }
-
 className="
+w-full
 rounded-xl
 border
 border-slate-300
 px-4
 py-3
 "
-
 >
 
 <option>Monday</option>
@@ -1104,51 +1127,60 @@ py-3
 <option>Friday</option>
 <option>Saturday</option>
 
-
 </select>
-
-
-
-
-
-
-{/* Time */}
-<select
-  value={schedule.time}
-  onChange={(e) =>
-    updateSchedule(index, "time", e.target.value)
-  }
-  className="
-  rounded-xl
-  border
-  border-slate-300
-  px-4
-  py-3
-  "
->
-  <option>10:00 AM - 11:30 AM</option>
-  <option>10:00 AM - 12:00 PM</option>
-  <option>12:00 PM - 1:30 PM</option>
-  <option>12:00 PM - 2:00 PM</option>
-  <option>1:00 PM - 3:00 PM</option>
-  <option>1:30 PM - 3:30 PM</option>
-  <option>2:00 PM - 3:30 PM</option>
-  <option>2:00 PM - 4:00 PM</option>
-  <option>3:00 PM - 4:30 PM</option>
-  <option>3:00 PM - 5:00 PM</option> 
-  <option>4:00 PM - 5:30 PM</option> 
-  <option>4:00 PM - 6:00 PM</option>
-  <option>5:00 PM - 6:30 PM</option>
-</select>
-
-
 
 </div>
 
+{/* TIME */}
+
+<div>
+
+<label className="mb-2 block text-sm font-semibold text-slate-700">
+Time
+</label>
+
+<select
+value={schedule.time}
+onChange={(e)=>
+updateSchedule(
+index,
+"time",
+e.target.value
+)
+}
+className="
+w-full
+rounded-xl
+border
+border-slate-300
+px-4
+py-3
+"
+>
+
+<option>10:00 AM - 11:30 AM</option>
+<option>10:00 AM - 12:00 PM</option>
+<option>12:00 PM - 1:30 PM</option>
+<option>12:00 PM - 2:00 PM</option>
+<option>1:00 PM - 3:00 PM</option>
+<option>1:30 PM - 3:30 PM</option>
+<option>2:00 PM - 3:30 PM</option>
+<option>2:00 PM - 4:00 PM</option>
+<option>3:00 PM - 4:30 PM</option>
+<option>3:00 PM - 5:00 PM</option>
+<option>4:00 PM - 5:30 PM</option>
+<option>4:00 PM - 6:00 PM</option>
+<option>5:00 PM - 6:30 PM</option>
+
+</select>
+
+</div>
+
+</div>
+
+</div>
 
 ))}
-
-
 
 
 
