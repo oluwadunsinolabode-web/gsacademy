@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { getTutors } from "@/lib/services/tutor";
+import StudentScheduleEditor from "@/components/student-schedule-editor";
 
 
 export default function EditStudentPage() {
@@ -81,22 +82,7 @@ export default function EditStudentPage() {
 
 
 
-  const [amountPaid,setAmountPaid] =
-    useState("");
-
-  const [totalFee,setTotalFee] =
-    useState("");
-
-  const [outstandingBalance,setOutstandingBalance] =
-    useState("");
-
-  const [paymentDueDate,setPaymentDueDate] =
-    useState("");
-
-  const [googleMeetLink,setGoogleMeetLink] =
-    useState("");
-   const [schedules,setSchedules] =
-useState<any[]>([]);
+  
 useEffect(() => {
 
   async function loadData() {
@@ -198,27 +184,9 @@ setSubjects(subjectList);
 
 
 
-    setAmountPaid(
-      String(student.amount_paid || "")
-    );
+    
 
-
-    setOutstandingBalance(
-      String(
-        student.outstanding_balance || ""
-      )
-    );
-
-
-    setPaymentDueDate(
-      student.payment_due_date || ""
-    );
-
-
-    setGoogleMeetLink(
-      student.google_meet_link || ""
-    );
-
+   
 
 
     /*
@@ -290,42 +258,6 @@ Array.isArray(student.tutor_assignments)
       subjectNames
     );
 
-try {
-
-const scheduleResponse =
-await fetch(
-`/api/admin/students/${studentId}/schedules`
-);
-
-
-if(scheduleResponse.ok){
-
-const scheduleData =
-await scheduleResponse.json();
-
-
-setSchedules(
-scheduleData || []
-);
-
-}else{
-
-setSchedules([]);
-
-}
-
-}
-catch(error){
-
-console.log(
-"Schedule loading error:",
-error
-);
-
-setSchedules([]);
-
-}
-
   }
 
 
@@ -358,51 +290,6 @@ function toggleSubject(subjectName:string){
   });
 
 
-}
-function addSchedule() {
-  setSchedules((previous) => [
-    ...previous,
-    {
-      subject_id: "",
-      tutor_id: "",
-      day: "Monday",
-      time: "10:00 AM - 11:30 AM",
-    },
-  ]);
-}
-function updateSchedule(
-  index: number,
-  field: string,
-  value: string
-) {
-  const updated = schedules.map((item, i) =>
-    i === index
-      ? {
-          ...item,
-          [field]: value,
-        }
-      : item
-  );
-
-  const current = updated[index];
-
-  // Only reject an EXACT duplicate
-  const duplicate = updated.some(
-    (item, i) =>
-      i !== index &&
-      item.subject_id === current.subject_id &&
-      item.day === current.day &&
-      item.time === current.time
-  );
-
-  if (duplicate) {
-    alert(
-      "This lesson already exists."
-    );
-    return;
-  }
-
-  setSchedules(updated);
 }
 
 function updateTutorAssignment(
@@ -477,12 +364,10 @@ async function handleSave() {
       return;
     }
 
-    const total = Number(totalFee) || 0;
-    const paid = Number(amountPaid) || 0;
-
+    
     console.log("Saving student...");
     console.log("Assignments:", assignments);
-    console.log("Schedules:", schedules);
+   
 
     // --------------------------
     // STEP 1
@@ -505,13 +390,7 @@ async function handleSave() {
           academic_level: academicLevel,
           package: studentPackage,
           subjects: selectedSubjects,
-          amount_paid: paid,
-          outstanding_balance:
-            Number(outstandingBalance) ||
-            Math.max(total - paid, 0),
-          payment_due_date: paymentDueDate,
-          google_meet_link: googleMeetLink,
-                 }),
+                           }),
       }
     );
 
@@ -554,42 +433,7 @@ async function handleSave() {
       return;
     }
 
-    // --------------------------
-    // STEP 3
-    // --------------------------
-
-   const validSchedules = schedules.filter(
-  (schedule) =>
-    schedule.subject_id &&
-    schedule.tutor_id &&
-    schedule.day &&
-    schedule.time
-);
-
-const scheduleResponse = await fetch(
-  `/api/admin/students/${studentId}/schedules`,
-  {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      schedules: validSchedules,
-    }),
-  }
-);
-    const scheduleResult =
-      await scheduleResponse.json();
-
-    console.log("STEP 3:", scheduleResult);
-
-    if (!scheduleResponse.ok) {
-      alert(
-        scheduleResult.error ||
-          "Schedule update failed"
-      );
-      return;
-    }
+   
 
     alert("Student updated successfully.");
 
@@ -620,6 +464,13 @@ return (
       <div className="grid gap-6 md:grid-cols-2">
 
 
+<StudentScheduleEditor
+  studentId={studentId}
+  subjects={subjects}
+  selectedSubjects={selectedSubjects}
+  assignments={assignments}
+  tutors={tutors}
+/>
 
         <input
           value={studentName}
@@ -962,366 +813,23 @@ text-slate-800
   );
 })}
       
-      
-      </div>
-      {/* Lesson Timetable */}
+       
 
-<div className="mt-10 space-y-5">
-
-<h2 className="
-text-xl
-font-bold
-text-slate-900
-">
-Lesson Timetable
-</h2>
-{schedules.map((schedule, index) => (
-
-<div
-key={index}
-className="
-rounded-2xl
-border
-border-slate-200
-bg-slate-50
-p-6
-shadow-sm
-space-y-5
-"
+        <button
+  onClick={handleSave}
+  className="
+    mt-10
+    rounded-xl
+    bg-yellow-500
+    px-10
+    py-4
+    font-bold
+    text-slate-900
+    hover:bg-yellow-400
+  "
 >
-
-<div className="flex items-center justify-between">
-
-<h3 className="text-lg font-bold text-slate-900">
-Lesson {index + 1}
-</h3>
-
-<button
-type="button"
-onClick={() =>
-setSchedules(
-schedules.filter((_, i) => i !== index)
-)
-}
-className="
-rounded-lg
-bg-red-100
-px-3
-py-2
-text-sm
-font-semibold
-text-red-700
-hover:bg-red-200
-"
->
-Remove Lesson
+  Update Student
 </button>
-
-</div>
-
-<div className="grid gap-5 md:grid-cols-3">
-
-{/* SUBJECT */}
-
-<div>
-
-<label className="mb-2 block text-sm font-semibold text-slate-700">
-Subject
-</label>
-
-<select
-value={schedule.subject_id}
-onChange={(e)=>{
-
-const subjectId=e.target.value;
-
-updateSchedule(
-index,
-"subject_id",
-subjectId
-);
-
-const assignment=
-assignments.find(
-(item:any)=>
-item.subject_id===subjectId
-);
-
-if(assignment){
-
-updateSchedule(
-index,
-"tutor_id",
-assignment.tutor_id
-);
-
-}
-
-}}
-className="
-w-full
-rounded-xl
-border
-border-slate-300
-px-4
-py-3
-"
->
-
-<option value="">
-Select Subject
-</option>
-
-{subjects
-.filter(subject=>
-selectedSubjects.includes(subject.name)
-)
-.map(subject=>(
-
-<option
-key={subject.id}
-value={subject.id}
->
-
-{subject.name}
-
-</option>
-
-))}
-
-</select>
-
-</div>
-
-{/* DAY */}
-
-<div>
-
-<label className="mb-2 block text-sm font-semibold text-slate-700">
-Day
-</label>
-
-<select
-value={schedule.day}
-onChange={(e)=>
-updateSchedule(
-index,
-"day",
-e.target.value
-)
-}
-className="
-w-full
-rounded-xl
-border
-border-slate-300
-px-4
-py-3
-"
->
-
-<option>Monday</option>
-<option>Tuesday</option>
-<option>Wednesday</option>
-<option>Thursday</option>
-<option>Friday</option>
-<option>Saturday</option>
-
-</select>
-
-</div>
-
-{/* TIME */}
-
-<div>
-
-<label className="mb-2 block text-sm font-semibold text-slate-700">
-Time
-</label>
-
-<select
-value={schedule.time}
-onChange={(e)=>
-updateSchedule(
-index,
-"time",
-e.target.value
-)
-}
-className="
-w-full
-rounded-xl
-border
-border-slate-300
-px-4
-py-3
-"
->
-
-<option>10:00 AM - 11:30 AM</option>
-<option>10:00 AM - 12:00 PM</option>
-<option>12:00 PM - 1:30 PM</option>
-<option>12:00 PM - 2:00 PM</option>
-<option>1:00 PM - 3:00 PM</option>
-<option>1:30 PM - 3:30 PM</option>
-<option>2:00 PM - 3:30 PM</option>
-<option>2:00 PM - 4:00 PM</option>
-<option>3:00 PM - 4:30 PM</option>
-<option>3:00 PM - 5:00 PM</option>
-<option>4:00 PM - 5:30 PM</option>
-<option>4:00 PM - 6:00 PM</option>
-<option>5:00 PM - 6:30 PM</option>
-
-</select>
-
-</div>
-
-</div>
-
-</div>
-
-))}
-
-
-
-<button
-
-type="button"
-
-onClick={addSchedule}
-
-className="
-rounded-xl
-bg-slate-900
-px-6
-py-3
-font-bold
-text-white
-"
-
->
-
-+ Add Lesson
-
-</button>
-
-
-</div>
-            {/* Payment Information */}
-
-      <div className="
-        mt-10
-        grid
-        gap-6
-        md:grid-cols-2
-      ">
-
-
-        <input
-          type="number"
-          value={totalFee}
-          onChange={(e)=>
-            setTotalFee(e.target.value)
-          }
-          placeholder="Total Fee"
-          className="
-          rounded-xl
-          border
-          border-slate-300
-          px-5
-          py-4
-          "
-        />
-
-
-
-        <input
-          type="number"
-          value={amountPaid}
-          onChange={(e)=>
-            setAmountPaid(e.target.value)
-          }
-          placeholder="Amount Paid"
-          className="
-          rounded-xl
-          border
-          border-slate-300
-          px-5
-          py-4
-          "
-        />
-
-
-
-        <input
-          type="number"
-          value={outstandingBalance}
-          onChange={(e)=>
-            setOutstandingBalance(e.target.value)
-          }
-          placeholder="Outstanding Balance"
-          className="
-          rounded-xl
-          border
-          border-slate-300
-          px-5
-          py-4
-          "
-        />
-
-
-
-        <input
-          type="date"
-          value={paymentDueDate}
-          onChange={(e)=>
-            setPaymentDueDate(e.target.value)
-          }
-          className="
-          rounded-xl
-          border
-          border-slate-300
-          px-5
-          py-4
-          "
-        />
-
-
-
-        <input
-          value={googleMeetLink}
-          onChange={(e)=>
-            setGoogleMeetLink(e.target.value)
-          }
-          placeholder="Google Meet Link"
-          className="
-          rounded-xl
-          border
-          border-slate-300
-          px-5
-          py-4
-          md:col-span-2
-          "
-        />
-      </div>
-            <button
-        onClick={handleSave}
-        className="
-        mt-10
-        rounded-xl
-        bg-yellow-500
-        px-10
-        py-4
-        font-bold
-        text-slate-900
-        hover:bg-yellow-400
-        "
-      >
-
-        Update Student
-
-           </button>
-
     </div>
 
   </div>
