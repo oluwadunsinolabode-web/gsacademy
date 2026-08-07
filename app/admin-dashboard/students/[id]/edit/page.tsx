@@ -814,8 +814,7 @@ text-slate-800
 })}
       
        
-
-        <button
+<button
   onClick={handleSave}
   className="
     mt-10
@@ -830,6 +829,9 @@ text-slate-800
 >
   Update Student
 </button>
+
+      </div>
+
     </div>
 
   </div>
