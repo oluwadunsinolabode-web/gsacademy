@@ -250,11 +250,14 @@ return;
 alert(
 `Student created successfully!
 
+Login Email:
+
+${result.loginEmail}
+
 Temporary Password:
 
 ${result.temporaryPassword}`
 );
-
 
 
 router.push(

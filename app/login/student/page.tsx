@@ -45,18 +45,13 @@ export default function LoginPage() {
 const { data: student } = await supabase
   .from("students")
   .select("password_changed")
-  .eq("email", email)
+  .eq("auth_id", data.user.id)
   .single();
 
-
-if(student?.password_changed === false){
-
+if (student?.password_changed === false) {
   router.push("/change-password");
-
   return;
-
 }
-
 
 router.push("/dashboard");
   };
