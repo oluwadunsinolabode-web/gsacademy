@@ -51,6 +51,8 @@ export default function EditStudentPage() {
 
   const [subjects,setSubjects] =
     useState<any[]>([]);
+    const [studentSchedules, setStudentSchedules] =
+  useState<any[]>([]);
 
 
 
@@ -437,6 +439,40 @@ async function handleSave() {
 
     alert("Student updated successfully.");
 
+
+    // --------------------------
+// STEP 3 — SAVE SCHEDULES
+// --------------------------
+
+const scheduleResponse = await fetch(
+  `/api/admin/students/${studentId}/schedule`,
+  {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      schedules: studentSchedules,
+    }),
+  }
+);
+
+const scheduleResult =
+  await scheduleResponse.json();
+
+console.log(
+  "STEP 3 SCHEDULE:",
+  scheduleResult
+);
+
+if (!scheduleResponse.ok) {
+  alert(
+    scheduleResult.error ||
+      "Schedule update failed"
+  );
+  return;
+}
+
     router.push("/admin-dashboard/students");
     router.refresh();
   } catch (error) {
@@ -463,14 +499,6 @@ return (
 
       <div className="grid gap-6 md:grid-cols-2">
 
-
-<StudentScheduleEditor
-  studentId={studentId}
-  subjects={subjects}
-  selectedSubjects={selectedSubjects}
-  assignments={assignments}
-  tutors={tutors}
-/>
 
         <input
           value={studentName}
@@ -731,6 +759,15 @@ text-slate-800
 
 
       </div>
+    <StudentScheduleEditor
+  studentId={studentId}
+  subjects={subjects}
+  selectedSubjects={selectedSubjects}
+  assignments={assignments}
+  tutors={tutors}
+  onSchedulesChange={setStudentSchedules}
+/>
+
             {/* Tutor Assignment Section */}
 
       <div className="mt-10 space-y-4">
