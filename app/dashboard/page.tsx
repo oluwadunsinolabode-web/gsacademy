@@ -18,7 +18,6 @@ type Student = {
   email?: string | null;
   package?: string | null;
 };
-
 type Schedule = {
   id: string;
   day: string;
@@ -29,6 +28,10 @@ type Schedule = {
     | {
         id: string;
         name: string;
+      }
+    | {
+        id: string;
+        name: string;
       }[]
     | null;
 
@@ -36,10 +39,13 @@ type Schedule = {
     | {
         id: string;
         full_name: string;
+      }
+    | {
+        id: string;
+        full_name: string;
       }[]
     | null;
 };
-
 const DAYS = [
   "Sunday",
   "Monday",
@@ -142,10 +148,41 @@ function getNextLesson(
       );
     });
 
-  return lessons.length > 0
+   return lessons.length > 0
     ? lessons[0].lesson
     : null;
 }
+
+function getSubjectName(schedule: Schedule): string {
+  if (!schedule.subjects) {
+    return "Subject";
+  }
+
+  if (Array.isArray(schedule.subjects)) {
+    return schedule.subjects[0]?.name || "Subject";
+  }
+
+  return schedule.subjects.name || "Subject";
+}
+
+function getTutorName(schedule: Schedule): string {
+  if (!schedule.tutors) {
+    return "Tutor not assigned";
+  }
+
+  if (Array.isArray(schedule.tutors)) {
+    return (
+      schedule.tutors[0]?.full_name ||
+      "Tutor not assigned"
+    );
+  }
+
+  return (
+    schedule.tutors.full_name ||
+    "Tutor not assigned"
+  );
+}
+
 export default function DashboardPage() {
   const [student, setStudent] =
     useState<Student | null>(null);
@@ -404,9 +441,8 @@ export default function DashboardPage() {
                 {nextLesson.time}
               </p>
 
-             <p className="mt-2 text-sm font-semibold text-slate-800">
-  {nextLesson.subjects?.[0]?.name ||
-    "Subject"}
+       <p className="mt-2 text-sm font-semibold text-slate-800">
+  {getSubjectName(nextLesson)}
 </p>
             </>
           ) : (
@@ -497,10 +533,9 @@ export default function DashboardPage() {
           {nextLesson ? (
             <div className="mt-6">
 
-              <h3 className="text-xl font-bold text-slate-900">
-                {nextLesson.subjects?.[0]?.name ||
-                  "Lesson"}
-              </h3>
+             <h3 className="text-xl font-bold text-slate-900">
+  {getSubjectName(nextLesson)}
+</h3>
 
               <p className="mt-2 text-lg font-semibold text-slate-700">
                 {nextLesson.day}
@@ -508,11 +543,10 @@ export default function DashboardPage() {
                 {nextLesson.time}
               </p>
 
-             <p className="mt-2 text-sm text-slate-600">
+    <p className="mt-2 text-sm text-slate-600">
   Tutor:{" "}
   <span className="font-semibold text-slate-900">
-    {nextLesson.tutors?.[0]?.full_name ||
-      "Tutor not assigned"}
+    {getTutorName(nextLesson)}
   </span>
 </p>
 
@@ -604,9 +638,8 @@ export default function DashboardPage() {
 
                     <div>
 
-                     <h3 className="text-lg font-bold text-slate-900">
-  {schedule.subjects?.[0]?.name ||
-    "Subject"}
+       <h3 className="text-lg font-bold text-slate-900">
+  {getSubjectName(schedule)}
 </h3>
 
                       <p className="mt-1 font-semibold text-slate-700">
@@ -617,11 +650,9 @@ export default function DashboardPage() {
 <p className="mt-1 text-sm text-slate-600">
   Tutor:{" "}
   <span className="font-semibold text-slate-800">
-    {schedule.tutors?.[0]?.full_name ||
-      "Not assigned"}
+    {getTutorName(schedule)}
   </span>
 </p>
-
                     </div>
 
                     {schedule.meet_link && (
