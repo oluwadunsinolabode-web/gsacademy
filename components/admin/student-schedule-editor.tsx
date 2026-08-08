@@ -106,7 +106,7 @@ export default function StudentScheduleEditor({
         setLoading(true);
 
         const response = await fetch(
-          `/api/admin/students/${studentId}/schedule`
+         `/api/admin/students/${studentId}/schedules`
         );
 
         if (!response.ok) {
