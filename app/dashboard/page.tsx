@@ -18,6 +18,7 @@ type Student = {
   email?: string | null;
   package?: string | null;
 };
+
 type Schedule = {
   id: string;
   day: string;
@@ -38,6 +39,7 @@ type Schedule = {
       }[]
     | null;
 };
+
 const DAYS = [
   "Sunday",
   "Monday",
@@ -56,6 +58,7 @@ function getNextLesson(
   }
 
   const now = new Date();
+
   const today = now.getDay();
 
   const currentMinutes =
@@ -93,11 +96,17 @@ function getNextLesson(
         return null;
       }
 
-      if (period === "PM" && hour !== 12) {
+      if (
+        period === "PM" &&
+        hour !== 12
+      ) {
         hour += 12;
       }
 
-      if (period === "AM" && hour === 12) {
+      if (
+        period === "AM" &&
+        hour === 12
+      ) {
         hour = 0;
       }
 
@@ -164,7 +173,10 @@ export default function DashboardPage() {
         setLoading(true);
         setError("");
 
-        // Get logged-in user
+        // ==========================
+        // GET LOGGED-IN USER
+        // ==========================
+
         const {
           data: { user },
           error: authError,
@@ -193,7 +205,10 @@ export default function DashboardPage() {
           return;
         }
 
-        // Get student profile
+        // ==========================
+        // GET STUDENT PROFILE
+        // ==========================
+
         const {
           data: studentData,
           error: studentError,
@@ -239,7 +254,10 @@ export default function DashboardPage() {
 
         setStudent(studentData);
 
-        // Get student's schedules
+        // ==========================
+        // GET STUDENT SCHEDULES
+        // ==========================
+
         const {
           data: scheduleData,
           error: scheduleError,
@@ -287,7 +305,7 @@ export default function DashboardPage() {
         }
 
         setSchedules(
-          scheduleData || []
+          (scheduleData || []) as Schedule[]
         );
       } catch (dashboardError) {
         console.error(
@@ -309,7 +327,10 @@ export default function DashboardPage() {
   const nextLesson =
     getNextLesson(schedules);
 
-  // Loading state
+  // ==========================
+  // LOADING
+  // ==========================
+
   if (loading) {
     return (
       <div className="flex min-h-[400px] items-center justify-center">
@@ -320,7 +341,10 @@ export default function DashboardPage() {
     );
   }
 
-  // Error state
+  // ==========================
+  // ERROR
+  // ==========================
+
   if (error) {
     return (
       <div className="rounded-3xl bg-white p-8 shadow-sm">
@@ -337,7 +361,9 @@ export default function DashboardPage() {
 
   return (
     <>
-      {/* Header */}
+      {/* ==========================
+          HEADER
+      =========================== */}
 
       <div>
         <h1 className="text-4xl font-extrabold text-slate-900">
@@ -351,11 +377,13 @@ export default function DashboardPage() {
         </p>
       </div>
 
-      {/* Summary Cards */}
+      {/* ==========================
+          SUMMARY CARDS
+      =========================== */}
 
       <div className="mt-10 grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
 
-        {/* Next Lesson */}
+        {/* NEXT LESSON */}
 
         <div className="rounded-3xl bg-white p-6 shadow-sm">
           <CalendarDays
@@ -378,7 +406,7 @@ export default function DashboardPage() {
               </p>
 
               <p className="mt-2 text-sm font-semibold text-slate-800">
-              nextLesson.tutors?.[0]?.full_name ||
+                {nextLesson.subjects?.[0]?.name ||
                   "Subject"}
               </p>
             </>
@@ -389,7 +417,7 @@ export default function DashboardPage() {
           )}
         </div>
 
-        {/* Package */}
+        {/* PACKAGE */}
 
         <div className="rounded-3xl bg-white p-6 shadow-sm">
           <BookOpen
@@ -407,7 +435,7 @@ export default function DashboardPage() {
           </h3>
         </div>
 
-        {/* Lessons */}
+        {/* LESSONS */}
 
         <div className="rounded-3xl bg-white p-6 shadow-sm">
           <UserRound
@@ -428,7 +456,7 @@ export default function DashboardPage() {
           </p>
         </div>
 
-        {/* Progress */}
+        {/* PROGRESS */}
 
         <div className="rounded-3xl bg-white p-6 shadow-sm">
           <TrendingUp
@@ -446,11 +474,13 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Upcoming Lesson + Updates */}
+      {/* ==========================
+          UPCOMING LESSON + UPDATES
+      =========================== */}
 
       <div className="mt-10 grid gap-8 lg:grid-cols-2">
 
-        {/* Upcoming Lesson */}
+        {/* UPCOMING LESSON */}
 
         <div className="rounded-3xl bg-white p-6 shadow-sm">
 
@@ -469,7 +499,7 @@ export default function DashboardPage() {
             <div className="mt-6">
 
               <h3 className="text-xl font-bold text-slate-900">
-                nextLesson.subjects?.[0]?.name ||
+                {nextLesson.subjects?.[0]?.name ||
                   "Lesson"}
               </h3>
 
@@ -482,7 +512,7 @@ export default function DashboardPage() {
               <p className="mt-2 text-sm text-slate-600">
                 Tutor:{" "}
                 <span className="font-semibold text-slate-900">
-                  {nextLesson.tutors
+                  {nextLesson.tutors?.[0]
                     ?.full_name ||
                     "Tutor not assigned"}
                 </span>
@@ -490,9 +520,7 @@ export default function DashboardPage() {
 
               {nextLesson.meet_link ? (
                 <a
-                  href={
-                    nextLesson.meet_link
-                  }
+                  href={nextLesson.meet_link}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="mt-8 inline-block rounded-xl bg-yellow-500 px-8 py-4 font-bold text-slate-900 transition hover:bg-yellow-400"
@@ -517,7 +545,7 @@ export default function DashboardPage() {
           )}
         </div>
 
-        {/* Latest Updates */}
+        {/* LATEST UPDATES */}
 
         <div className="rounded-3xl bg-white p-6 shadow-sm">
 
@@ -540,7 +568,9 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Full Timetable */}
+      {/* ==========================
+          FULL TIMETABLE
+      =========================== */}
 
       <div className="mt-10 rounded-3xl bg-white p-6 shadow-sm">
 
@@ -577,7 +607,8 @@ export default function DashboardPage() {
                     <div>
 
                       <h3 className="text-lg font-bold text-slate-900">
-                        {schedule.subjects?.name ||
+                        {schedule.subjects?.[0]
+                          ?.name ||
                           "Subject"}
                       </h3>
 
@@ -590,7 +621,7 @@ export default function DashboardPage() {
                       <p className="mt-1 text-sm text-slate-600">
                         Tutor:{" "}
                         <span className="font-semibold text-slate-800">
-                          {schedule.tutors
+                          {schedule.tutors?.[0]
                             ?.full_name ||
                             "Not assigned"}
                         </span>
@@ -622,3 +653,4 @@ export default function DashboardPage() {
     </>
   );
 }
+```
