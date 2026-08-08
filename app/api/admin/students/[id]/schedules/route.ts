@@ -9,6 +9,7 @@ const supabaseAdmin = createClient(
 // ==========================
 // GET STUDENT SCHEDULES
 // ==========================
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -23,10 +24,11 @@ export async function GET(
         subject_id,
         tutor_id,
         day,
-        time
+        time,
+        meet_link
       `)
       .eq("student_id", id)
-      .order("day", { ascending: true });
+      .order("created_at", { ascending: true });
 
     if (error) {
       return NextResponse.json(
@@ -49,6 +51,7 @@ export async function GET(
 // ==========================
 // SAVE STUDENT SCHEDULES
 // ==========================
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -58,33 +61,51 @@ export async function POST(
 
     const body = await request.json();
 
-    // Delete existing timetable
-    await supabaseAdmin
+    // Delete existing schedules for this student
+    const { error: deleteError } = await supabaseAdmin
       .from("student_schedules")
       .delete()
       .eq("student_id", id);
 
+    if (deleteError) {
+      return NextResponse.json(
+        { error: deleteError.message },
+        { status: 400 }
+      );
+    }
+
+    // Insert new schedules
     if (
       Array.isArray(body.schedules) &&
       body.schedules.length > 0
     ) {
-      const schedules = body.schedules.map((item: any) => ({
-        student_id: id,
-        subject_id: item.subject_id,
-        tutor_id: item.tutor_id,
-        day: item.day,
-        time: item.time,
-      }));
+      const schedules = body.schedules
+        .filter(
+          (item: any) =>
+            item.subject_id &&
+            item.day &&
+            item.time
+        )
+        .map((item: any) => ({
+          student_id: id,
+          subject_id: item.subject_id,
+          tutor_id: item.tutor_id,
+          day: item.day,
+          time: item.time,
+          meet_link: item.meet_link || null,
+        }));
 
-      const { error } = await supabaseAdmin
-        .from("student_schedules")
-        .insert(schedules);
+      if (schedules.length > 0) {
+        const { error } = await supabaseAdmin
+          .from("student_schedules")
+          .insert(schedules);
 
-      if (error) {
-        return NextResponse.json(
-          { error: error.message },
-          { status: 400 }
-        );
+        if (error) {
+          return NextResponse.json(
+            { error: error.message },
+            { status: 400 }
+          );
+        }
       }
     }
 
