@@ -49,7 +49,6 @@ const DAYS = [
   "Friday",
   "Saturday",
 ];
-
 function getNextLesson(
   scheduleList: Schedule[]
 ): Schedule | null {
@@ -58,9 +57,7 @@ function getNextLesson(
   }
 
   const now = new Date();
-
   const today = now.getDay();
-
   const currentMinutes =
     now.getHours() * 60 + now.getMinutes();
 
@@ -96,36 +93,32 @@ function getNextLesson(
         return null;
       }
 
-      if (
-        period === "PM" &&
-        hour !== 12
-      ) {
+      if (period === "PM" && hour !== 12) {
         hour += 12;
       }
 
-      if (
-        period === "AM" &&
-        hour === 12
-      ) {
+      if (period === "AM" && hour === 12) {
         hour = 0;
       }
 
       const lessonMinutes =
         hour * 60 + minute;
 
-      let diff =
+      let daysUntil =
         (dayIndex - today + 7) % 7;
 
+      // If today's lesson has already started,
+      // look for the next occurrence next week.
       if (
-        diff === 0 &&
+        daysUntil === 0 &&
         lessonMinutes < currentMinutes
       ) {
-        diff = 7;
+        daysUntil = 7;
       }
 
       return {
         lesson,
-        diff,
+        daysUntil,
         lessonMinutes,
       };
     })
@@ -134,13 +127,13 @@ function getNextLesson(
         item
       ): item is {
         lesson: Schedule;
-        diff: number;
+        daysUntil: number;
         lessonMinutes: number;
       } => item !== null
     )
     .sort((a, b) => {
-      if (a.diff !== b.diff) {
-        return a.diff - b.diff;
+      if (a.daysUntil !== b.daysUntil) {
+        return a.daysUntil - b.daysUntil;
       }
 
       return (
@@ -153,7 +146,6 @@ function getNextLesson(
     ? lessons[0].lesson
     : null;
 }
-
 export default function DashboardPage() {
   const [student, setStudent] =
     useState<Student | null>(null);
@@ -323,6 +315,13 @@ export default function DashboardPage() {
 
     loadDashboard();
   }, []);
+  useEffect(() => {
+  const interval = setInterval(() => {
+    setSchedules((current) => [...current]);
+  }, 60000);
+
+  return () => clearInterval(interval);
+}, []);
 
   const nextLesson =
     getNextLesson(schedules);
@@ -405,10 +404,10 @@ export default function DashboardPage() {
                 {nextLesson.time}
               </p>
 
-              <p className="mt-2 text-sm font-semibold text-slate-800">
-                {nextLesson.subjects?.[0]?.name ||
-                  "Subject"}
-              </p>
+             <p className="mt-2 text-sm font-semibold text-slate-800">
+  {nextLesson.subjects?.[0]?.name ||
+    "Subject"}
+</p>
             </>
           ) : (
             <h3 className="mt-3 text-xl font-extrabold text-slate-900">
@@ -509,14 +508,13 @@ export default function DashboardPage() {
                 {nextLesson.time}
               </p>
 
-              <p className="mt-2 text-sm text-slate-600">
-                Tutor:{" "}
-                <span className="font-semibold text-slate-900">
-                  {nextLesson.tutors?.[0]
-                    ?.full_name ||
-                    "Tutor not assigned"}
-                </span>
-              </p>
+             <p className="mt-2 text-sm text-slate-600">
+  Tutor:{" "}
+  <span className="font-semibold text-slate-900">
+    {nextLesson.tutors?.[0]?.full_name ||
+      "Tutor not assigned"}
+  </span>
+</p>
 
               {nextLesson.meet_link ? (
                 <a
@@ -606,26 +604,23 @@ export default function DashboardPage() {
 
                     <div>
 
-                      <h3 className="text-lg font-bold text-slate-900">
-                        {schedule.subjects?.[0]
-                          ?.name ||
-                          "Subject"}
-                      </h3>
+                     <h3 className="text-lg font-bold text-slate-900">
+  {schedule.subjects?.[0]?.name ||
+    "Subject"}
+</h3>
 
                       <p className="mt-1 font-semibold text-slate-700">
                         {schedule.day}
                         {" — "}
                         {schedule.time}
                       </p>
-
-                      <p className="mt-1 text-sm text-slate-600">
-                        Tutor:{" "}
-                        <span className="font-semibold text-slate-800">
-                          {schedule.tutors?.[0]
-                            ?.full_name ||
-                            "Not assigned"}
-                        </span>
-                      </p>
+<p className="mt-1 text-sm text-slate-600">
+  Tutor:{" "}
+  <span className="font-semibold text-slate-800">
+    {schedule.tutors?.[0]?.full_name ||
+      "Not assigned"}
+  </span>
+</p>
 
                     </div>
 
