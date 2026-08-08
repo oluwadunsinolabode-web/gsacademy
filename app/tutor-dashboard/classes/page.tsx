@@ -1,181 +1,361 @@
+"use client";
+
+import Link from "next/link";
 import {
   CalendarDays,
-  Clock3,
+  ClipboardCheck,
+  BookOpen,
   Users,
+  Bell,
+  TrendingUp,
   ArrowRight,
 } from "lucide-react";
 
-export default function TutorClassesPage() {
+export default function TutorDashboardPage() {
   return (
-    <>
+    <div className="mx-auto max-w-7xl">
+
+      {/* Header */}
+
       <h1 className="text-4xl font-extrabold text-slate-900">
-        My Classes
+        Welcome Back, Great Sam 👋
       </h1>
 
       <p className="mt-3 text-slate-700">
-        All classes assigned to you will appear here.
+        Here's everything happening in your classroom today.
       </p>
 
-      <div className="mt-10 space-y-8">
+      {/* Summary Cards */}
 
-        {/* Class Card */}
+      <div className="mt-10 grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
 
-        <div className="rounded-3xl bg-white p-8 shadow-sm transition hover:shadow-lg">
+        <div className="rounded-3xl bg-white p-6 shadow-sm">
 
-          <div className="flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
+          <CalendarDays
+            className="text-yellow-500"
+            size={34}
+          />
 
-            <div className="flex-1">
+          <p className="mt-5 font-semibold text-slate-600">
+            Today's Classes
+          </p>
 
-              <span className="rounded-full bg-yellow-100 px-4 py-2 text-sm font-bold text-yellow-700">
-                Package 1 • Small Group
-              </span>
-
-              <h2 className="mt-5 text-3xl font-extrabold text-slate-900">
-                Mathematics
-              </h2>
-
-              <div className="mt-6 grid gap-4 md:grid-cols-3">
-
-                <div className="flex items-center gap-3">
-
-                  <CalendarDays
-                    className="text-yellow-600"
-                    size={22}
-                  />
-
-                  <div>
-
-                    <p className="text-sm text-slate-500">
-                      Date
-                    </p>
-
-                    <p className="font-bold text-slate-900">
-                      Tuesday, 28 July
-                    </p>
-
-                  </div>
-
-                </div>
-
-                <div className="flex items-center gap-3">
-
-                  <Clock3
-                    className="text-yellow-600"
-                    size={22}
-                  />
-
-                  <div>
-
-                    <p className="text-sm text-slate-500">
-                      Time
-                    </p>
-
-                    <p className="font-bold text-slate-900">
-                      6:00 PM
-                    </p>
-
-                  </div>
-
-                </div>
-
-                <div className="flex items-center gap-3">
-
-                  <Users
-                    className="text-yellow-600"
-                    size={22}
-                  />
-
-                  <div>
-
-                    <p className="text-sm text-slate-500">
-                      Students
-                    </p>
-
-                    <p className="font-bold text-slate-900">
-                      6 Students
-                    </p>
-
-                  </div>
-
-                </div>
-
-              </div>
-
-            </div>
-
-            <div>
-
-              <button
-                className="
-                flex items-center gap-2
-                rounded-xl
-                bg-slate-900
-                px-8
-                py-4
-                font-bold
-                text-white
-                transition
-                hover:bg-slate-800
-                "
-              >
-                Open Class
-
-                <ArrowRight size={20} />
-
-              </button>
-
-            </div>
-
-          </div>
+          <h2 className="mt-2 text-4xl font-extrabold text-slate-900">
+            3
+          </h2>
 
         </div>
 
-        {/* Second Example */}
 
-        <div className="rounded-3xl bg-white p-8 shadow-sm transition hover:shadow-lg">
 
-          <div className="flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
+        <div className="rounded-3xl bg-white p-6 shadow-sm">
 
-            <div>
+          <ClipboardCheck
+            className="text-yellow-500"
+            size={34}
+          />
 
-              <span className="rounded-full bg-blue-100 px-4 py-2 text-sm font-bold text-blue-700">
-                International • One-on-One
-              </span>
+          <p className="mt-5 font-semibold text-slate-600">
+            Pending Classwork
+          </p>
 
-              <h2 className="mt-5 text-3xl font-extrabold text-slate-900">
-                Physics
-              </h2>
+          <h2 className="mt-2 text-4xl font-extrabold text-red-600">
+            7
+          </h2>
 
-              <p className="mt-4 text-slate-700">
-                Friday • 8:00 PM
-              </p>
+        </div>
 
-            </div>
 
-            <button
-              className="
-              flex items-center gap-2
-              rounded-xl
-              bg-slate-900
-              px-8
-              py-4
-              font-bold
-              text-white
-              transition
-              hover:bg-slate-800
-              "
-            >
-              Open Class
 
-              <ArrowRight size={20} />
+        <div className="rounded-3xl bg-white p-6 shadow-sm">
 
+          <BookOpen
+            className="text-yellow-500"
+            size={34}
+          />
+
+          <p className="mt-5 font-semibold text-slate-600">
+            Homework Waiting
+          </p>
+
+          <h2 className="mt-2 text-4xl font-extrabold text-slate-900">
+            4
+          </h2>
+
+        </div>
+
+
+
+        <div className="rounded-3xl bg-white p-6 shadow-sm">
+
+          <Users
+            className="text-yellow-500"
+            size={34}
+          />
+
+          <p className="mt-5 font-semibold text-slate-600">
+            Students
+          </p>
+
+          <h2 className="mt-2 text-4xl font-extrabold text-green-600">
+            18
+          </h2>
+
+        </div>
+
+      </div>
+
+
+
+      {/* Main Section */}
+
+      <div className="mt-10 grid gap-8 lg:grid-cols-2">
+
+        {/* Today's Schedule */}
+
+        <div className="rounded-3xl bg-white p-8 shadow-sm">
+
+          <div className="flex items-center justify-between">
+
+            <h2 className="text-2xl font-bold text-slate-900">
+              Today's Schedule
+            </h2>
+
+            <CalendarDays
+              className="text-yellow-500"
+              size={28}
+            />
+
+          </div>
+
+
+
+          {/* Lesson */}
+
+          <div className="mt-8 rounded-2xl border p-5">
+
+            <p className="font-semibold text-yellow-600">
+              6:00 PM
+            </p>
+
+            <h3 className="mt-2 text-xl font-bold">
+              Mathematics
+            </h3>
+
+            <p className="mt-2 text-slate-600">
+              Samuel Johnson
+            </p>
+
+            <p className="text-sm text-slate-500">
+              Package 2
+            </p>
+
+            <button className="mt-5 rounded-xl bg-yellow-500 px-6 py-3 font-bold text-slate-900 hover:bg-yellow-400">
+              Start Class
+            </button>
+
+          </div>
+
+
+
+          <div className="mt-5 rounded-2xl border p-5">
+
+            <p className="font-semibold text-yellow-600">
+              7:30 PM
+            </p>
+
+            <h3 className="mt-2 text-xl font-bold">
+              Mathematics Small Group
+            </h3>
+
+            <p className="mt-2 text-slate-600">
+              4 Students
+            </p>
+
+            <button className="mt-5 rounded-xl bg-yellow-500 px-6 py-3 font-bold text-slate-900 hover:bg-yellow-400">
+              Start Class
             </button>
 
           </div>
 
         </div>
 
+
+
+
+
+        {/* Quick Actions */}
+
+        <div className="rounded-3xl bg-white p-8 shadow-sm">
+
+          <h2 className="text-2xl font-bold text-slate-900">
+            Quick Actions
+          </h2>
+
+          <div className="mt-8 grid gap-5">
+
+            <Link
+              href="/tutor-dashboard/homework"
+              className="flex items-center justify-between rounded-2xl border p-5 transition hover:bg-yellow-50"
+            >
+
+              <span className="font-semibold">
+                Assign Homework
+              </span>
+
+              <ArrowRight size={20} />
+
+            </Link>
+
+
+
+            <Link
+              href="/tutor-dashboard/resources"
+              className="flex items-center justify-between rounded-2xl border p-5 transition hover:bg-yellow-50"
+            >
+
+              <span className="font-semibold">
+                Upload Learning Resource
+              </span>
+
+              <ArrowRight size={20} />
+
+            </Link>
+
+
+
+            <Link
+              href="/tutor-dashboard/students"
+              className="flex items-center justify-between rounded-2xl border p-5 transition hover:bg-yellow-50"
+            >
+
+              <span className="font-semibold">
+                Open Students Workspace
+              </span>
+
+              <ArrowRight size={20} />
+
+            </Link>
+
+
+
+            <Link
+              href="/tutor-dashboard/classwork"
+              className="flex items-center justify-between rounded-2xl border p-5 transition hover:bg-yellow-50"
+            >
+
+              <span className="font-semibold">
+                Create Classwork
+              </span>
+
+              <ArrowRight size={20} />
+
+            </Link>
+
+          </div>
+
+        </div>
+
       </div>
-    </>
+
+
+
+
+
+      {/* Bottom Section */}
+
+      <div className="mt-10 grid gap-8 lg:grid-cols-2">
+
+        {/* Notifications */}
+
+        <div className="rounded-3xl bg-white p-8 shadow-sm">
+
+          <div className="flex items-center gap-3">
+
+            <Bell
+              size={28}
+              className="text-yellow-500"
+            />
+
+            <h2 className="text-2xl font-bold">
+              Recent Activity
+            </h2>
+
+          </div>
+
+          <div className="mt-8 space-y-5">
+
+            <p>✅ Samuel submitted Mathematics CW.</p>
+
+            <p>✅ Esther completed Homework.</p>
+
+            <p>📝 Four classwork submissions are waiting for marking.</p>
+
+            <p>📚 Physics homework has been published successfully.</p>
+
+          </div>
+
+        </div>
+
+
+
+        {/* Performance */}
+
+        <div className="rounded-3xl bg-white p-8 shadow-sm">
+
+          <div className="flex items-center gap-3">
+
+            <TrendingUp
+              size={28}
+              className="text-yellow-500"
+            />
+
+            <h2 className="text-2xl font-bold">
+              Weekly Overview
+            </h2>
+
+          </div>
+
+          <div className="mt-8 space-y-5">
+
+            <div className="flex justify-between">
+
+              <span>Lessons Completed</span>
+
+              <strong>12</strong>
+
+            </div>
+
+            <div className="flex justify-between">
+
+              <span>Homework Published</span>
+
+              <strong>8</strong>
+
+            </div>
+
+            <div className="flex justify-between">
+
+              <span>Assignments Marked</span>
+
+              <strong>31</strong>
+
+            </div>
+
+            <div className="flex justify-between">
+
+              <span>Average Student Score</span>
+
+              <strong>82%</strong>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
   );
 }
