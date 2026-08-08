@@ -759,15 +759,7 @@ text-slate-800
 
 
       </div>
-    <StudentScheduleEditor
-  studentId={studentId}
-  subjects={subjects}
-  selectedSubjects={selectedSubjects}
-  assignments={assignments}
-  tutors={tutors}
-  onSchedulesChange={setStudentSchedules}
-/>
-
+    
             {/* Tutor Assignment Section */}
 
       <div className="mt-10 space-y-4">
@@ -849,6 +841,15 @@ text-slate-800
     </div>
   );
 })}
+
+<StudentScheduleEditor
+  studentId={studentId}
+  subjects={subjects}
+  selectedSubjects={selectedSubjects}
+  assignments={assignments}
+  tutors={tutors}
+  onSchedulesChange={setStudentSchedules}
+/>
       
        
 <button
