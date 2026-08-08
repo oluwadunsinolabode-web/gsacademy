@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { getTutors } from "@/lib/services/tutor";
-import StudentScheduleEditor from "@/components/student-schedule-editor";
+import StudentScheduleEditor from "@/components/admin/student-schedule-editor";
 
 
 export default function EditStudentPage() {
