@@ -2,471 +2,638 @@
 
 import { useEffect, useState } from "react";
 import {
-  CalendarDays,
-  BookOpen,
-    TrendingUp,
-  Bell,
+CalendarDays,
+BookOpen,
+TrendingUp,
+Bell,
+UserRound,
 } from "lucide-react";
 
 import { supabase } from "@/lib/supabase";
 
-export default function DashboardPage() {
+type Student = {
+id: string;
+auth_id: string;
+full_name: string;
+email?: string | null;
+package?: string | null;
+};
 
-  const [student, setStudent] = useState<any>(null);
+type Schedule = {
+id: string;
+day: string;
+time: string;
+meet_link: string | null;
+subjects:
+| {
+id: string;
+name: string;
+}
+| null;
+tutors:
+| {
+id: string;
+full_name: string;
+}
+| null;
+};
 
-const [schedules, setSchedules] =
-useState<any[]>([]);
-
-const [loading, setLoading] = useState(true);
 const DAYS = [
-  "Sunday",
-  "Monday",
-  "Tuesday",
-  "Wednesday",
-  "Thursday",
-  "Friday",
-  "Saturday",
+"Sunday",
+"Monday",
+"Tuesday",
+"Wednesday",
+"Thursday",
+"Friday",
+"Saturday",
 ];
 
-function getNextLesson(scheduleList: any[]) {
-  if (!scheduleList.length) return null;
-
-  const now = new Date();
-
-  const today = now.getDay();
-
-  const currentMinutes =
-    now.getHours() * 60 + now.getMinutes();
-
-  const lessons = scheduleList
-    .map((lesson) => {
-
-      const dayIndex = DAYS.indexOf(lesson.day);
-
-      const start =
-        lesson.time.split("-")[0].trim();
-
-      const [clock, period] =
-        start.split(" ");
-
-      let [hour, minute] =
-        clock.split(":").map(Number);
-
-      if (period === "PM" && hour !== 12)
-        hour += 12;
-
-      if (period === "AM" && hour === 12)
-        hour = 0;
-
-      const lessonMinutes =
-        hour * 60 + minute;
-
-      let diff =
-        (dayIndex - today + 7) % 7;
-
-      if (
-        diff === 0 &&
-        lessonMinutes < currentMinutes
-      ) {
-        diff = 7;
-      }
-
-      return {
-        ...lesson,
-        diff,
-        lessonMinutes,
-      };
-    })
-    .sort((a, b) => {
-
-      if (a.diff !== b.diff)
-        return a.diff - b.diff;
-
-      return a.lessonMinutes - b.lessonMinutes;
-
-    });
-
-  return lessons[0];
+function getNextLesson(scheduleList: Schedule[]) {
+if (!scheduleList.length) {
+return null;
 }
 
+const now = new Date();
 
-  useEffect(() => {
+const today = now.getDay();
 
-    async function loadStudent() {
+const currentMinutes =
+now.getHours() * 60 + now.getMinutes();
 
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+const lessons = scheduleList
+.map((lesson) => {
+const dayIndex = DAYS.indexOf(lesson.day);
 
-
-      console.log("AUTH USER:", user);
-
-
-      if (!user) {
-        setLoading(false);
-        return;
-      }
-
-
-    const { data, error } = await supabase
-  .from("students")
-  .select(`
-    *,
-    tutor_assignments (
-      id,
-      active,
-      subjects (
-        id,
-        name
-      ),
-      tutors (
-        id,
-        full_name,
-        email,
-        phone
-      )
-    )
-  `)
-  .eq("auth_id", user.id)
-  .single();
-
-console.log("AUTH ID:", user.id);
-console.log("STUDENT:", data);
-console.log("ERROR:", error);
-
-if (error) {
-  console.log(error);
-  setLoading(false);
-  return;
-}
-
-setStudent(data);
-
-
-// Load timetable
-
-const { data: scheduleData, error: scheduleError } =
-await supabase
-.from("student_schedules")
-.select(`
-  id,
-  day,
-  time,
-
-  subjects(
-    id,
-    name
-  ),
-
-  tutors(
-    id,
-    full_name
-  ),
-
-  students(
-    google_meet_link
-  )
-`).eq(
-  "student_id",
-  data.id
-);
-
-
-
-console.log(
-"STUDENT SCHEDULE:",
-scheduleData
-);
-
-
-if(!scheduleError){
-
-  setSchedules(
-    scheduleData || []
-  );
-
-}
-
-
-setLoading(false);
-     
-    }
-
-
-    loadStudent();
-
-  }, []);
-
-const nextLesson =
-  getNextLesson(schedules);
-
-  if (loading) {
-    return (
-      <div className="flex min-h-[400px] items-center justify-center">
-        <p className="text-lg font-semibold text-slate-600">
-          Loading dashboard...
-        </p>
-      </div>
-    );
+```
+  if (dayIndex === -1) {
+    return null;
   }
 
+  const start = lesson.time
+    .split("-")[0]
+    .trim();
 
+  const parts = start.split(" ");
+
+  if (parts.length !== 2) {
+    return null;
+  }
+
+  const clock = parts[0];
+  const period = parts[1];
+
+  let [hour, minute] =
+    clock.split(":").map(Number);
+
+  if (
+    Number.isNaN(hour) ||
+    Number.isNaN(minute)
+  ) {
+    return null;
+  }
+
+  if (period === "PM" && hour !== 12) {
+    hour += 12;
+  }
+
+  if (period === "AM" && hour === 12) {
+    hour = 0;
+  }
+
+  const lessonMinutes =
+    hour * 60 + minute;
+
+  let diff =
+    (dayIndex - today + 7) % 7;
+
+  if (
+    diff === 0 &&
+    lessonMinutes < currentMinutes
+  ) {
+    diff = 7;
+  }
+
+  return {
+    lesson,
+    diff,
+    lessonMinutes,
+  };
+})
+.filter(
+  (
+    item
+  ): item is {
+    lesson: Schedule;
+    diff: number;
+    lessonMinutes: number;
+  } => item !== null
+)
+.sort((a, b) => {
+  if (a.diff !== b.diff) {
+    return a.diff - b.diff;
+  }
 
   return (
-    <>
+    a.lessonMinutes -
+    b.lessonMinutes
+  );
+});
+```
 
-
-      <h1 className="text-4xl font-extrabold text-slate-900">
-        Welcome {student?.full_name || ""}
-      </h1>
-
-
-      <p className="mt-3 text-slate-700">
-        Here is an overview of your learning activities.
-      </p>
-
-
-
-      <div className="mt-10 grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
-
-
-        <div className="rounded-3xl bg-white p-6 shadow-sm">
-
-          <CalendarDays className="text-yellow-600" size={32}/>
-
-         <p className="mt-5 font-bold text-slate-700">
-  Next Lesson
-</p>
-
-
-<h3 className="mt-3 text-xl font-extrabold text-slate-900">
-{
-nextLesson
-?
-
-`${nextLesson.day} - ${nextLesson.time}`
-
-:
-
-"No lesson scheduled"
+return lessons.length
+? lessons[0].lesson
+: null;
 }
-</h3>
-        </div>
 
+export default function DashboardPage() {
+const [student, setStudent] =
+useState<Student | null>(null);
 
+const [schedules, setSchedules] =
+useState<Schedule[]>([]);
 
+const [loading, setLoading] =
+useState(true);
 
-        <div className="rounded-3xl bg-white p-6 shadow-sm">
+const [error, setError] =
+useState("");
 
-          <BookOpen className="text-yellow-600" size={32}/>
+useEffect(() => {
+async function loadDashboard() {
+try {
+setLoading(true);
+setError("");
 
-          <p className="mt-5 font-bold text-slate-700">
-            Package
-          </p>
+```
+    // ==========================
+    // GET LOGGED-IN USER
+    // ==========================
 
-          <h3 className="mt-3 text-xl font-extrabold text-slate-900">
-            {student?.package || "Not assigned"}
-          </h3>
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
 
-        </div>
+    console.log("AUTH USER:", user);
 
+    if (authError) {
+      console.error(
+        "AUTH ERROR:",
+        authError
+      );
 
+      setError(
+        "Unable to authenticate student."
+      );
 
+      return;
+    }
 
-       
-        <div className="rounded-3xl bg-white p-6 shadow-sm">
+    if (!user) {
+      setError(
+        "No logged-in student found."
+      );
 
-          <TrendingUp className="text-yellow-600" size={32}/>
+      return;
+    }
 
-          <p className="mt-5 font-bold text-slate-700">
-            Progress
-          </p>
+    // ==========================
+    // GET STUDENT
+    // ==========================
 
-          <h3 className="mt-3 text-xl font-extrabold text-slate-900">
-            Getting started
-          </h3>
+    const {
+      data: studentData,
+      error: studentError,
+    } = await supabase
+      .from("students")
+      .select(
+        `
+          id,
+          auth_id,
+          full_name,
+          email,
+          package
+        `
+      )
+      .eq("auth_id", user.id)
+      .single();
 
-        </div>
+    console.log(
+      "STUDENT:",
+      studentData
+    );
 
+    if (studentError) {
+      console.error(
+        "STUDENT ERROR:",
+        studentError
+      );
 
-      </div>
+      setError(
+        "Unable to load student information."
+      );
 
+      return;
+    }
 
+    if (!studentData) {
+      setError(
+        "Student profile not found."
+      );
 
+      return;
+    }
 
+    setStudent(studentData);
 
-      <div className="mt-10 grid gap-8 lg:grid-cols-2">
+    // ==========================
+    // GET STUDENT SCHEDULES
+    // ==========================
 
+    const {
+      data: scheduleData,
+      error: scheduleError,
+    } = await supabase
+      .from("student_schedules")
+      .select(
+        `
+          id,
+          day,
+          time,
+          meet_link,
+          subjects (
+            id,
+            name
+          ),
+          tutors (
+            id,
+            full_name
+          )
+        `
+      )
+      .eq(
+        "student_id",
+        studentData.id
+      );
 
+    console.log(
+      "STUDENT SCHEDULE:",
+      scheduleData
+    );
 
-       <div className="rounded-3xl bg-white p-6 shadow-sm">
+    if (scheduleError) {
+      console.error(
+        "SCHEDULE ERROR:",
+        scheduleError
+      );
 
-  <div className="flex items-center gap-3">
+      setError(
+        "Unable to load your lesson schedule."
+      );
 
-    <CalendarDays
-      size={30}
-      className="text-yellow-600"
-    />
+      return;
+    }
 
-    <h2 className="text-2xl font-bold text-slate-900">
-      Upcoming Lesson
-    </h2>
+    setSchedules(
+      scheduleData || []
+    );
+  } catch (error) {
+    console.error(
+      "DASHBOARD ERROR:",
+      error
+    );
 
+    setError(
+      "Unable to load your dashboard."
+    );
+  } finally {
+    setLoading(false);
+  }
+}
+
+loadDashboard();
+```
+
+}, []);
+
+const nextLesson =
+getNextLesson(schedules);
+
+if (loading) {
+return ( <div className="flex min-h-[60vh] items-center justify-center"> <p className="text-lg font-semibold text-slate-600">
+Loading dashboard... </p> </div>
+);
+}
+
+if (error) {
+return ( <div className="rounded-3xl border border-red-200 bg-red-50 p-8"> <h2 className="text-xl font-bold text-red-700">
+Unable to load dashboard </h2>
+
+```
+    <p className="mt-2 text-red-600">
+      {error}
+    </p>
+  </div>
+);
+```
+
+}
+
+return (
+<>
+{/* ==========================
+HEADER
+=========================== */}
+
+```
+  <div>
+    <h1 className="text-4xl font-extrabold text-slate-900">
+      Welcome{" "}
+      {student?.full_name || ""}
+    </h1>
+
+    <p className="mt-3 text-slate-700">
+      Here is an overview of your
+      learning activities.
+    </p>
   </div>
 
-<div className="mt-5 space-y-4">
+  {/* ==========================
+      SUMMARY CARDS
+  =========================== */}
 
+  <div className="mt-10 grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
 
-{
-nextLesson ? (
+    {/* NEXT LESSON */}
 
-<div
-className="
-rounded-xl
-bg-slate-100
-p-4
-"
->
+    <div className="rounded-3xl bg-white p-6 shadow-sm">
+      <CalendarDays
+        className="text-yellow-600"
+        size={32}
+      />
 
-<p className="font-extrabold text-slate-900">
-{nextLesson.subjects?.name}
-</p>
+      <p className="mt-5 font-bold text-slate-700">
+        Next Lesson
+      </p>
 
-<p className="mt-2 font-semibold text-slate-700">
-📅 {nextLesson.day}
-</p>
+      {nextLesson ? (
+        <>
+          <h3 className="mt-3 text-xl font-extrabold text-slate-900">
+            {nextLesson.day}
+          </h3>
 
-<p className="font-semibold text-slate-700">
-⏰ {nextLesson.time}
-</p>
+          <p className="mt-1 text-sm text-slate-600">
+            {nextLesson.time}
+          </p>
 
-<p className="mt-2 font-semibold text-slate-800">
-Tutor: {nextLesson.tutors?.full_name}
-</p>
+          <p className="mt-2 text-sm font-semibold text-slate-800">
+            {nextLesson.subjects?.name ||
+              "Subject"}
+          </p>
+        </>
+      ) : (
+        <h3 className="mt-3 text-xl font-extrabold text-slate-900">
+          No lesson scheduled
+        </h3>
+      )}
+    </div>
 
-{nextLesson.students?.google_meet_link ? (
+    {/* PACKAGE */}
 
-<a
-href={nextLesson.students.google_meet_link}
-target="_blank"
-rel="noopener noreferrer"
-className="
-mt-4
-inline-block
-rounded-xl
-bg-yellow-500
-px-5
-py-3
-font-bold
-text-slate-900
-hover:bg-yellow-400
-"
->
-Join Class
-</a>
+    <div className="rounded-3xl bg-white p-6 shadow-sm">
+      <BookOpen
+        className="text-yellow-600"
+        size={32}
+      />
 
-) : (
+      <p className="mt-5 font-bold text-slate-700">
+        Package
+      </p>
 
-<p
-className="
-mt-4
-text-sm
-font-semibold
-text-slate-500
-"
->
-Meeting link unavailable
-</p>
+      <h3 className="mt-3 text-xl font-extrabold text-slate-900">
+        {student?.package ||
+          "Not assigned"}
+      </h3>
+    </div>
 
-)}
-</div>
+    {/* SUBJECTS */}
 
-)
+    <div className="rounded-3xl bg-white p-6 shadow-sm">
+      <UserRound
+        className="text-yellow-600"
+        size={32}
+      />
 
-:(
+      <p className="mt-5 font-bold text-slate-700">
+        Subjects
+      </p>
 
+      <h3 className="mt-3 text-xl font-extrabold text-slate-900">
+        {schedules.length}
+      </h3>
 
-<p className="font-semibold text-slate-600">
+      <p className="mt-1 text-sm text-slate-500">
+        Scheduled lessons
+      </p>
+    </div>
 
-Your timetable will appear here.
+    {/* PROGRESS */}
 
-</p>
+    <div className="rounded-3xl bg-white p-6 shadow-sm">
+      <TrendingUp
+        className="text-yellow-600"
+        size={32}
+      />
 
+      <p className="mt-5 font-bold text-slate-700">
+        Progress
+      </p>
 
-)
+      <h3 className="mt-3 text-xl font-extrabold text-slate-900">
+        Getting started
+      </h3>
+    </div>
+  </div>
 
-}
+  {/* ==========================
+      UPCOMING LESSON + UPDATES
+  =========================== */}
 
+  <div className="mt-10 grid gap-8 lg:grid-cols-2">
 
-</div>
+    {/* UPCOMING LESSON */}
 
-{student?.google_meet_link ? (
+    <div className="rounded-3xl bg-white p-6 shadow-sm">
 
-<a
-  href={student.google_meet_link}
-  target="_blank"
-  rel="noopener noreferrer"
-  className="
-  mt-8 inline-block rounded-xl
-  bg-yellow-500 px-8 py-4
-  font-bold text-slate-900
-  transition hover:bg-yellow-400
-  "
->
-  Join Class
-</a>
+      <div className="flex items-center gap-3">
+        <CalendarDays
+          size={30}
+          className="text-yellow-600"
+        />
 
-) : (
+        <h2 className="text-2xl font-bold text-slate-900">
+          Upcoming Lesson
+        </h2>
+      </div>
 
-<button
-disabled
-className="
-mt-8 rounded-xl
-bg-slate-300 px-8 py-4
-font-bold text-slate-600
-"
->
-Class Link Not Available
-</button>
+      {nextLesson ? (
+        <div className="mt-6">
 
-)}
+          <h3 className="text-xl font-bold text-slate-900">
+            {nextLesson.subjects?.name ||
+              "Lesson"}
+          </h3>
 
+          <p className="mt-2 text-lg font-semibold text-slate-700">
+            {nextLesson.day}
+            {" — "}
+            {nextLesson.time}
+          </p>
+
+          <p className="mt-2 text-sm text-slate-600">
+            Tutor:{" "}
+            <span className="font-semibold text-slate-900">
+              {nextLesson.tutors
+                ?.full_name ||
+                "Tutor not assigned"}
+            </span>
+          </p>
+
+          {nextLesson.meet_link ? (
+            <a
+              href={
+                nextLesson.meet_link
+              }
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-8 inline-block rounded-xl bg-yellow-500 px-8 py-4 font-bold text-slate-900 transition hover:bg-yellow-400"
+            >
+              Join Class
+            </a>
+          ) : (
+            <button
+              disabled
+              className="mt-8 rounded-xl bg-slate-300 px-8 py-4 font-bold text-slate-600"
+            >
+              Class Link Not Available
+            </button>
+          )}
         </div>
+      ) : (
+        <p className="mt-6 text-slate-600">
+          Your timetable will appear
+          here once your lessons have
+          been scheduled.
+        </p>
+      )}
+    </div>
 
+    {/* LATEST UPDATES */}
 
-        <div className="rounded-3xl bg-white p-6 shadow-sm">
+    <div className="rounded-3xl bg-white p-6 shadow-sm">
 
+      <div className="flex items-center gap-3">
 
-          <div className="flex items-center gap-3">
+        <Bell
+          size={30}
+          className="text-yellow-600"
+        />
 
-            <Bell
-              size={30}
-              className="text-yellow-600"
-            />
-
-            <h2 className="text-2xl font-bold text-slate-900">
-              Latest Updates
-            </h2>
-
-          </div>
-
-
-
-        <p className="mt-5 text-lg font-semibold leading-8 text-slate-900">
-
-Welcome to GS Academy. Your lessons and updates
-will appear here.
-
-</p>
-
-
-        </div>
-
-
+        <h2 className="text-2xl font-bold text-slate-900">
+          Latest Updates
+        </h2>
 
       </div>
 
+      <p className="mt-5 text-lg font-semibold leading-8 text-slate-900">
+        Welcome to GS Academy. Your
+        lessons and updates will appear
+        here.
+      </p>
+    </div>
+  </div>
 
-    </>
-  );
+  {/* ==========================
+      FULL TIMETABLE
+  =========================== */}
+
+  <div className="mt-10 rounded-3xl bg-white p-6 shadow-sm">
+
+    <div className="flex items-center gap-3">
+      <CalendarDays
+        size={30}
+        className="text-yellow-600"
+      />
+
+      <h2 className="text-2xl font-bold text-slate-900">
+        My Timetable
+      </h2>
+    </div>
+
+    {schedules.length === 0 ? (
+      <p className="mt-6 text-slate-600">
+        No lessons have been scheduled
+        yet.
+      </p>
+    ) : (
+      <div className="mt-6 space-y-4">
+
+        {schedules.map(
+          (schedule) => (
+            <div
+              key={schedule.id}
+              className="rounded-2xl border border-slate-200 bg-slate-50 p-5"
+            >
+              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+
+                <div>
+
+                  <h3 className="text-lg font-bold text-slate-900">
+                    {schedule.subjects
+                      ?.name ||
+                      "Subject"}
+                  </h3>
+
+                  <p className="mt-1 font-semibold text-slate-700">
+                    {schedule.day}
+                    {" — "}
+                    {schedule.time}
+                  </p>
+
+                  <p className="mt-1 text-sm text-slate-600">
+                    Tutor:{" "}
+                    <span className="font-semibold text-slate-800">
+                      {schedule.tutors
+                        ?.full_name ||
+                        "Not assigned"}
+                    </span>
+                  </p>
+
+                </div>
+
+                {schedule.meet_link && (
+                  <a
+                    href={
+                      schedule.meet_link
+                    }
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-block rounded-xl bg-yellow-500 px-5 py-3 text-center font-bold text-slate-900 transition hover:bg-yellow-400"
+                  >
+                    Join Class
+                  </a>
+                )}
+
+              </div>
+            </div>
+          )
+        )}
+
+      </div>
+    )}
+  </div>
+</>
+```
+
+);
 }
