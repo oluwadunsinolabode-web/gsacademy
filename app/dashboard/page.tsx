@@ -18,22 +18,26 @@ type Student = {
   email?: string | null;
   package?: string | null;
 };
-
 type Schedule = {
   id: string;
   day: string;
   time: string;
   meet_link: string | null;
-  subjects: {
-    id: string;
-    name: string;
-  } | null;
-  tutors: {
-    id: string;
-    full_name: string;
-  } | null;
-};
 
+  subjects:
+    | {
+        id: string;
+        name: string;
+      }[]
+    | null;
+
+  tutors:
+    | {
+        id: string;
+        full_name: string;
+      }[]
+    | null;
+};
 const DAYS = [
   "Sunday",
   "Monday",
@@ -374,7 +378,7 @@ export default function DashboardPage() {
               </p>
 
               <p className="mt-2 text-sm font-semibold text-slate-800">
-                {nextLesson.subjects?.name ||
+              nextLesson.tutors?.[0]?.full_name ||
                   "Subject"}
               </p>
             </>
@@ -465,7 +469,7 @@ export default function DashboardPage() {
             <div className="mt-6">
 
               <h3 className="text-xl font-bold text-slate-900">
-                {nextLesson.subjects?.name ||
+                nextLesson.subjects?.[0]?.name ||
                   "Lesson"}
               </h3>
 
