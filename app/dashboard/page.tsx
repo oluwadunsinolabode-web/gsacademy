@@ -1,4 +1,3 @@
-```tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -25,18 +24,14 @@ type Schedule = {
   day: string;
   time: string;
   meet_link: string | null;
-  subjects:
-    | {
-        id: string;
-        name: string;
-      }
-    | null;
-  tutors:
-    | {
-        id: string;
-        full_name: string;
-      }
-    | null;
+  subjects: {
+    id: string;
+    name: string;
+  } | null;
+  tutors: {
+    id: string;
+    full_name: string;
+  } | null;
 };
 
 const DAYS = [
@@ -52,12 +47,11 @@ const DAYS = [
 function getNextLesson(
   scheduleList: Schedule[]
 ): Schedule | null {
-  if (!scheduleList.length) {
+  if (scheduleList.length === 0) {
     return null;
   }
 
   const now = new Date();
-
   const today = now.getDay();
 
   const currentMinutes =
@@ -82,7 +76,7 @@ function getNextLesson(
       }
 
       const clock = parts[0];
-      const period = parts[1];
+      const period = parts[1].toUpperCase();
 
       let [hour, minute] = clock
         .split(":")
@@ -95,17 +89,11 @@ function getNextLesson(
         return null;
       }
 
-      if (
-        period === "PM" &&
-        hour !== 12
-      ) {
+      if (period === "PM" && hour !== 12) {
         hour += 12;
       }
 
-      if (
-        period === "AM" &&
-        hour === 12
-      ) {
+      if (period === "AM" && hour === 12) {
         hour = 0;
       }
 
@@ -148,7 +136,7 @@ function getNextLesson(
       );
     });
 
-  return lessons.length
+  return lessons.length > 0
     ? lessons[0].lesson
     : null;
 }
@@ -172,10 +160,7 @@ export default function DashboardPage() {
         setLoading(true);
         setError("");
 
-        // ==========================
-        // GET LOGGED-IN USER
-        // ==========================
-
+        // Get logged-in user
         const {
           data: { user },
           error: authError,
@@ -204,10 +189,7 @@ export default function DashboardPage() {
           return;
         }
 
-        // ==========================
-        // GET STUDENT
-        // ==========================
-
+        // Get student profile
         const {
           data: studentData,
           error: studentError,
@@ -253,10 +235,7 @@ export default function DashboardPage() {
 
         setStudent(studentData);
 
-        // ==========================
-        // GET STUDENT SCHEDULES
-        // ==========================
-
+        // Get student's schedules
         const {
           data: scheduleData,
           error: scheduleError,
@@ -306,10 +285,10 @@ export default function DashboardPage() {
         setSchedules(
           scheduleData || []
         );
-      } catch (error) {
+      } catch (dashboardError) {
         console.error(
           "DASHBOARD ERROR:",
-          error
+          dashboardError
         );
 
         setError(
@@ -326,10 +305,7 @@ export default function DashboardPage() {
   const nextLesson =
     getNextLesson(schedules);
 
-  // ==========================
-  // LOADING
-  // ==========================
-
+  // Loading state
   if (loading) {
     return (
       <div className="flex min-h-[400px] items-center justify-center">
@@ -340,10 +316,7 @@ export default function DashboardPage() {
     );
   }
 
-  // ==========================
-  // ERROR
-  // ==========================
-
+  // Error state
   if (error) {
     return (
       <div className="rounded-3xl bg-white p-8 shadow-sm">
@@ -360,9 +333,7 @@ export default function DashboardPage() {
 
   return (
     <>
-      {/* ==========================
-          HEADER
-      =========================== */}
+      {/* Header */}
 
       <div>
         <h1 className="text-4xl font-extrabold text-slate-900">
@@ -376,13 +347,11 @@ export default function DashboardPage() {
         </p>
       </div>
 
-      {/* ==========================
-          SUMMARY CARDS
-      =========================== */}
+      {/* Summary Cards */}
 
       <div className="mt-10 grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
 
-        {/* NEXT LESSON */}
+        {/* Next Lesson */}
 
         <div className="rounded-3xl bg-white p-6 shadow-sm">
           <CalendarDays
@@ -416,7 +385,7 @@ export default function DashboardPage() {
           )}
         </div>
 
-        {/* PACKAGE */}
+        {/* Package */}
 
         <div className="rounded-3xl bg-white p-6 shadow-sm">
           <BookOpen
@@ -434,7 +403,7 @@ export default function DashboardPage() {
           </h3>
         </div>
 
-        {/* LESSONS */}
+        {/* Lessons */}
 
         <div className="rounded-3xl bg-white p-6 shadow-sm">
           <UserRound
@@ -455,7 +424,7 @@ export default function DashboardPage() {
           </p>
         </div>
 
-        {/* PROGRESS */}
+        {/* Progress */}
 
         <div className="rounded-3xl bg-white p-6 shadow-sm">
           <TrendingUp
@@ -473,13 +442,11 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* ==========================
-          UPCOMING LESSON + UPDATES
-      =========================== */}
+      {/* Upcoming Lesson + Updates */}
 
       <div className="mt-10 grid gap-8 lg:grid-cols-2">
 
-        {/* UPCOMING LESSON */}
+        {/* Upcoming Lesson */}
 
         <div className="rounded-3xl bg-white p-6 shadow-sm">
 
@@ -546,7 +513,7 @@ export default function DashboardPage() {
           )}
         </div>
 
-        {/* LATEST UPDATES */}
+        {/* Latest Updates */}
 
         <div className="rounded-3xl bg-white p-6 shadow-sm">
 
@@ -569,9 +536,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* ==========================
-          FULL TIMETABLE
-      =========================== */}
+      {/* Full Timetable */}
 
       <div className="mt-10 rounded-3xl bg-white p-6 shadow-sm">
 
@@ -608,8 +573,7 @@ export default function DashboardPage() {
                     <div>
 
                       <h3 className="text-lg font-bold text-slate-900">
-                        {schedule.subjects
-                          ?.name ||
+                        {schedule.subjects?.name ||
                           "Subject"}
                       </h3>
 
@@ -654,4 +618,3 @@ export default function DashboardPage() {
     </>
   );
 }
-```
