@@ -445,7 +445,7 @@ async function handleSave() {
 // --------------------------
 
 const scheduleResponse = await fetch(
-`/api/admin/students/${studentId}/schedules`
+`/api/admin/students/${studentId}/schedules`,
   {
     method: "POST",
     headers: {
