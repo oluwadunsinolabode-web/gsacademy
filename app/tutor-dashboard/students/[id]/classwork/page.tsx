@@ -22,9 +22,7 @@ type Student = {
 
 type Tutor = {
   id: string;
-  subjects: string[] | null;
 };
-
 type Classwork = {
   id: string;
   subject: string;
@@ -87,20 +85,17 @@ export default function StudentClassworkPage() {
       /*
        * Get tutor profile and assigned subjects.
        */
-      const {
-        data: tutor,
-        error: tutorError,
-      } = await supabase
-        .from("tutors")
-        .select("id, subjects")
-        .eq("auth_id", user.id)
-        .single();
-
-      if (tutorError || !tutor) {
-        throw new Error("Tutor profile not found.");
-      }
-
-      /*
+     const {
+  data: tutor,
+  error: tutorError,
+} = await supabase
+  .from("tutors")
+  .select("id")
+  .eq("auth_id", user.id)
+  .single();
+if (tutorError || !tutor) {
+  throw new Error("Tutor profile not found.");
+}      /*
        * Get the student.
        */
       const {
@@ -120,30 +115,50 @@ export default function StudentClassworkPage() {
 
       setStudent(studentData);
 
-      /*
-       * Find subjects that BOTH the tutor and student have.
-       */
-    const tutorSubjects: string[] = tutor.subjects || [];
-const studentSubjects: string[] = studentData.subjects || [];
-
-const sharedSubjects = studentSubjects.filter(
-  (subject: string) =>
-    tutorSubjects.some(
-      (tutorSubject: string) =>
-        tutorSubject.toLowerCase().trim() ===
-        subject.toLowerCase().trim()
+    /*
+ * Get the subjects this tutor is ACTUALLY assigned
+ * to teach this specific student.
+ *
+ * tutor_assignments is the source of truth.
+ */
+const {
+  data: tutorAssignments,
+  error: assignmentError,
+} = await supabase
+  .from("tutor_assignments")
+  .select(`
+    subject_id,
+    subjects (
+      id,
+      name
     )
-);
+  `)
+  .eq("tutor_id", tutor.id)
+  .eq("student_id", studentId)
+  .eq("active", true)
+  .eq("status", "Scheduled");
 
-      /*
-       * For now, we expect one shared subject.
-       */
-      if (sharedSubjects.length > 0) {
-        setAllowedSubject(sharedSubjects[0]);
-      } else {
-        setAllowedSubject("");
-      }
+if (assignmentError) {
+  throw new Error(assignmentError.message);
+}
 
+/*
+ * Get the actual subject name from the assignment.
+ */
+const assignedSubjects =
+  tutorAssignments
+    ?.map((assignment: any) => assignment.subjects?.name)
+    .filter(Boolean) || [];
+
+/*
+ * This tutor may be assigned to multiple subjects.
+ * For now the classwork page uses the first assigned subject.
+ */
+if (assignedSubjects.length > 0) {
+  setAllowedSubject(assignedSubjects[0]);
+} else {
+  setAllowedSubject("");
+}
       /*
        * Get classworks assigned to this student.
        */
@@ -266,17 +281,45 @@ const sharedSubjects = studentSubjects.filter(
       /*
        * Verify the tutor still teaches this subject.
        */
-     const tutorCanTeachSubject = (tutor.subjects || []).some(
-  (item: string) =>
-    item.toLowerCase().trim() ===
-    allowedSubject.toLowerCase().trim()
-);
+    /*
+ * Verify that this tutor is actively assigned to this
+ * student for the selected subject.
+ */
+const {
+  data: subjectAssignment,
+  error: subjectAssignmentError,
+} = await supabase
+  .from("tutor_assignments")
+  .select(`
+    id,
+    subject_id,
+    subjects (
+      id,
+      name
+    )
+  `)
+  .eq("tutor_id", tutor.id)
+  .eq("student_id", student.id)
+  .eq("active", true)
+  .eq("status", "Scheduled");
 
-      if (!tutorCanTeachSubject) {
-        throw new Error(
-          "You are not assigned to teach this subject."
-        );
-      }
+if (subjectAssignmentError) {
+  throw new Error(subjectAssignmentError.message);
+}
+
+const canTeachSubject =
+  subjectAssignment?.some(
+    (assignment: any) =>
+      assignment.subjects?.name
+        ?.toLowerCase()
+        .trim() === allowedSubject.toLowerCase().trim()
+  );
+
+if (!canTeachSubject) {
+  throw new Error(
+    "You are not assigned to teach this subject for this student."
+  );
+}
 
       /*
        * Optional attachment upload.
