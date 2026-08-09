@@ -266,11 +266,11 @@ const sharedSubjects = studentSubjects.filter(
       /*
        * Verify the tutor still teaches this subject.
        */
-      const tutorCanTeachSubject = (tutor.subjects || []).some(
-        (item) =>
-          item.toLowerCase().trim() ===
-          allowedSubject.toLowerCase().trim()
-      );
+     const tutorCanTeachSubject = (tutor.subjects || []).some(
+  (item: string) =>
+    item.toLowerCase().trim() ===
+    allowedSubject.toLowerCase().trim()
+);
 
       if (!tutorCanTeachSubject) {
         throw new Error(
