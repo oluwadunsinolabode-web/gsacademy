@@ -8,6 +8,7 @@ import {
   Upload,
   Loader2,
   FileText,
+  MessageSquareText,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
@@ -19,11 +20,17 @@ type Submission = {
   title: string | null;
   status: string | null;
   image_url: string | null;
+  text_answer: string | null;
   score: number | null;
   total_marks: number | null;
   percentage: number | null;
+  grade: string | null;
   auto_feedback: string | null;
+  teacher_feedback: string | null;
+  tutor_feedback: string | null;
   correction_file_url: string | null;
+  submitted_at: string | null;
+  marked_at: string | null;
 };
 
 type Classwork = {
@@ -52,6 +59,9 @@ export default function MarkClassworkPage() {
   const [score, setScore] = useState("");
   const [totalMark, setTotalMark] = useState("");
 
+  const [teacherFeedback, setTeacherFeedback] =
+    useState("");
+
   const [correctionFile, setCorrectionFile] =
     useState<File | null>(null);
 
@@ -59,7 +69,7 @@ export default function MarkClassworkPage() {
   const [error, setError] = useState("");
 
   /*
-   * Load submission
+   * LOAD SUBMISSION
    */
   useEffect(() => {
     if (!submissionId) return;
@@ -74,22 +84,26 @@ export default function MarkClassworkPage() {
           error: submissionError,
         } = await supabase
           .from("classwork_submissions")
-          .select(
-            `
-              id,
-              student_id,
-              student_email,
-              classwork_id,
-              title,
-              status,
-              image_url,
-              score,
-              total_marks,
-              percentage,
-              auto_feedback,
-              correction_file_url
-            `
-          )
+          .select(`
+            id,
+            student_id,
+            student_email,
+            classwork_id,
+            title,
+            status,
+            image_url,
+            text_answer,
+            score,
+            total_marks,
+            percentage,
+            grade,
+            auto_feedback,
+            teacher_feedback,
+            tutor_feedback,
+            correction_file_url,
+            submitted_at,
+            marked_at
+          `)
           .eq("id", submissionId)
           .single();
 
@@ -103,7 +117,7 @@ export default function MarkClassworkPage() {
         setSubmission(data);
 
         /*
-         * If already marked, load existing score.
+         * Load existing score.
          */
         if (data.score !== null) {
           setScore(String(data.score));
@@ -114,6 +128,15 @@ export default function MarkClassworkPage() {
         }
 
         /*
+         * Load existing tutor/teacher feedback.
+         */
+        setTeacherFeedback(
+          data.teacher_feedback ||
+            data.tutor_feedback ||
+            ""
+        );
+
+        /*
          * Load related classwork.
          */
         if (data.classwork_id) {
@@ -122,14 +145,12 @@ export default function MarkClassworkPage() {
             error: classworkError,
           } = await supabase
             .from("classworks")
-            .select(
-              `
-                id,
-                subject,
-                title,
-                description
-              `
-            )
+            .select(`
+              id,
+              subject,
+              title,
+              description
+            `)
             .eq("id", data.classwork_id)
             .single();
 
@@ -157,7 +178,7 @@ export default function MarkClassworkPage() {
   }, [submissionId]);
 
   /*
-   * Calculate percentage
+   * CALCULATE PERCENTAGE
    */
   const percentage = useMemo(() => {
     const s = Number(score);
@@ -167,12 +188,9 @@ export default function MarkClassworkPage() {
       !Number.isFinite(s) ||
       !Number.isFinite(t) ||
       t <= 0 ||
-      s < 0
+      s < 0 ||
+      s > t
     ) {
-      return 0;
-    }
-
-    if (s > t) {
       return 0;
     }
 
@@ -180,9 +198,40 @@ export default function MarkClassworkPage() {
   }, [score, totalMark]);
 
   /*
-   * Generate automatic feedback
+   * CALCULATE GRADE
    */
-  const feedback = useMemo(() => {
+  const grade = useMemo(() => {
+    if (percentage >= 75) {
+      return "A";
+    }
+
+    if (percentage >= 65) {
+      return "B";
+    }
+
+    if (percentage >= 55) {
+      return "C";
+    }
+
+    if (percentage >= 45) {
+      return "D";
+    }
+
+    if (percentage >= 40) {
+      return "E";
+    }
+
+    if (percentage > 0) {
+      return "F";
+    }
+
+    return "";
+  }, [percentage]);
+
+  /*
+   * AUTOMATIC FEEDBACK
+   */
+  const automaticFeedback = useMemo(() => {
     if (percentage >= 90) {
       return "Outstanding performance! Excellent understanding of today's lesson.";
     }
@@ -211,7 +260,7 @@ export default function MarkClassworkPage() {
   }, [percentage]);
 
   /*
-   * Publish result
+   * PUBLISH RESULT
    */
   async function publishResult() {
     if (!submission) return;
@@ -223,11 +272,18 @@ export default function MarkClassworkPage() {
     const t = Number(totalMark);
 
     /*
-     * Validate score
+     * VALIDATE SCORE
      */
     if (!score || !totalMark) {
       setError(
         "Please enter both the student's score and total mark."
+      );
+      return;
+    }
+
+    if (!Number.isFinite(s) || !Number.isFinite(t)) {
+      setError(
+        "Please enter valid numbers for the score and total mark."
       );
       return;
     }
@@ -257,13 +313,13 @@ export default function MarkClassworkPage() {
       setPublishing(true);
 
       /*
-       * Correction file URL
+       * EXISTING CORRECTION URL
        */
       let correctionUrl =
         submission.correction_file_url || null;
 
       /*
-       * Upload correction if selected.
+       * UPLOAD CORRECTION FILE
        */
       if (correctionFile) {
         const safeFileName =
@@ -310,7 +366,18 @@ export default function MarkClassworkPage() {
       }
 
       /*
-       * Update submission.
+       * FINAL FEEDBACK
+       *
+       * If tutor typed feedback, use it.
+       * Otherwise use automatic feedback.
+       */
+      const finalFeedback =
+        teacherFeedback.trim() ||
+        automaticFeedback ||
+        null;
+
+      /*
+       * UPDATE SUBMISSION
        */
       const {
         data: updatedSubmission,
@@ -321,15 +388,40 @@ export default function MarkClassworkPage() {
           score: s,
           total_marks: t,
           percentage,
+          grade,
           status: "Marked",
-          auto_feedback: feedback,
+          auto_feedback:
+            automaticFeedback || null,
+          teacher_feedback:
+            finalFeedback,
+          tutor_feedback:
+            finalFeedback,
           correction_file_url:
             correctionUrl,
           marked_at:
             new Date().toISOString(),
         })
         .eq("id", submission.id)
-        .select()
+        .select(`
+          id,
+          student_id,
+          student_email,
+          classwork_id,
+          title,
+          status,
+          image_url,
+          text_answer,
+          score,
+          total_marks,
+          percentage,
+          grade,
+          auto_feedback,
+          teacher_feedback,
+          tutor_feedback,
+          correction_file_url,
+          submitted_at,
+          marked_at
+        `)
         .single();
 
       if (updateError) {
@@ -343,6 +435,11 @@ export default function MarkClassworkPage() {
       setMessage(
         "Result published successfully. The student can now see the result."
       );
+
+      /*
+       * Reset selected correction file.
+       */
+      setCorrectionFile(null);
     } catch (err) {
       console.error(
         "Publish result error:",
@@ -360,7 +457,7 @@ export default function MarkClassworkPage() {
   }
 
   /*
-   * Loading
+   * LOADING
    */
   if (loading) {
     return (
@@ -380,7 +477,7 @@ export default function MarkClassworkPage() {
   }
 
   /*
-   * Submission not found
+   * SUBMISSION NOT FOUND
    */
   if (!submission) {
     return (
@@ -402,9 +499,28 @@ export default function MarkClassworkPage() {
     );
   }
 
+  /*
+   * CHECK SUBMISSION FILE
+   */
+  const submissionUrl =
+    submission.image_url;
+
+  const isPdf =
+    !!submissionUrl &&
+    /\.pdf(\?.*)?$/i.test(
+      submissionUrl
+    );
+
+  const isImage =
+    !!submissionUrl &&
+    /\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i.test(
+      submissionUrl
+    );
+
   return (
-    <div>
-      {/* Header */}
+    <div className="pb-10">
+
+      {/* HEADER */}
 
       <div>
         <h1 className="text-4xl font-extrabold text-slate-900">
@@ -417,7 +533,7 @@ export default function MarkClassworkPage() {
         </p>
       </div>
 
-      {/* Messages */}
+      {/* MESSAGES */}
 
       {message && (
         <div className="mt-6 rounded-2xl bg-green-50 p-5 font-semibold text-green-700">
@@ -431,11 +547,13 @@ export default function MarkClassworkPage() {
         </div>
       )}
 
-      {/* Classwork information */}
+      {/* CLASSWORK INFORMATION */}
 
       {classwork && (
         <div className="mt-8 rounded-3xl bg-white p-6 shadow-sm">
+
           <div className="flex flex-wrap items-center gap-3">
+
             <span className="rounded-full bg-yellow-100 px-4 py-2 text-sm font-bold text-yellow-700">
               {classwork.subject}
             </span>
@@ -443,6 +561,7 @@ export default function MarkClassworkPage() {
             <span className="rounded-full bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-600">
               {submission.status}
             </span>
+
           </div>
 
           <h2 className="mt-4 text-2xl font-bold text-slate-900">
@@ -462,74 +581,146 @@ export default function MarkClassworkPage() {
                 "Unknown student"}
             </span>
           </p>
+
+          {submission.submitted_at && (
+            <p className="mt-2 text-sm text-slate-500">
+              Submitted:{" "}
+              {new Date(
+                submission.submitted_at
+              ).toLocaleString()}
+            </p>
+          )}
+
         </div>
       )}
 
-      {/* Main */}
+      {/* MAIN */}
 
       <div className="mt-10 grid gap-10 xl:grid-cols-2">
-        {/* LEFT */}
+
+        {/* =====================================
+            LEFT: STUDENT WORK
+        ====================================== */}
 
         <div className="rounded-3xl bg-white p-8 shadow-sm">
+
           <h2 className="text-2xl font-bold text-slate-900">
             Student Submission
           </h2>
 
-          <div className="mt-8 flex h-[520px] items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50">
-            {submission.image_url ? (
-              submission.image_url
-                .toLowerCase()
-                .includes(".pdf") ? (
-                <iframe
-                  src={submission.image_url}
-                  title="Student submission"
-                  className="h-full w-full rounded-2xl"
-                />
-              ) : (
-                <img
-                  src={submission.image_url}
-                  alt="Student submission"
-                  className="h-full w-full rounded-2xl object-contain"
-                />
-              )
-            ) : (
-              <div className="text-center">
-                <ImageIcon
-                  size={60}
-                  className="mx-auto text-slate-400"
+          {/* TEXT ANSWER */}
+
+          {submission.text_answer && (
+            <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-6">
+
+              <div className="flex items-center gap-3">
+
+                <MessageSquareText
+                  size={25}
+                  className="text-yellow-600"
                 />
 
-                <p className="mt-4 text-slate-500">
-                  No uploaded submission file found.
-                </p>
+                <h3 className="text-xl font-bold text-slate-900">
+                  Written Answer
+                </h3>
+
               </div>
-            )}
-          </div>
 
-          {submission.image_url && (
-            <a
-              href={submission.image_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-5 inline-flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-3 font-semibold text-white hover:bg-slate-800"
-            >
-              <FileText size={18} />
-              Open Submission
-            </a>
+              <div className="mt-5 rounded-2xl bg-white p-5">
+
+                <p className="whitespace-pre-wrap leading-8 text-slate-700">
+                  {submission.text_answer}
+                </p>
+
+              </div>
+
+            </div>
           )}
+
+          {/* FILE */}
+
+          {submissionUrl ? (
+            <div className="mt-8">
+
+              <h3 className="text-xl font-bold text-slate-900">
+                Uploaded File
+              </h3>
+
+              <div className="mt-4 flex h-[520px] items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50">
+
+                {isPdf ? (
+                  <iframe
+                    src={submissionUrl}
+                    title="Student submission PDF"
+                    className="h-full w-full rounded-2xl"
+                  />
+                ) : isImage ? (
+                  <img
+                    src={submissionUrl}
+                    alt="Student classwork submission"
+                    className="h-full w-full rounded-2xl object-contain"
+                  />
+                ) : (
+                  <div className="text-center">
+
+                    <FileText
+                      size={60}
+                      className="mx-auto text-slate-400"
+                    />
+
+                    <p className="mt-4 text-slate-500">
+                      Uploaded file
+                    </p>
+
+                  </div>
+                )}
+
+              </div>
+
+              <a
+                href={submissionUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-5 inline-flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-3 font-semibold text-white hover:bg-slate-800"
+              >
+                <FileText size={18} />
+                Open Submission
+              </a>
+
+            </div>
+          ) : !submission.text_answer ? (
+            <div className="mt-8 rounded-2xl bg-slate-50 p-8 text-center">
+
+              <ImageIcon
+                size={55}
+                className="mx-auto text-slate-300"
+              />
+
+              <p className="mt-4 text-slate-500">
+                No uploaded file or written answer was found.
+              </p>
+
+            </div>
+          ) : null}
+
         </div>
 
-        {/* RIGHT */}
+        {/* =====================================
+            RIGHT: ASSESSMENT
+        ====================================== */}
 
         <div className="rounded-3xl bg-white p-8 shadow-sm">
+
           <h2 className="text-2xl font-bold text-slate-900">
             Assessment
           </h2>
 
-          {/* Score */}
+          {/* SCORE */}
 
           <div className="mt-8 grid grid-cols-2 gap-5">
+
             <div>
+
               <label className="block font-semibold text-slate-700">
                 Student Score
               </label>
@@ -544,9 +735,11 @@ export default function MarkClassworkPage() {
                 className="mt-2 w-full rounded-xl border border-slate-300 px-5 py-4 focus:border-yellow-500 focus:outline-none"
                 placeholder="7"
               />
+
             </div>
 
             <div>
+
               <label className="block font-semibold text-slate-700">
                 Total Mark
               </label>
@@ -561,12 +754,15 @@ export default function MarkClassworkPage() {
                 className="mt-2 w-full rounded-xl border border-slate-300 px-5 py-4 focus:border-yellow-500 focus:outline-none"
                 placeholder="10"
               />
+
             </div>
+
           </div>
 
-          {/* Percentage */}
+          {/* PERCENTAGE */}
 
           <div className="mt-8 rounded-3xl bg-yellow-50 p-6">
+
             <p className="font-semibold text-slate-600">
               Percentage
             </p>
@@ -574,26 +770,82 @@ export default function MarkClassworkPage() {
             <h2 className="mt-3 text-6xl font-extrabold text-yellow-600">
               {percentage}%
             </h2>
+
           </div>
 
-          {/* Feedback */}
+          {/* GRADE */}
+
+          <div className="mt-5 rounded-3xl bg-blue-50 p-6">
+
+            <p className="font-semibold text-slate-600">
+              Grade
+            </p>
+
+            <h2 className="mt-2 text-4xl font-extrabold text-blue-700">
+              {grade || "—"}
+            </h2>
+
+          </div>
+
+          {/* AUTOMATIC FEEDBACK */}
 
           <div className="mt-8 rounded-3xl bg-slate-100 p-6">
+
             <h3 className="text-xl font-bold text-slate-900">
-              Generated Feedback
+              Automatic Feedback
             </h3>
 
             <p className="mt-4 leading-8 text-slate-700">
-              {feedback ||
+              {automaticFeedback ||
                 "Feedback will be generated automatically after entering the student's score."}
             </p>
+
           </div>
 
-          {/* Correction Upload */}
+          {/* TUTOR FEEDBACK */}
+
+          <div className="mt-8">
+
+            <label className="flex items-center gap-2 text-xl font-bold text-slate-900">
+
+              <MessageSquareText
+                size={22}
+                className="text-yellow-600"
+              />
+
+              Tutor Feedback
+
+            </label>
+
+            <p className="mt-2 text-sm text-slate-500">
+              Add your own comments about the student's work.
+              If you leave this empty, the automatic feedback will
+              be shown to the student.
+            </p>
+
+            <textarea
+              value={teacherFeedback}
+              onChange={(e) =>
+                setTeacherFeedback(
+                  e.target.value
+                )
+              }
+              rows={7}
+              placeholder="Example: Good attempt. Question 3 was correct, but revise how you handle negative numbers..."
+              className="mt-4 w-full rounded-2xl border border-slate-300 bg-white px-5 py-4 leading-7 text-slate-800 outline-none focus:border-yellow-500 focus:ring-2 focus:ring-yellow-100"
+            />
+
+          </div>
+
+          {/* CORRECTION UPLOAD */}
 
           <div className="mt-8 rounded-3xl border bg-white p-6 shadow-sm">
+
             <h3 className="text-2xl font-bold text-slate-900">
-              Correction Upload (Optional)
+              Correction Upload
+              <span className="ml-2 text-sm font-normal text-slate-400">
+                (Optional)
+              </span>
             </h3>
 
             <p className="mt-3 text-slate-600">
@@ -603,6 +855,7 @@ export default function MarkClassworkPage() {
             </p>
 
             <label className="mt-6 flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-yellow-500 bg-slate-50 p-10 transition hover:bg-yellow-50">
+
               <Upload
                 size={42}
                 className="text-yellow-600"
@@ -622,14 +875,17 @@ export default function MarkClassworkPage() {
                 accept="image/*,.pdf"
                 onChange={(e) =>
                   setCorrectionFile(
-                    e.target.files?.[0] ?? null
+                    e.target.files?.[0] ??
+                      null
                   )
                 }
               />
+
             </label>
 
             {correctionFile && (
               <div className="mt-5 rounded-xl bg-green-50 p-4">
+
                 <p className="font-semibold text-green-700">
                   Selected File
                 </p>
@@ -637,6 +893,7 @@ export default function MarkClassworkPage() {
                 <p className="mt-2 text-slate-700">
                   {correctionFile.name}
                 </p>
+
               </div>
             )}
 
@@ -653,15 +910,18 @@ export default function MarkClassworkPage() {
                 View Existing Correction
               </a>
             )}
+
           </div>
 
-          {/* Publish */}
+          {/* PUBLISH */}
 
           <button
+            type="button"
             onClick={publishResult}
             disabled={publishing}
             className="mt-10 flex w-full items-center justify-center gap-3 rounded-xl bg-yellow-500 py-4 text-lg font-bold text-slate-900 transition hover:bg-yellow-400 disabled:cursor-not-allowed disabled:opacity-60"
           >
+
             {publishing ? (
               <>
                 <Loader2
@@ -678,9 +938,13 @@ export default function MarkClassworkPage() {
                 Publish Result To Student
               </>
             )}
+
           </button>
+
         </div>
+
       </div>
+
     </div>
   );
 }

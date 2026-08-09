@@ -39,6 +39,7 @@ type Submission = {
   subject: string | null;
   title: string | null;
   image_url: string | null;
+  text_answer: string | null;
   status: string | null;
   tutor_feedback: string | null;
   submitted_at: string | null;
@@ -51,6 +52,7 @@ type Submission = {
 };
 export default function ClassworkPage() {
   const [files, setFiles] = useState<File[]>([]);
+  const [textAnswer, setTextAnswer] = useState("");
   const [classwork, setClasswork] =
     useState<Classwork | null>(null);
   const [student, setStudent] =
@@ -283,6 +285,7 @@ async function loadSubmissions(
         subject,
         title,
         image_url,
+        text_answer,
         status,
         tutor_feedback,
         submitted_at,
@@ -317,180 +320,182 @@ async function loadSubmissions(
    * SUBMIT CLASSWORK
    */
   async function upload() {
-    if (files.length === 0) {
-      setError(
-        "Please select your classwork first."
-      );
-      return;
-    }
-
-    if (!classwork) {
-      setError(
-        "Classwork information is still loading. Please wait."
-      );
-      return;
-    }
-
-    if (!student) {
-      setError(
-        "Student profile could not be found."
-      );
-      return;
-    }
-
-    try {
-      setUploading(true);
-      setProgress(0);
-      setMessage("");
-      setError("");
-
-      /*
-       * GET AUTH USER
-       */
-      const {
-        data: { user },
-        error: authError,
-      } = await supabase.auth.getUser();
-
-      if (authError || !user) {
-        throw new Error(
-          "Your session has expired. Please log in again."
-        );
-      }
-
-      /*
-       * VERIFY STUDENT
-       */
-      if (student.auth_id !== user.id) {
-        throw new Error(
-          "Student account verification failed."
-        );
-      }
-
-      /*
-       * UPLOAD EACH FILE
-       */
-      for (
-        let i = 0;
-        i < files.length;
-        i++
-      ) {
-        const file = files[i];
-
-        const safeFileName =
-          file.name
-            .replace(
-              /[^a-zA-Z0-9._-]/g,
-              "_"
-            )
-            .replace(/\s+/g, "_");
-
-        const filePath =
-          `students/${student.id}/classwork/${classwork.id}/${crypto.randomUUID()}-${safeFileName}`;
-
-        /*
-         * UPLOAD TO STORAGE
-         */
-        const {
-          error: storageError,
-        } = await supabase.storage
-          .from(
-            "classwork-submissions"
-          )
-          .upload(
-            filePath,
-            file,
-            {
-              cacheControl: "3600",
-              upsert: false,
-              contentType:
-                file.type || undefined,
-            }
-          );
-
-        if (storageError) {
-          throw new Error(
-            `File upload failed: ${storageError.message}`
-          );
-        }
-
-        /*
-         * GET PUBLIC URL
-         */
-        const {
-          data: publicData,
-        } = supabase.storage
-          .from(
-            "classwork-submissions"
-          )
-          .getPublicUrl(filePath);
-
-        /*
-         * SAVE SUBMISSION
-         */
-        const {
-          error: dbError,
-        } = await supabase
-          .from(
-            "classwork_submissions"
-          )
-          .insert({
-            student_id: student.id,
-            student_email:
-              student.email ||
-              user.email ||
-              null,
-            classwork_id:
-              classwork.id,
-            title:
-              classwork.title,
-            status: "Submitted",
-            image_url:
-              publicData.publicUrl,
-          });
-
-        if (dbError) {
-          throw new Error(
-            `Submission could not be saved: ${dbError.message}`
-          );
-        }
-
-        setProgress(
-          Math.round(
-            ((i + 1) /
-              files.length) *
-              100
-          )
-        );
-      }
-
-    setFiles([]);
-setProgress(100);
-
-await loadSubmissions(
-  student.id,
-  classwork.id
-);
-
-setMessage(
-  "Your classwork has been submitted successfully."
-);
-    } catch (err) {
-      console.error(
-        "Classwork submission error:",
-        err
-      );
-
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Unable to submit classwork."
-      );
-    } finally {
-      setUploading(false);
-    }
+  if (files.length === 0 && !textAnswer.trim()) {
+    setError(
+      "Please upload a file or write your answer before submitting."
+    );
+    return;
   }
 
+  if (!classwork) {
+    setError(
+      "Classwork information is still loading. Please wait."
+    );
+    return;
+  }
+
+  if (!student) {
+    setError(
+      "Student profile could not be found."
+    );
+    return;
+  }
+
+  try {
+    setUploading(true);
+    setProgress(0);
+    setMessage("");
+    setError("");
+
+    /*
+     * GET AUTH USER
+     */
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      throw new Error(
+        "Your session has expired. Please log in again."
+      );
+    }
+
+    /*
+     * VERIFY STUDENT
+     */
+    if (student.auth_id !== user.id) {
+      throw new Error(
+        "Student account verification failed."
+      );
+    }
+
+    /*
+     * FILE URL
+     */
+    let uploadedFileUrl: string | null = null;
+
+    /*
+     * UPLOAD FILE IF PROVIDED
+     */
+    if (files.length > 0) {
+      const file = files[0];
+
+      const safeFileName = file.name
+        .replace(
+          /[^a-zA-Z0-9._-]/g,
+          "_"
+        )
+        .replace(/\s+/g, "_");
+
+      const filePath =
+        `students/${student.id}/classwork/${classwork.id}/${crypto.randomUUID()}-${safeFileName}`;
+
+      const {
+        error: storageError,
+      } = await supabase.storage
+        .from("classwork-submissions")
+        .upload(
+          filePath,
+          file,
+          {
+            cacheControl: "3600",
+            upsert: false,
+            contentType:
+              file.type || undefined,
+          }
+        );
+
+      if (storageError) {
+        throw new Error(
+          `File upload failed: ${storageError.message}`
+        );
+      }
+
+      /*
+       * GET PUBLIC URL
+       */
+      const {
+        data: publicData,
+      } = supabase.storage
+        .from("classwork-submissions")
+        .getPublicUrl(filePath);
+
+      uploadedFileUrl =
+        publicData.publicUrl;
+
+      setProgress(100);
+    }
+
+    /*
+     * SAVE SUBMISSION
+     *
+     * This can now contain:
+     * - file only
+     * - text only
+     * - file + text
+     */
+    const {
+      error: dbError,
+    } = await supabase
+      .from("classwork_submissions")
+      .insert({
+        student_id: student.id,
+        student_email:
+          student.email ||
+          user.email ||
+          null,
+        classwork_id:
+          classwork.id,
+        title:
+          classwork.title,
+        status: "Submitted",
+        image_url:
+          uploadedFileUrl,
+        text_answer:
+          textAnswer.trim() ||
+          null,
+      });
+
+    if (dbError) {
+      throw new Error(
+        `Submission could not be saved: ${dbError.message}`
+      );
+    }
+
+    /*
+     * RESET FORM
+     */
+    setFiles([]);
+    setTextAnswer("");
+    setProgress(100);
+
+    /*
+     * RELOAD SUBMISSION
+     */
+    await loadSubmissions(
+      student.id,
+      classwork.id
+    );
+
+    setMessage(
+      "Your classwork has been submitted successfully."
+    );
+  } catch (err) {
+    console.error(
+      "Classwork submission error:",
+      err
+    );
+
+    setError(
+      err instanceof Error
+        ? err.message
+        : "Unable to submit classwork."
+    );
+  } finally {
+    setUploading(false);
+  }
+}
   /*
    * LOADING
    */
@@ -741,6 +746,48 @@ const isPdf =
 
   </div>
 )}
+{/* =====================================
+    WRITE YOUR ANSWER
+====================================== */}
+
+<div className="mt-8 rounded-3xl bg-white p-8 shadow-sm">
+
+  <div className="flex items-center gap-3">
+
+    <FileText
+      size={32}
+      className="text-yellow-600"
+    />
+
+    <div>
+      <h2 className="text-2xl font-bold text-slate-900">
+        Write Your Answer
+      </h2>
+
+      <p className="mt-1 text-sm text-slate-500">
+        Type your answer below if this classwork
+        requires a written response.
+      </p>
+    </div>
+
+  </div>
+
+  <textarea
+    value={textAnswer}
+    onChange={(event) =>
+      setTextAnswer(event.target.value)
+    }
+    placeholder="Type your answer here..."
+    rows={10}
+    disabled={uploading}
+    className="mt-6 w-full rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 text-slate-900 outline-none transition focus:border-yellow-500 focus:ring-2 focus:ring-yellow-100 disabled:opacity-60"
+  />
+
+  <p className="mt-2 text-sm text-slate-400">
+    You may submit this answer without uploading a file.
+  </p>
+
+</div>
       {/* =====================================
           UPLOAD YOUR WORK
       ====================================== */}
@@ -894,10 +941,11 @@ const isPdf =
       <button
         type="button"
         onClick={upload}
-        disabled={
-          uploading ||
-          files.length === 0
-        }
+       disabled={
+  uploading ||
+  (files.length === 0 &&
+    !textAnswer.trim())
+}
         className="mt-10 inline-flex items-center gap-3 rounded-xl bg-slate-900 px-10 py-4 font-bold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
       >
 
