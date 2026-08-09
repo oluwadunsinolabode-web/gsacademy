@@ -13,6 +13,7 @@ import {
   Video,
 } from "lucide-react";
 import { useParams } from "next/navigation";
+import { supabase } from "@/lib/supabase";
 
 type Student = {
   id: string;
@@ -43,45 +44,48 @@ export default function StudentWorkspace() {
         setLoading(true);
         setError("");
 
+        if (!studentId) {
+          throw new Error("Student ID is missing.");
+        }
+
         /*
          * IMPORTANT:
-         * Use the same endpoint that already successfully
-         * loads the My Students list.
+         * We are no longer using /api/tutor/students.
+         *
+         * The My Students page already successfully reads
+         * students directly from Supabase, so the workspace
+         * will use the same method.
          */
-        const response = await fetch("/api/tutor/students", {
-          cache: "no-store",
-        });
 
-        const data = await response.json();
+        const { data, error: studentError } = await supabase
+          .from("students")
+          .select(`
+            id,
+            full_name,
+            email,
+            phone,
+            subjects,
+            package,
+            status,
+            tutor_id,
+            google_meet_link
+          `)
+          .eq("id", studentId)
+          .single();
 
-        if (!response.ok) {
+        if (studentError) {
+          console.error("Workspace student query error:", studentError);
+
           throw new Error(
-            data.error || "Unable to load students"
+            studentError.message || "Unable to load student."
           );
         }
 
-        const students: Student[] = data.students || [];
-
-        /*
-         * Find the student using the UUID from the URL.
-         */
-        const foundStudent = students.find(
-          (item) => String(item.id) === String(studentId)
-        );
-
-        if (!foundStudent) {
-          console.error("Workspace student ID:", studentId);
-          console.error(
-            "Students returned by API:",
-            students.map((item) => item.id)
-          );
-
-          throw new Error(
-            "This student could not be found in your assigned students."
-          );
+        if (!data) {
+          throw new Error("Student not found.");
         }
 
-        setStudent(foundStudent);
+        setStudent(data);
       } catch (err) {
         console.error(
           "Student workspace loading error:",
@@ -100,14 +104,15 @@ export default function StudentWorkspace() {
       }
     }
 
-    if (studentId) {
-      loadStudent();
-    }
+    loadStudent();
   }, [studentId]);
 
   /*
-   * Loading
+   * =========================
+   * LOADING
+   * =========================
    */
+
   if (loading) {
     return (
       <div className="mx-auto max-w-7xl">
@@ -121,12 +126,16 @@ export default function StudentWorkspace() {
   }
 
   /*
-   * Student not found
+   * =========================
+   * STUDENT NOT FOUND
+   * =========================
    */
+
   if (!student) {
     return (
       <div className="mx-auto max-w-7xl">
         <div className="rounded-3xl bg-white p-12 text-center shadow-sm">
+
           <User
             size={50}
             className="mx-auto text-slate-300"
@@ -146,10 +155,17 @@ export default function StudentWorkspace() {
           >
             Back to My Students
           </Link>
+
         </div>
       </div>
     );
   }
+
+  /*
+   * =========================
+   * STUDENT DATA
+   * =========================
+   */
 
   const subjects =
     student.subjects && student.subjects.length > 0
@@ -158,6 +174,12 @@ export default function StudentWorkspace() {
 
   const meetLink =
     student.google_meet_link?.trim() || "";
+
+  /*
+   * =========================
+   * WORKSPACE
+   * =========================
+   */
 
   return (
     <div className="mx-auto max-w-7xl">
@@ -169,6 +191,7 @@ export default function StudentWorkspace() {
       <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
 
         <div>
+
           <h1 className="text-4xl font-extrabold text-slate-900">
             {student.full_name || "Unnamed Student"}
           </h1>
@@ -180,6 +203,7 @@ export default function StudentWorkspace() {
               ? ` • ${student.package}`
               : ""}
           </p>
+
         </div>
 
         <span
@@ -189,10 +213,11 @@ export default function StudentWorkspace() {
               : "bg-slate-100 text-slate-600"
           }`}
         >
-          {student.status || "Unknown"} Student
+          {student.status || "Unknown"}
         </span>
 
       </div>
+
 
       {/* =========================
           START CLASS
@@ -207,9 +232,11 @@ export default function StudentWorkspace() {
             rel="noopener noreferrer"
             className="inline-flex items-center gap-3 rounded-xl bg-yellow-500 px-7 py-4 font-bold text-slate-900 transition hover:bg-yellow-400"
           >
+
             <Video size={22} />
 
             Start Class
+
           </a>
         ) : (
           <div className="rounded-2xl bg-slate-100 px-5 py-4 text-sm text-slate-500">
@@ -219,6 +246,7 @@ export default function StudentWorkspace() {
 
       </div>
 
+
       {/* =========================
           STATISTICS
       ========================== */}
@@ -226,6 +254,7 @@ export default function StudentWorkspace() {
       <div className="mt-10 grid gap-6 md:grid-cols-2 xl:grid-cols-4">
 
         <div className="rounded-3xl bg-white p-6 shadow-sm">
+
           <GraduationCap
             className="text-yellow-500"
             size={34}
@@ -238,9 +267,12 @@ export default function StudentWorkspace() {
           <h2 className="mt-2 text-3xl font-extrabold text-slate-900">
             --
           </h2>
+
         </div>
 
+
         <div className="rounded-3xl bg-white p-6 shadow-sm">
+
           <ClipboardCheck
             className="text-yellow-500"
             size={34}
@@ -253,9 +285,12 @@ export default function StudentWorkspace() {
           <h2 className="mt-2 text-3xl font-extrabold text-slate-900">
             0
           </h2>
+
         </div>
 
+
         <div className="rounded-3xl bg-white p-6 shadow-sm">
+
           <BookOpen
             className="text-yellow-500"
             size={34}
@@ -268,9 +303,12 @@ export default function StudentWorkspace() {
           <h2 className="mt-2 text-3xl font-extrabold text-slate-900">
             0
           </h2>
+
         </div>
 
+
         <div className="rounded-3xl bg-white p-6 shadow-sm">
+
           <TrendingUp
             className="text-yellow-500"
             size={34}
@@ -283,9 +321,11 @@ export default function StudentWorkspace() {
           <h2 className="mt-2 text-3xl font-extrabold text-slate-900">
             --
           </h2>
+
         </div>
 
       </div>
+
 
       {/* =========================
           ACTIONS
@@ -293,12 +333,11 @@ export default function StudentWorkspace() {
 
       <div className="mt-10 grid gap-8 md:grid-cols-2 lg:grid-cols-3">
 
-        {/* Classwork */}
-
         <Link
           href={`/tutor-dashboard/students/${student.id}/classwork`}
           className="rounded-3xl bg-white p-8 shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
         >
+
           <ClipboardCheck
             size={42}
             className="text-yellow-500"
@@ -311,14 +350,15 @@ export default function StudentWorkspace() {
           <p className="mt-3 text-slate-600">
             Review submissions, score work and send feedback.
           </p>
+
         </Link>
 
-        {/* Homework */}
 
         <Link
           href={`/tutor-dashboard/students/${student.id}/homework`}
           className="rounded-3xl bg-white p-8 shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
         >
+
           <BookOpen
             size={42}
             className="text-yellow-500"
@@ -331,14 +371,15 @@ export default function StudentWorkspace() {
           <p className="mt-3 text-slate-600">
             Assign homework and review completed work.
           </p>
+
         </Link>
 
-        {/* Resources */}
 
         <Link
           href={`/tutor-dashboard/students/${student.id}/resources`}
           className="rounded-3xl bg-white p-8 shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
         >
+
           <Upload
             size={42}
             className="text-yellow-500"
@@ -351,14 +392,15 @@ export default function StudentWorkspace() {
           <p className="mt-3 text-slate-600">
             Upload corrections, notes and extra learning materials.
           </p>
+
         </Link>
 
-        {/* Progress Report */}
 
         <Link
           href={`/tutor-dashboard/students/${student.id}/report`}
           className="rounded-3xl bg-white p-8 shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
         >
+
           <FileText
             size={42}
             className="text-yellow-500"
@@ -371,14 +413,15 @@ export default function StudentWorkspace() {
           <p className="mt-3 text-slate-600">
             View performance history and assessment records.
           </p>
+
         </Link>
 
-        {/* Profile */}
 
         <Link
           href={`/tutor-dashboard/students/${student.id}/profile`}
           className="rounded-3xl bg-white p-8 shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
         >
+
           <User
             size={42}
             className="text-yellow-500"
@@ -391,9 +434,11 @@ export default function StudentWorkspace() {
           <p className="mt-3 text-slate-600">
             Contact information, package and enrolled subjects.
           </p>
+
         </Link>
 
       </div>
+
 
       {/* =========================
           STUDENT INFORMATION
@@ -408,6 +453,7 @@ export default function StudentWorkspace() {
         <div className="mt-6 grid gap-5 md:grid-cols-2">
 
           <div className="rounded-2xl bg-slate-50 p-5">
+
             <p className="text-sm text-slate-500">
               Email
             </p>
@@ -415,9 +461,12 @@ export default function StudentWorkspace() {
             <p className="mt-1 font-semibold text-slate-900">
               {student.email || "No email"}
             </p>
+
           </div>
 
+
           <div className="rounded-2xl bg-slate-50 p-5">
+
             <p className="text-sm text-slate-500">
               Phone
             </p>
@@ -425,9 +474,12 @@ export default function StudentWorkspace() {
             <p className="mt-1 font-semibold text-slate-900">
               {student.phone || "No phone number"}
             </p>
+
           </div>
 
+
           <div className="rounded-2xl bg-slate-50 p-5">
+
             <p className="text-sm text-slate-500">
               Subjects
             </p>
@@ -435,9 +487,12 @@ export default function StudentWorkspace() {
             <p className="mt-1 font-semibold text-slate-900">
               {subjects}
             </p>
+
           </div>
 
+
           <div className="rounded-2xl bg-slate-50 p-5">
+
             <p className="text-sm text-slate-500">
               Package
             </p>
@@ -445,9 +500,12 @@ export default function StudentWorkspace() {
             <p className="mt-1 font-semibold text-slate-900">
               {student.package || "No package assigned"}
             </p>
+
           </div>
 
+
           <div className="rounded-2xl bg-slate-50 p-5">
+
             <p className="text-sm text-slate-500">
               Google Meet
             </p>
@@ -457,6 +515,7 @@ export default function StudentWorkspace() {
                 ? "Meeting link available"
                 : "No meeting link added"}
             </p>
+
           </div>
 
         </div>
