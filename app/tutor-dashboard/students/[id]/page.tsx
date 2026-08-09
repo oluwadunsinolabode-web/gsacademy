@@ -22,6 +22,7 @@ type Student = {
   package: string | null;
   status: string | null;
   tutor_id: string | null;
+  google_meet_link: string | null;
 };
 
 export default function StudentWorkspace() {
@@ -38,29 +39,29 @@ export default function StudentWorkspace() {
         setLoading(true);
         setError("");
 
-        const response = await fetch("/api/tutor/students");
-
-        if (!response.ok) {
-          throw new Error("Failed to load students");
-        }
+        const response = await fetch(
+          `/api/tutor/students/${studentId}`
+        );
 
         const data = await response.json();
 
-        const foundStudent = data.students?.find(
-          (item: Student) => item.id === studentId
-        );
-
-        if (!foundStudent) {
-          setError("Student not found or not assigned to you.");
-          setStudent(null);
-          return;
+        if (!response.ok) {
+          throw new Error(
+            data.error || "Failed to load student"
+          );
         }
 
-        setStudent(foundStudent);
+        setStudent(data.student);
       } catch (err) {
         console.error("Student loading error:", err);
-        setError("Unable to load student information.");
+
         setStudent(null);
+
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Unable to load student information."
+        );
       } finally {
         setLoading(false);
       }
@@ -83,10 +84,11 @@ export default function StudentWorkspace() {
     );
   }
 
-  if (error || !student) {
+  if (!student) {
     return (
       <div className="mx-auto max-w-7xl">
         <div className="rounded-3xl bg-white p-10 text-center shadow-sm">
+
           <User
             size={50}
             className="mx-auto text-slate-300"
@@ -106,6 +108,7 @@ export default function StudentWorkspace() {
           >
             Back to My Students
           </Link>
+
         </div>
       </div>
     );
@@ -114,6 +117,7 @@ export default function StudentWorkspace() {
   const subjects = student.subjects?.length
     ? student.subjects.join(" • ")
     : "No subjects assigned";
+    const meetLink = student.google_meet_link?.trim() || "";
 
   return (
     <div className="mx-auto max-w-7xl">
@@ -130,7 +134,9 @@ export default function StudentWorkspace() {
 
           <p className="mt-3 text-slate-600">
             {subjects}
-            {student.package ? ` • ${student.package}` : ""}
+            {student.package
+              ? ` • ${student.package}`
+              : ""}
           </p>
 
         </div>
@@ -146,7 +152,26 @@ export default function StudentWorkspace() {
         </span>
 
       </div>
+        {/* Start Class */}
 
+ <div className="mt-8 flex flex-wrap items-center gap-4">
+
+  {meetLink ? (
+    <a
+      href={meetLink}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="inline-flex items-center justify-center rounded-xl bg-yellow-500 px-7 py-4 font-bold text-slate-900 transition hover:bg-yellow-400"
+    >
+      Start Class
+    </a>
+  ) : (
+    <div className="rounded-2xl bg-slate-100 px-5 py-4 text-sm text-slate-500">
+      No Google Meet link added yet.
+    </div>
+  )}
+
+</div>
 
       {/* Statistics */}
 
@@ -226,7 +251,7 @@ export default function StudentWorkspace() {
       </div>
 
 
-      {/* Student Actions */}
+      {/* Actions */}
 
       <div className="mt-10 grid gap-8 md:grid-cols-2 lg:grid-cols-3">
 
@@ -322,7 +347,7 @@ export default function StudentWorkspace() {
         </Link>
 
 
-        {/* Student Profile */}
+        {/* Profile */}
 
         <Link
           href={`/tutor-dashboard/students/${student.id}/profile`}
