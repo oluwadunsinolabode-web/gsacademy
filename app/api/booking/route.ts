@@ -666,14 +666,51 @@ export async function POST(request: Request) {
     </div>
 
 
-    <!-- WHATSAPP -->
+ <!-- WHATSAPP -->
 
-    <div
-      style="
-        margin-top:30px;
-        text-align:center;
-      "
-    >
+<div
+  style="
+    margin-top:30px;
+    padding:24px;
+    background:#f8fafc;
+    border:1px solid #e5e7eb;
+    border-radius:10px;
+    text-align:center;
+  "
+>
+
+  <p
+    style="
+      margin:0 0 16px;
+      color:#475569;
+      line-height:1.7;
+      font-size:15px;
+    "
+  >
+    Have a question or need more information?
+    <br />
+    <strong style="color:#071b41;">
+      Click the button below to chat with us directly on WhatsApp.
+    </strong>
+  </p>
+
+  <a
+    href="https://wa.me/2347064586878"
+    target="_blank"
+    style="
+      display:inline-block;
+      background:#071b41;
+      color:#ffffff;
+      padding:14px 25px;
+      border-radius:7px;
+      text-decoration:none;
+      font-weight:bold;
+    "
+  >
+    Chat with GS Academy on WhatsApp
+  </a>
+
+</div>
 
       <a
         href="https://wa.me/2347064586878"
@@ -688,7 +725,7 @@ export async function POST(request: Request) {
           font-weight:bold;
         "
       >
-        Contact GS Academy on WhatsApp
+        Chat with GS Academy on WhatsApp
       </a>
 
     </div>
