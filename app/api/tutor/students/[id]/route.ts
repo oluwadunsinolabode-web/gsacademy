@@ -81,14 +81,22 @@ export async function GET(
       .eq("tutor_id", tutor.id)
       .single();
 
-    if (studentError || !student) {
-      console.error("Student lookup error:", studentError);
+   if (studentError || !student) {
+  console.error("Student lookup error:", {
+    error: studentError,
+    studentId: id,
+    tutorId: tutor.id,
+  });
 
-      return NextResponse.json(
-        { error: "Student not found or not assigned to you" },
-        { status: 404 }
-      );
-    }
+  return NextResponse.json(
+    {
+      error: studentError?.message || "Student not found",
+      studentId: id,
+      tutorId: tutor.id,
+    },
+    { status: 404 }
+  );
+}
 
     // 5. Return student
     return NextResponse.json({
