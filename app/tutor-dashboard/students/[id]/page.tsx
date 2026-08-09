@@ -10,6 +10,7 @@ import {
   GraduationCap,
   TrendingUp,
   Upload,
+  Video,
 } from "lucide-react";
 import { useParams } from "next/navigation";
 
@@ -27,7 +28,10 @@ type Student = {
 
 export default function StudentWorkspace() {
   const params = useParams();
-  const studentId = params.id as string;
+
+  const studentId = Array.isArray(params.id)
+    ? params.id[0]
+    : params.id;
 
   const [student, setStudent] = useState<Student | null>(null);
   const [loading, setLoading] = useState(true);
@@ -40,35 +44,49 @@ export default function StudentWorkspace() {
         setError("");
 
         /*
-         * Use the same API that already works on
-         * My Students page.
+         * IMPORTANT:
+         * Use the same endpoint that already successfully
+         * loads the My Students list.
          */
-        const response = await fetch(`/api/tutor/students/${studentId}`, {
-  cache: "no-store",
-});
+        const response = await fetch("/api/tutor/students", {
+          cache: "no-store",
+        });
 
         const data = await response.json();
 
         if (!response.ok) {
           throw new Error(
-            data.error || "Failed to load students"
+            data.error || "Unable to load students"
           );
         }
 
+        const students: Student[] = data.students || [];
+
         /*
-         * Find the student that was clicked.
+         * Find the student using the UUID from the URL.
          */
-       const selectedStudent = (data.students || []).find(
-  (item: Student) => item.id === studentId
-);
+        const foundStudent = students.find(
+          (item) => String(item.id) === String(studentId)
+        );
 
-if (!selectedStudent) {
-  throw new Error("Student not found");
-}
+        if (!foundStudent) {
+          console.error("Workspace student ID:", studentId);
+          console.error(
+            "Students returned by API:",
+            students.map((item) => item.id)
+          );
 
-setStudent(selectedStudent);
+          throw new Error(
+            "This student could not be found in your assigned students."
+          );
+        }
+
+        setStudent(foundStudent);
       } catch (err) {
-        console.error("Student workspace loading error:", err);
+        console.error(
+          "Student workspace loading error:",
+          err
+        );
 
         setStudent(null);
 
@@ -87,18 +105,24 @@ setStudent(selectedStudent);
     }
   }, [studentId]);
 
+  /*
+   * Loading
+   */
   if (loading) {
     return (
       <div className="mx-auto max-w-7xl">
         <div className="rounded-3xl bg-white p-12 text-center shadow-sm">
           <p className="text-slate-500">
-            Loading student information...
+            Loading student workspace...
           </p>
         </div>
       </div>
     );
   }
 
+  /*
+   * Student not found
+   */
   if (!student) {
     return (
       <div className="mx-auto max-w-7xl">
@@ -113,7 +137,7 @@ setStudent(selectedStudent);
           </h1>
 
           <p className="mt-3 text-slate-500">
-            {error || "This student could not be found."}
+            {error || "Unable to load this student."}
           </p>
 
           <Link
@@ -127,9 +151,10 @@ setStudent(selectedStudent);
     );
   }
 
-  const subjects = student.subjects?.length
-    ? student.subjects.join(" • ")
-    : "No subjects assigned";
+  const subjects =
+    student.subjects && student.subjects.length > 0
+      ? student.subjects.join(" • ")
+      : "No subjects assigned";
 
   const meetLink =
     student.google_meet_link?.trim() || "";
@@ -137,7 +162,9 @@ setStudent(selectedStudent);
   return (
     <div className="mx-auto max-w-7xl">
 
-      {/* Header */}
+      {/* =========================
+          HEADER
+      ========================== */}
 
       <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
 
@@ -148,6 +175,7 @@ setStudent(selectedStudent);
 
           <p className="mt-3 text-slate-600">
             {subjects}
+
             {student.package
               ? ` • ${student.package}`
               : ""}
@@ -166,8 +194,9 @@ setStudent(selectedStudent);
 
       </div>
 
-
-      {/* Start Class */}
+      {/* =========================
+          START CLASS
+      ========================== */}
 
       <div className="mt-8">
 
@@ -176,8 +205,10 @@ setStudent(selectedStudent);
             href={meetLink}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center justify-center rounded-xl bg-yellow-500 px-7 py-4 font-bold text-slate-900 transition hover:bg-yellow-400"
+            className="inline-flex items-center gap-3 rounded-xl bg-yellow-500 px-7 py-4 font-bold text-slate-900 transition hover:bg-yellow-400"
           >
+            <Video size={22} />
+
             Start Class
           </a>
         ) : (
@@ -188,13 +219,13 @@ setStudent(selectedStudent);
 
       </div>
 
-
-      {/* Statistics */}
+      {/* =========================
+          STATISTICS
+      ========================== */}
 
       <div className="mt-10 grid gap-6 md:grid-cols-2 xl:grid-cols-4">
 
         <div className="rounded-3xl bg-white p-6 shadow-sm">
-
           <GraduationCap
             className="text-yellow-500"
             size={34}
@@ -207,12 +238,9 @@ setStudent(selectedStudent);
           <h2 className="mt-2 text-3xl font-extrabold text-slate-900">
             --
           </h2>
-
         </div>
 
-
         <div className="rounded-3xl bg-white p-6 shadow-sm">
-
           <ClipboardCheck
             className="text-yellow-500"
             size={34}
@@ -225,12 +253,9 @@ setStudent(selectedStudent);
           <h2 className="mt-2 text-3xl font-extrabold text-slate-900">
             0
           </h2>
-
         </div>
 
-
         <div className="rounded-3xl bg-white p-6 shadow-sm">
-
           <BookOpen
             className="text-yellow-500"
             size={34}
@@ -243,12 +268,9 @@ setStudent(selectedStudent);
           <h2 className="mt-2 text-3xl font-extrabold text-slate-900">
             0
           </h2>
-
         </div>
 
-
         <div className="rounded-3xl bg-white p-6 shadow-sm">
-
           <TrendingUp
             className="text-yellow-500"
             size={34}
@@ -261,13 +283,13 @@ setStudent(selectedStudent);
           <h2 className="mt-2 text-3xl font-extrabold text-slate-900">
             --
           </h2>
-
         </div>
 
       </div>
 
-
-      {/* Actions */}
+      {/* =========================
+          ACTIONS
+      ========================== */}
 
       <div className="mt-10 grid gap-8 md:grid-cols-2 lg:grid-cols-3">
 
@@ -277,7 +299,6 @@ setStudent(selectedStudent);
           href={`/tutor-dashboard/students/${student.id}/classwork`}
           className="rounded-3xl bg-white p-8 shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
         >
-
           <ClipboardCheck
             size={42}
             className="text-yellow-500"
@@ -290,9 +311,7 @@ setStudent(selectedStudent);
           <p className="mt-3 text-slate-600">
             Review submissions, score work and send feedback.
           </p>
-
         </Link>
-
 
         {/* Homework */}
 
@@ -300,7 +319,6 @@ setStudent(selectedStudent);
           href={`/tutor-dashboard/students/${student.id}/homework`}
           className="rounded-3xl bg-white p-8 shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
         >
-
           <BookOpen
             size={42}
             className="text-yellow-500"
@@ -313,9 +331,7 @@ setStudent(selectedStudent);
           <p className="mt-3 text-slate-600">
             Assign homework and review completed work.
           </p>
-
         </Link>
-
 
         {/* Resources */}
 
@@ -323,7 +339,6 @@ setStudent(selectedStudent);
           href={`/tutor-dashboard/students/${student.id}/resources`}
           className="rounded-3xl bg-white p-8 shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
         >
-
           <Upload
             size={42}
             className="text-yellow-500"
@@ -336,9 +351,7 @@ setStudent(selectedStudent);
           <p className="mt-3 text-slate-600">
             Upload corrections, notes and extra learning materials.
           </p>
-
         </Link>
-
 
         {/* Progress Report */}
 
@@ -346,7 +359,6 @@ setStudent(selectedStudent);
           href={`/tutor-dashboard/students/${student.id}/report`}
           className="rounded-3xl bg-white p-8 shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
         >
-
           <FileText
             size={42}
             className="text-yellow-500"
@@ -359,9 +371,7 @@ setStudent(selectedStudent);
           <p className="mt-3 text-slate-600">
             View performance history and assessment records.
           </p>
-
         </Link>
-
 
         {/* Profile */}
 
@@ -369,7 +379,6 @@ setStudent(selectedStudent);
           href={`/tutor-dashboard/students/${student.id}/profile`}
           className="rounded-3xl bg-white p-8 shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
         >
-
           <User
             size={42}
             className="text-yellow-500"
@@ -382,13 +391,13 @@ setStudent(selectedStudent);
           <p className="mt-3 text-slate-600">
             Contact information, package and enrolled subjects.
           </p>
-
         </Link>
 
       </div>
 
-
-      {/* Student Information */}
+      {/* =========================
+          STUDENT INFORMATION
+      ========================== */}
 
       <div className="mt-10 rounded-3xl bg-white p-8 shadow-sm">
 
@@ -399,7 +408,6 @@ setStudent(selectedStudent);
         <div className="mt-6 grid gap-5 md:grid-cols-2">
 
           <div className="rounded-2xl bg-slate-50 p-5">
-
             <p className="text-sm text-slate-500">
               Email
             </p>
@@ -407,12 +415,9 @@ setStudent(selectedStudent);
             <p className="mt-1 font-semibold text-slate-900">
               {student.email || "No email"}
             </p>
-
           </div>
 
-
           <div className="rounded-2xl bg-slate-50 p-5">
-
             <p className="text-sm text-slate-500">
               Phone
             </p>
@@ -420,12 +425,9 @@ setStudent(selectedStudent);
             <p className="mt-1 font-semibold text-slate-900">
               {student.phone || "No phone number"}
             </p>
-
           </div>
 
-
           <div className="rounded-2xl bg-slate-50 p-5">
-
             <p className="text-sm text-slate-500">
               Subjects
             </p>
@@ -433,12 +435,9 @@ setStudent(selectedStudent);
             <p className="mt-1 font-semibold text-slate-900">
               {subjects}
             </p>
-
           </div>
 
-
           <div className="rounded-2xl bg-slate-50 p-5">
-
             <p className="text-sm text-slate-500">
               Package
             </p>
@@ -446,7 +445,18 @@ setStudent(selectedStudent);
             <p className="mt-1 font-semibold text-slate-900">
               {student.package || "No package assigned"}
             </p>
+          </div>
 
+          <div className="rounded-2xl bg-slate-50 p-5">
+            <p className="text-sm text-slate-500">
+              Google Meet
+            </p>
+
+            <p className="mt-1 font-semibold text-slate-900">
+              {meetLink
+                ? "Meeting link available"
+                : "No meeting link added"}
+            </p>
           </div>
 
         </div>
