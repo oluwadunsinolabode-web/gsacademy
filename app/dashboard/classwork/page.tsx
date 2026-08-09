@@ -9,6 +9,8 @@ import {
   X,
   CheckCircle,
   Loader2,
+  ExternalLink,
+  Download,
 } from "lucide-react";
 
 type Classwork = {
@@ -45,7 +47,7 @@ export default function ClassworkPage() {
   const [error, setError] = useState("");
 
   /*
-   * Load classwork and student
+   * LOAD CLASSWORK + STUDENT
    */
   useEffect(() => {
     async function loadClasswork() {
@@ -54,7 +56,7 @@ export default function ClassworkPage() {
         setError("");
 
         /*
-         * Get the logged-in student.
+         * GET LOGGED-IN USER
          */
         const {
           data: { user },
@@ -68,13 +70,7 @@ export default function ClassworkPage() {
         }
 
         /*
-         * Get the actual student record.
-         *
-         * IMPORTANT:
-         * user.id is the Supabase Auth ID.
-         * students.id is the student profile ID.
-         *
-         * We use auth_id to find the correct student.
+         * GET STUDENT PROFILE
          */
         const {
           data: studentData,
@@ -102,11 +98,7 @@ export default function ClassworkPage() {
         setStudent(studentData);
 
         /*
-         * Get classwork ID from URL.
-         *
-         * Example:
-         *
-         * /dashboard/classwork?id=CLASSWORK_ID
+         * GET CLASSWORK ID FROM URL
          */
         const params = new URLSearchParams(
           window.location.search
@@ -121,7 +113,9 @@ export default function ClassworkPage() {
         }
 
         /*
-         * Get the classwork.
+         * GET CLASSWORK
+         *
+         * attachment_url is included here.
          */
         const {
           data: classworkData,
@@ -154,6 +148,16 @@ export default function ClassworkPage() {
           );
         }
 
+        console.log(
+          "CLASSWORK:",
+          classworkData
+        );
+
+        console.log(
+          "TUTOR ATTACHMENT:",
+          classworkData.attachment_url
+        );
+
         setClasswork(classworkData);
       } catch (err) {
         console.error(
@@ -175,7 +179,7 @@ export default function ClassworkPage() {
   }, []);
 
   /*
-   * File previews
+   * FILE PREVIEWS
    */
   const previews = useMemo(
     () =>
@@ -189,7 +193,7 @@ export default function ClassworkPage() {
   );
 
   /*
-   * Clean up preview URLs
+   * CLEAN PREVIEW URLS
    */
   useEffect(() => {
     return () => {
@@ -204,7 +208,7 @@ export default function ClassworkPage() {
   }, [previews]);
 
   /*
-   * Add files
+   * ADD FILES
    */
   const addFiles = (
     list: FileList | null
@@ -224,7 +228,7 @@ export default function ClassworkPage() {
   };
 
   /*
-   * Remove file
+   * REMOVE FILE
    */
   const removeFile = (index: number) => {
     setFiles((previous) =>
@@ -235,7 +239,7 @@ export default function ClassworkPage() {
   };
 
   /*
-   * Submit classwork
+   * SUBMIT CLASSWORK
    */
   async function upload() {
     if (files.length === 0) {
@@ -266,7 +270,7 @@ export default function ClassworkPage() {
       setError("");
 
       /*
-       * Get logged-in auth user.
+       * GET AUTH USER
        */
       const {
         data: { user },
@@ -280,8 +284,7 @@ export default function ClassworkPage() {
       }
 
       /*
-       * Make sure the student record belongs
-       * to the logged-in user.
+       * VERIFY STUDENT
        */
       if (student.auth_id !== user.id) {
         throw new Error(
@@ -290,7 +293,7 @@ export default function ClassworkPage() {
       }
 
       /*
-       * Upload each selected file.
+       * UPLOAD EACH FILE
        */
       for (
         let i = 0;
@@ -299,9 +302,6 @@ export default function ClassworkPage() {
       ) {
         const file = files[i];
 
-        /*
-         * Make filename safe.
-         */
         const safeFileName =
           file.name
             .replace(
@@ -310,15 +310,11 @@ export default function ClassworkPage() {
             )
             .replace(/\s+/g, "_");
 
-        /*
-         * Store files using the student's
-         * profile ID and classwork ID.
-         */
         const filePath =
           `students/${student.id}/classwork/${classwork.id}/${crypto.randomUUID()}-${safeFileName}`;
 
         /*
-         * Upload file.
+         * UPLOAD TO STORAGE
          */
         const {
           error: storageError,
@@ -344,7 +340,7 @@ export default function ClassworkPage() {
         }
 
         /*
-         * Get public URL.
+         * GET PUBLIC URL
          */
         const {
           data: publicData,
@@ -355,13 +351,7 @@ export default function ClassworkPage() {
           .getPublicUrl(filePath);
 
         /*
-         * IMPORTANT:
-         *
-         * student_id = students.id
-         *
-         * NOT user.id.
-         *
-         * classwork_id = classworks.id
+         * SAVE SUBMISSION
          */
         const {
           error: dbError,
@@ -390,9 +380,6 @@ export default function ClassworkPage() {
           );
         }
 
-        /*
-         * Update progress.
-         */
         setProgress(
           Math.round(
             ((i + 1) /
@@ -402,9 +389,6 @@ export default function ClassworkPage() {
         );
       }
 
-      /*
-       * Finished successfully.
-       */
       setFiles([]);
       setProgress(100);
 
@@ -428,7 +412,7 @@ export default function ClassworkPage() {
   }
 
   /*
-   * Loading
+   * LOADING
    */
   if (loading) {
     return (
@@ -448,7 +432,7 @@ export default function ClassworkPage() {
   }
 
   /*
-   * Error loading classwork
+   * CLASSWORK NOT FOUND
    */
   if (!classwork) {
     return (
@@ -472,9 +456,22 @@ export default function ClassworkPage() {
     );
   }
 
+  /*
+   * CHECK ATTACHMENT TYPE
+   */
+  const attachmentUrl =
+    classwork.attachment_url;
+
+  const isImage =
+    attachmentUrl &&
+    /\.(jpg|jpeg|png|gif|webp)$/i.test(
+      attachmentUrl
+    );
+
   return (
-    <div className="mx-auto max-w-6xl">
-      {/* Header */}
+    <div className="mx-auto max-w-6xl pb-10">
+
+      {/* HEADER */}
 
       <h1 className="text-4xl font-extrabold text-slate-900">
         Submit Classwork
@@ -485,10 +482,12 @@ export default function ClassworkPage() {
         taking a picture or selecting a file.
       </p>
 
-      {/* Class Information */}
+      {/* CLASS INFORMATION */}
 
       <div className="mt-8 rounded-3xl bg-white p-6 shadow-sm">
+
         <div className="flex flex-wrap items-center gap-3">
+
           <span className="rounded-full bg-yellow-100 px-4 py-2 text-sm font-bold text-yellow-700">
             {classwork.subject}
           </span>
@@ -496,6 +495,7 @@ export default function ClassworkPage() {
           <span className="rounded-full bg-green-100 px-4 py-2 text-sm font-bold text-green-700">
             {classwork.status}
           </span>
+
         </div>
 
         <p className="mt-5 font-semibold text-yellow-600">
@@ -522,7 +522,110 @@ export default function ClassworkPage() {
         )}
       </div>
 
-      {/* Error */}
+      {/* =====================================
+          TUTOR ATTACHMENT
+      ====================================== */}
+
+      {attachmentUrl ? (
+        <div className="mt-8 rounded-3xl bg-white p-6 shadow-sm">
+
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+
+            <div className="flex items-center gap-3">
+
+              <FileText
+                size={30}
+                className="text-yellow-600"
+              />
+
+              <div>
+                <h2 className="text-2xl font-bold text-slate-900">
+                  Classwork File
+                </h2>
+
+                <p className="mt-1 text-sm text-slate-500">
+                  File uploaded by your tutor.
+                </p>
+              </div>
+
+            </div>
+
+            <div className="flex flex-wrap gap-3">
+
+              <a
+                href={attachmentUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-3 font-bold text-white transition hover:bg-slate-800"
+              >
+                <ExternalLink size={18} />
+                Open File
+              </a>
+
+              <a
+                href={attachmentUrl}
+                download
+                className="inline-flex items-center gap-2 rounded-xl bg-yellow-500 px-5 py-3 font-bold text-slate-900 transition hover:bg-yellow-400"
+              >
+                <Download size={18} />
+                Download
+              </a>
+
+            </div>
+
+          </div>
+
+          {/* IMAGE PREVIEW */}
+
+          {isImage ? (
+            <div className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-3">
+
+              <img
+                src={attachmentUrl}
+                alt="Classwork uploaded by tutor"
+                className="max-h-[700px] w-full rounded-xl object-contain"
+              />
+
+            </div>
+          ) : (
+            <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-8 text-center">
+
+              <FileText
+                size={60}
+                className="mx-auto text-slate-400"
+              />
+
+              <p className="mt-4 font-semibold text-slate-800">
+                Your tutor has uploaded a
+                classwork file.
+              </p>
+
+              <p className="mt-2 text-sm text-slate-500">
+                Click "Open File" to view the
+                document.
+              </p>
+
+            </div>
+          )}
+
+        </div>
+      ) : (
+        <div className="mt-8 rounded-3xl bg-slate-50 p-6 text-center">
+
+          <FileText
+            size={40}
+            className="mx-auto text-slate-300"
+          />
+
+          <p className="mt-3 font-semibold text-slate-600">
+            No file was attached to this
+            classwork.
+          </p>
+
+        </div>
+      )}
+
+      {/* ERROR */}
 
       {error && (
         <div className="mt-6 rounded-2xl bg-red-50 p-5 font-semibold text-red-700">
@@ -530,10 +633,11 @@ export default function ClassworkPage() {
         </div>
       )}
 
-      {/* Success */}
+      {/* SUCCESS */}
 
       {message && (
         <div className="mt-6 flex items-center gap-3 rounded-2xl bg-green-50 p-5 shadow-sm">
+
           <CheckCircle
             className="shrink-0 text-green-600"
             size={25}
@@ -542,10 +646,13 @@ export default function ClassworkPage() {
           <p className="font-semibold text-green-700">
             {message}
           </p>
+
         </div>
       )}
 
-      {/* Upload Box */}
+      {/* =====================================
+          UPLOAD YOUR WORK
+      ====================================== */}
 
       <div
         onDragOver={(event) =>
@@ -560,6 +667,7 @@ export default function ClassworkPage() {
         }}
         className="mt-8 rounded-3xl border-2 border-dashed border-yellow-500 bg-white p-10 text-center"
       >
+
         <Upload
           size={45}
           className="mx-auto text-yellow-600"
@@ -575,6 +683,7 @@ export default function ClassworkPage() {
         </p>
 
         <label className="mt-6 inline-flex cursor-pointer items-center gap-2 rounded-xl bg-yellow-500 px-8 py-4 font-bold text-slate-900 hover:bg-yellow-400">
+
           <Camera size={22} />
 
           Take Photo / Choose File
@@ -591,28 +700,36 @@ export default function ClassworkPage() {
               )
             }
           />
+
         </label>
 
         <p className="mt-4 text-sm text-slate-700">
           Supported files: JPG, PNG and PDF
         </p>
+
       </div>
 
-      {/* Preview */}
+      {/* =====================================
+          SELECTED FILES
+      ====================================== */}
 
       {files.length > 0 && (
         <div className="mt-10">
+
           <h2 className="text-2xl font-bold text-slate-900">
             Selected Files
           </h2>
 
           <div className="mt-5 grid gap-6 md:grid-cols-3">
+
             {previews.map(
               (item, index) => (
+
                 <div
                   key={index}
                   className="rounded-2xl bg-white p-5 shadow"
                 >
+
                   {item.url ? (
                     <img
                       src={item.url}
@@ -641,36 +758,47 @@ export default function ClassworkPage() {
                     className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 py-2 font-semibold text-white hover:bg-red-700 disabled:opacity-50"
                   >
                     <X size={18} />
-
                     Remove
                   </button>
+
                 </div>
+
               )
             )}
+
           </div>
+
         </div>
       )}
 
-      {/* Progress */}
+      {/* =====================================
+          PROGRESS
+      ====================================== */}
 
       {uploading && (
         <div className="mt-10">
+
           <div className="h-4 overflow-hidden rounded-full bg-slate-200">
+
             <div
               className="h-4 rounded-full bg-yellow-500 transition-all"
               style={{
                 width: `${progress}%`,
               }}
             />
+
           </div>
 
           <p className="mt-3 font-semibold text-slate-800">
             Uploading {progress}%
           </p>
+
         </div>
       )}
 
-      {/* Submit */}
+      {/* =====================================
+          SUBMIT
+      ====================================== */}
 
       <button
         type="button"
@@ -681,6 +809,7 @@ export default function ClassworkPage() {
         }
         className="mt-10 inline-flex items-center gap-3 rounded-xl bg-slate-900 px-10 py-4 font-bold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
       >
+
         {uploading && (
           <Loader2
             size={20}
@@ -691,7 +820,9 @@ export default function ClassworkPage() {
         {uploading
           ? "Submitting..."
           : "Submit Classwork"}
+
       </button>
+
     </div>
   );
 }
