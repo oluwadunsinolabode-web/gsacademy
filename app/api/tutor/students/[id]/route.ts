@@ -8,7 +8,7 @@ export async function GET(
   try {
     const supabase = await createClient();
 
-    // 1. Get currently logged-in user
+    // 1. Get logged-in tutor
     const {
       data: { user },
       error: userError,
@@ -31,26 +31,27 @@ export async function GET(
       );
     }
 
-    // 3. Find the tutor belonging to the logged-in user
+    // 3. Get tutor record using the authenticated user's email
+    // This avoids the current auth_id lookup problem.
     const { data: tutor, error: tutorError } = await supabase
       .from("tutors")
       .select("id, full_name, email, status")
-      .eq("auth_id", user.id)
+      .eq("email", user.email)
       .single();
 
     if (tutorError || !tutor) {
       console.error("Tutor lookup error:", tutorError);
 
       return NextResponse.json(
-        { error: "Tutor profile not found" },
+        {
+          error: "Tutor profile not found",
+          authEmail: user.email,
+        },
         { status: 404 }
       );
     }
 
-    // 4. Get the student
-    // IMPORTANT:
-    // We check tutor_id as well so a tutor cannot open
-    // another tutor's student.
+    // 4. Get the actual student using the UUID
     const { data: student, error: studentError } = await supabase
       .from("students")
       .select(
@@ -78,27 +79,34 @@ export async function GET(
         `
       )
       .eq("id", id)
-      .eq("tutor_id", tutor.id)
       .single();
 
-   if (studentError || !student) {
-  console.error("Student lookup error:", {
-    error: studentError,
-    studentId: id,
-    tutorId: tutor.id,
-  });
+    if (studentError || !student) {
+      console.error("Student lookup error:", {
+        error: studentError,
+        studentId: id,
+      });
 
-  return NextResponse.json(
-    {
-      error: studentError?.message || "Student not found",
-      studentId: id,
-      tutorId: tutor.id,
-    },
-    { status: 404 }
-  );
-}
+      return NextResponse.json(
+        {
+          error: "Student not found",
+          studentId: id,
+        },
+        { status: 404 }
+      );
+    }
 
-    // 5. Return student
+    // 5. Make sure this student belongs to this tutor
+    if (student.tutor_id !== tutor.id) {
+      return NextResponse.json(
+        {
+          error: "This student is not assigned to you",
+        },
+        { status: 403 }
+      );
+    }
+
+    // 6. Return student
     return NextResponse.json({
       student,
     });
