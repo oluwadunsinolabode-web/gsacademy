@@ -39,21 +39,36 @@ export default function StudentWorkspace() {
         setLoading(true);
         setError("");
 
-        const response = await fetch(
-          `/api/tutor/students/${studentId}`
-        );
+        /*
+         * Use the same API that already works on
+         * My Students page.
+         */
+        const response = await fetch("/api/tutor/students", {
+          cache: "no-store",
+        });
 
         const data = await response.json();
 
         if (!response.ok) {
           throw new Error(
-            data.error || "Failed to load student"
+            data.error || "Failed to load students"
           );
         }
 
-        setStudent(data.student);
+        /*
+         * Find the student that was clicked.
+         */
+        const selectedStudent = (data.students || []).find(
+          (item: Student) => item.id === studentId
+        );
+
+        if (!selectedStudent) {
+          throw new Error("Student not found");
+        }
+
+        setStudent(selectedStudent);
       } catch (err) {
-        console.error("Student loading error:", err);
+        console.error("Student workspace loading error:", err);
 
         setStudent(null);
 
@@ -75,7 +90,7 @@ export default function StudentWorkspace() {
   if (loading) {
     return (
       <div className="mx-auto max-w-7xl">
-        <div className="rounded-3xl bg-white p-10 text-center shadow-sm">
+        <div className="rounded-3xl bg-white p-12 text-center shadow-sm">
           <p className="text-slate-500">
             Loading student information...
           </p>
@@ -87,8 +102,7 @@ export default function StudentWorkspace() {
   if (!student) {
     return (
       <div className="mx-auto max-w-7xl">
-        <div className="rounded-3xl bg-white p-10 text-center shadow-sm">
-
+        <div className="rounded-3xl bg-white p-12 text-center shadow-sm">
           <User
             size={50}
             className="mx-auto text-slate-300"
@@ -108,7 +122,6 @@ export default function StudentWorkspace() {
           >
             Back to My Students
           </Link>
-
         </div>
       </div>
     );
@@ -117,7 +130,9 @@ export default function StudentWorkspace() {
   const subjects = student.subjects?.length
     ? student.subjects.join(" • ")
     : "No subjects assigned";
-    const meetLink = student.google_meet_link?.trim() || "";
+
+  const meetLink =
+    student.google_meet_link?.trim() || "";
 
   return (
     <div className="mx-auto max-w-7xl">
@@ -127,7 +142,6 @@ export default function StudentWorkspace() {
       <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
 
         <div>
-
           <h1 className="text-4xl font-extrabold text-slate-900">
             {student.full_name || "Unnamed Student"}
           </h1>
@@ -138,7 +152,6 @@ export default function StudentWorkspace() {
               ? ` • ${student.package}`
               : ""}
           </p>
-
         </div>
 
         <span
@@ -152,26 +165,29 @@ export default function StudentWorkspace() {
         </span>
 
       </div>
-        {/* Start Class */}
 
- <div className="mt-8 flex flex-wrap items-center gap-4">
 
-  {meetLink ? (
-    <a
-      href={meetLink}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="inline-flex items-center justify-center rounded-xl bg-yellow-500 px-7 py-4 font-bold text-slate-900 transition hover:bg-yellow-400"
-    >
-      Start Class
-    </a>
-  ) : (
-    <div className="rounded-2xl bg-slate-100 px-5 py-4 text-sm text-slate-500">
-      No Google Meet link added yet.
-    </div>
-  )}
+      {/* Start Class */}
 
-</div>
+      <div className="mt-8">
+
+        {meetLink ? (
+          <a
+            href={meetLink}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center justify-center rounded-xl bg-yellow-500 px-7 py-4 font-bold text-slate-900 transition hover:bg-yellow-400"
+          >
+            Start Class
+          </a>
+        ) : (
+          <div className="rounded-2xl bg-slate-100 px-5 py-4 text-sm text-slate-500">
+            No Google Meet link has been added for this student yet.
+          </div>
+        )}
+
+      </div>
+
 
       {/* Statistics */}
 
