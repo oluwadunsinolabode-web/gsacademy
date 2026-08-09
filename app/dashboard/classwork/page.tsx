@@ -31,7 +31,24 @@ type Student = {
   full_name: string | null;
   email: string | null;
 };
-
+type Submission = {
+  id: string;
+  classwork_id: string | null;
+  student_id: string | null;
+  student_email: string | null;
+  subject: string | null;
+  title: string | null;
+  image_url: string | null;
+  status: string | null;
+  tutor_feedback: string | null;
+  submitted_at: string | null;
+  score: number | null;
+  total_marks: number | null;
+  percentage: number | null;
+  grade: string | null;
+  teacher_feedback: string | null;
+  correction_file_url: string | null;
+};
 export default function ClassworkPage() {
   const [files, setFiles] = useState<File[]>([]);
   const [classwork, setClasswork] =
@@ -41,6 +58,11 @@ export default function ClassworkPage() {
 
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [submissions, setSubmissions] =
+  useState<Submission[]>([]);
+
+const [loadingSubmissions, setLoadingSubmissions] =
+  useState(false);
 
   const [progress, setProgress] = useState(0);
   const [message, setMessage] = useState("");
@@ -159,6 +181,10 @@ export default function ClassworkPage() {
         );
 
         setClasswork(classworkData);
+        await loadSubmissions(
+  studentData.id,
+  classworkData.id
+);
       } catch (err) {
         console.error(
           "Classwork loading error:",
@@ -237,7 +263,56 @@ export default function ClassworkPage() {
       )
     );
   };
+async function loadSubmissions(
+  studentId: string,
+  classworkId: string
+) {
+  try {
+    setLoadingSubmissions(true);
 
+    const {
+      data,
+      error: submissionError,
+    } = await supabase
+      .from("classwork_submissions")
+      .select(`
+        id,
+        classwork_id,
+        student_id,
+        student_email,
+        subject,
+        title,
+        image_url,
+        status,
+        tutor_feedback,
+        submitted_at,
+        score,
+        total_marks,
+        percentage,
+        grade,
+        teacher_feedback,
+        correction_file_url
+      `)
+      .eq("student_id", studentId)
+      .eq("classwork_id", classworkId)
+      .order("submitted_at", {
+        ascending: false,
+      });
+
+    if (submissionError) {
+      throw submissionError;
+    }
+
+    setSubmissions(data || []);
+  } catch (err) {
+    console.error(
+      "Submission loading error:",
+      err
+    );
+  } finally {
+    setLoadingSubmissions(false);
+  }
+}
   /*
    * SUBMIT CLASSWORK
    */
@@ -389,12 +464,17 @@ export default function ClassworkPage() {
         );
       }
 
-      setFiles([]);
-      setProgress(100);
+    setFiles([]);
+setProgress(100);
 
-      setMessage(
-        "Your classwork has been submitted successfully."
-      );
+await loadSubmissions(
+  student.id,
+  classwork.id
+);
+
+setMessage(
+  "Your classwork has been submitted successfully."
+);
     } catch (err) {
       console.error(
         "Classwork submission error:",
@@ -459,14 +539,19 @@ export default function ClassworkPage() {
   /*
    * CHECK ATTACHMENT TYPE
    */
-  const attachmentUrl =
-    classwork.attachment_url;
+  const attachmentUrl = classwork.attachment_url;
 
-  const isImage =
-    attachmentUrl &&
-    /\.(jpg|jpeg|png|gif|webp)$/i.test(
-      attachmentUrl
-    );
+const isImage =
+  !!attachmentUrl &&
+  /\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i.test(
+    attachmentUrl
+  );
+
+const isPdf =
+  !!attachmentUrl &&
+  /\.pdf(\?.*)?$/i.test(
+    attachmentUrl
+  );
 
   return (
     <div className="mx-auto max-w-6xl pb-10">
@@ -522,134 +607,140 @@ export default function ClassworkPage() {
         )}
       </div>
 
-      {/* =====================================
-          TUTOR ATTACHMENT
-      ====================================== */}
+     {/* =====================================
+    TUTOR ATTACHMENT
+====================================== */}
 
-      {attachmentUrl ? (
-        <div className="mt-8 rounded-3xl bg-white p-6 shadow-sm">
+{attachmentUrl ? (
+  <div className="mt-8 rounded-3xl bg-white p-6 shadow-sm">
 
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    {/* HEADER */}
 
-            <div className="flex items-center gap-3">
+    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 
-              <FileText
-                size={30}
-                className="text-yellow-600"
-              />
+      <div className="flex items-center gap-3">
 
-              <div>
-                <h2 className="text-2xl font-bold text-slate-900">
-                  Classwork File
-                </h2>
+        <FileText
+          size={30}
+          className="text-yellow-600"
+        />
 
-                <p className="mt-1 text-sm text-slate-500">
-                  File uploaded by your tutor.
-                </p>
-              </div>
+        <div>
+          <h2 className="text-2xl font-bold text-slate-900">
+            Classwork File
+          </h2>
 
-            </div>
-
-            <div className="flex flex-wrap gap-3">
-
-              <a
-                href={attachmentUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-3 font-bold text-white transition hover:bg-slate-800"
-              >
-                <ExternalLink size={18} />
-                Open File
-              </a>
-
-              <a
-                href={attachmentUrl}
-                download
-                className="inline-flex items-center gap-2 rounded-xl bg-yellow-500 px-5 py-3 font-bold text-slate-900 transition hover:bg-yellow-400"
-              >
-                <Download size={18} />
-                Download
-              </a>
-
-            </div>
-
-          </div>
-
-          {/* IMAGE PREVIEW */}
-
-          {isImage ? (
-            <div className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-3">
-
-              <img
-                src={attachmentUrl}
-                alt="Classwork uploaded by tutor"
-                className="max-h-[700px] w-full rounded-xl object-contain"
-              />
-
-            </div>
-          ) : (
-            <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-8 text-center">
-
-              <FileText
-                size={60}
-                className="mx-auto text-slate-400"
-              />
-
-              <p className="mt-4 font-semibold text-slate-800">
-                Your tutor has uploaded a
-                classwork file.
-              </p>
-
-              <p className="mt-2 text-sm text-slate-500">
-                Click "Open File" to view the
-                document.
-              </p>
-
-            </div>
-          )}
-
-        </div>
-      ) : (
-        <div className="mt-8 rounded-3xl bg-slate-50 p-6 text-center">
-
-          <FileText
-            size={40}
-            className="mx-auto text-slate-300"
-          />
-
-          <p className="mt-3 font-semibold text-slate-600">
-            No file was attached to this
-            classwork.
+          <p className="mt-1 text-sm text-slate-500">
+            File uploaded by your tutor.
           </p>
-
         </div>
-      )}
 
-      {/* ERROR */}
+      </div>
 
-      {error && (
-        <div className="mt-6 rounded-2xl bg-red-50 p-5 font-semibold text-red-700">
-          {error}
-        </div>
-      )}
+      {/* ACTION BUTTONS */}
 
-      {/* SUCCESS */}
+      <div className="flex flex-wrap gap-3">
 
-      {message && (
-        <div className="mt-6 flex items-center gap-3 rounded-2xl bg-green-50 p-5 shadow-sm">
+        {/* VIEW */}
 
-          <CheckCircle
-            className="shrink-0 text-green-600"
-            size={25}
-          />
+        <a
+          href={attachmentUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-3 font-bold text-white transition hover:bg-slate-800"
+        >
+          <ExternalLink size={18} />
+          View File
+        </a>
 
-          <p className="font-semibold text-green-700">
-            {message}
-          </p>
+        {/* DOWNLOAD */}
 
-        </div>
-      )}
+        <a
+          href={attachmentUrl}
+          download
+          className="inline-flex items-center gap-2 rounded-xl bg-yellow-500 px-5 py-3 font-bold text-slate-900 transition hover:bg-yellow-400"
+        >
+          <Download size={18} />
+          Download
+        </a>
 
+      </div>
+
+    </div>
+
+    {/* =====================================
+        IMAGE VIEWER
+    ====================================== */}
+
+    {isImage && (
+      <div className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-4">
+
+        <img
+          src={attachmentUrl}
+          alt="Classwork uploaded by tutor"
+          className="mx-auto max-h-[750px] w-auto max-w-full rounded-xl object-contain"
+        />
+
+      </div>
+    )}
+
+    {/* =====================================
+        PDF VIEWER
+    ====================================== */}
+
+    {isPdf && (
+      <div className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-slate-100">
+
+        <iframe
+          src={attachmentUrl}
+          title="Tutor's classwork PDF"
+          className="h-[750px] w-full"
+        />
+
+      </div>
+    )}
+
+    {/* =====================================
+        UNKNOWN FILE TYPE
+    ====================================== */}
+
+    {!isImage && !isPdf && (
+      <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-8 text-center">
+
+        <FileText
+          size={60}
+          className="mx-auto text-slate-400"
+        />
+
+        <p className="mt-4 font-semibold text-slate-800">
+          Your tutor has uploaded a
+          classwork file.
+        </p>
+
+        <p className="mt-2 text-sm text-slate-500">
+          Use "View File" to open it or
+          "Download" to save it.
+        </p>
+
+      </div>
+    )}
+
+  </div>
+) : (
+  <div className="mt-8 rounded-3xl bg-slate-50 p-6 text-center">
+
+    <FileText
+      size={40}
+      className="mx-auto text-slate-300"
+    />
+
+    <p className="mt-3 font-semibold text-slate-600">
+      No file was attached to this
+      classwork.
+    </p>
+
+  </div>
+)}
       {/* =====================================
           UPLOAD YOUR WORK
       ====================================== */}
@@ -822,6 +913,242 @@ export default function ClassworkPage() {
           : "Submit Classwork"}
 
       </button>
+      {/* =====================================
+    MY SUBMITTED WORK
+====================================== */}
+
+<div className="mt-12 rounded-3xl bg-white p-6 shadow-sm">
+
+  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+
+    <div>
+      <h2 className="text-2xl font-bold text-slate-900">
+        My Submitted Work
+      </h2>
+
+      <p className="mt-1 text-sm text-slate-500">
+        Your handwritten solution for this classwork.
+      </p>
+    </div>
+
+    {submissions.length > 0 && (
+      <span className="w-fit rounded-full bg-green-100 px-4 py-2 text-sm font-bold text-green-700">
+        Submitted
+      </span>
+    )}
+
+  </div>
+
+  {/* LOADING */}
+
+  {loadingSubmissions && (
+    <div className="mt-6 flex items-center gap-3 text-slate-600">
+
+      <Loader2
+        size={20}
+        className="animate-spin"
+      />
+
+      <span>
+        Loading your submitted work...
+      </span>
+
+    </div>
+  )}
+
+  {/* NO SUBMISSION */}
+
+  {!loadingSubmissions &&
+    submissions.length === 0 && (
+      <div className="mt-6 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center">
+
+        <FileText
+          size={50}
+          className="mx-auto text-slate-300"
+        />
+
+        <p className="mt-4 font-semibold text-slate-700">
+          You have not submitted this classwork yet.
+        </p>
+
+        <p className="mt-2 text-sm text-slate-500">
+          Your handwritten solution will appear here after you submit it.
+        </p>
+
+      </div>
+    )}
+
+  {/* SUBMITTED WORK */}
+
+  {!loadingSubmissions &&
+    submissions.length > 0 && (
+
+      <div className="mt-6 space-y-6">
+
+        {submissions.map((submission) => {
+
+          const submissionUrl =
+            submission.image_url;
+
+          const isImage =
+            !!submissionUrl &&
+            /\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i.test(
+              submissionUrl
+            );
+
+          const isPdf =
+            !!submissionUrl &&
+            /\.pdf(\?.*)?$/i.test(
+              submissionUrl
+            );
+
+          return (
+            <div
+              key={submission.id}
+              className="rounded-2xl border border-slate-200 bg-slate-50 p-5"
+            >
+
+              {/* HEADER */}
+
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+
+                <div>
+
+                  <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-bold text-green-700">
+                    {submission.status || "Submitted"}
+                  </span>
+
+                  {submission.submitted_at && (
+                    <p className="mt-2 text-sm text-slate-500">
+                      Submitted{" "}
+                      {new Date(
+                        submission.submitted_at
+                      ).toLocaleString()}
+                    </p>
+                  )}
+
+                  <h3 className="mt-2 text-xl font-bold text-slate-900">
+                    {submission.title ||
+                      classwork.title}
+                  </h3>
+
+                </div>
+
+                {/* BUTTONS */}
+
+                {submissionUrl && (
+                  <div className="flex flex-wrap gap-2">
+
+                    <a
+                      href={submissionUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 font-bold text-white hover:bg-slate-800"
+                    >
+                      <ExternalLink size={17} />
+                      View Submission
+                    </a>
+
+                    <a
+                      href={submissionUrl}
+                      download
+                      className="inline-flex items-center gap-2 rounded-xl bg-yellow-500 px-4 py-2 font-bold text-slate-900 hover:bg-yellow-400"
+                    >
+                      <Download size={17} />
+                      Download
+                    </a>
+
+                  </div>
+                )}
+
+              </div>
+
+              {/* IMAGE */}
+
+              {isImage && (
+                <div className="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-white p-3">
+
+                  <img
+                    src={submissionUrl}
+                    alt="Your handwritten classwork submission"
+                    className="mx-auto max-h-[700px] w-auto max-w-full rounded-xl object-contain"
+                  />
+
+                </div>
+              )}
+
+              {/* PDF */}
+
+              {isPdf && (
+                <div className="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-white">
+
+                  <iframe
+                    src={submissionUrl}
+                    title="Your submitted classwork"
+                    className="h-[700px] w-full"
+                  />
+
+                </div>
+              )}
+
+              {/* MARK / FEEDBACK */}
+
+              {(submission.score !== null ||
+                submission.percentage !== null ||
+                submission.grade ||
+                submission.teacher_feedback ||
+                submission.tutor_feedback) && (
+
+                <div className="mt-5 rounded-2xl bg-white p-5">
+
+                  <h4 className="font-bold text-slate-900">
+                    Tutor Feedback
+                  </h4>
+
+                  <div className="mt-4 flex flex-wrap gap-3">
+
+                    {submission.score !== null && (
+                      <span className="rounded-xl bg-blue-100 px-4 py-2 font-bold text-blue-700">
+                        Score: {submission.score}
+                        {submission.total_marks !== null
+                          ? ` / ${submission.total_marks}`
+                          : ""}
+                      </span>
+                    )}
+
+                    {submission.percentage !== null && (
+                      <span className="rounded-xl bg-purple-100 px-4 py-2 font-bold text-purple-700">
+                        {submission.percentage}%
+                      </span>
+                    )}
+
+                    {submission.grade && (
+                      <span className="rounded-xl bg-yellow-100 px-4 py-2 font-bold text-yellow-700">
+                        Grade: {submission.grade}
+                      </span>
+                    )}
+
+                  </div>
+
+                  {(submission.teacher_feedback ||
+                    submission.tutor_feedback) && (
+                    <p className="mt-4 whitespace-pre-wrap text-slate-700">
+                      {submission.teacher_feedback ||
+                        submission.tutor_feedback}
+                    </p>
+                  )}
+
+                </div>
+              )}
+
+            </div>
+          );
+        })}
+
+      </div>
+    )}
+
+</div>
 
     </div>
   );
