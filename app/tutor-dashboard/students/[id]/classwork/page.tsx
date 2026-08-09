@@ -123,16 +123,17 @@ export default function StudentClassworkPage() {
       /*
        * Find subjects that BOTH the tutor and student have.
        */
-      const tutorSubjects = tutor.subjects || [];
-      const studentSubjects = studentData.subjects || [];
+    const tutorSubjects: string[] = tutor.subjects || [];
+const studentSubjects: string[] = studentData.subjects || [];
 
-      const sharedSubjects = studentSubjects.filter((subject) =>
-        tutorSubjects.some(
-          (tutorSubject) =>
-            tutorSubject.toLowerCase().trim() ===
-            subject.toLowerCase().trim()
-        )
-      );
+const sharedSubjects = studentSubjects.filter(
+  (subject: string) =>
+    tutorSubjects.some(
+      (tutorSubject: string) =>
+        tutorSubject.toLowerCase().trim() ===
+        subject.toLowerCase().trim()
+    )
+);
 
       /*
        * For now, we expect one shared subject.
