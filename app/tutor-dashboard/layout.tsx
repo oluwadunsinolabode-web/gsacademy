@@ -164,8 +164,7 @@ export default function TutorDashboardLayout({
                   href="/tutor-dashboard/classes"
                   className="block rounded-xl px-5 py-4 hover:bg-slate-800"
                 >
-                  My Classes
-                </Link>
+
 
                 <Link
                   href="/tutor-dashboard/students"
