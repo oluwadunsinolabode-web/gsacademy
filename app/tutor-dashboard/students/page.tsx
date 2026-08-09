@@ -30,60 +30,235 @@ export default function TutorStudentsPage() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    async function loadStudents() {
-      setLoading(true);
+ useEffect(() => {
+  async function loadStudents() {
+    setLoading(true);
 
-      try {
-        // Get currently logged-in tutor
-        const {
-          data: { user },
-          error: authError,
-        } = await supabase.auth.getUser();
+    try {
+      // ==========================================
+      // 1. GET LOGGED-IN USER
+      // ==========================================
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
 
-        if (authError || !user) {
-          console.error("Tutor authentication error:", authError);
-          setStudents([]);
-          return;
-        }
-
-        // Find tutor record using auth_id
-        const { data: tutor, error: tutorError } = await supabase
-          .from("tutors")
-          .select("id")
-          .eq("auth_id", user.id)
-          .single();
-
-        if (tutorError || !tutor) {
-          console.error("Tutor record not found:", tutorError);
-          setStudents([]);
-          return;
-        }
-
-        // Get only students assigned to this tutor
-        const { data, error: studentsError } = await supabase
-          .from("students")
-          .select(
-            "id, full_name, email, phone, subjects, package, status, tutor_id"
-          )
-          .eq("tutor_id", tutor.id)
-          .order("created_at", { ascending: false });
-
-        if (studentsError) {
-          console.error("Students loading error:", studentsError);
-          setStudents([]);
-          return;
-        }
-
-        setStudents(data || []);
-      } finally {
-        setLoading(false);
+      if (authError || !user) {
+        console.error("Tutor authentication error:", authError);
+        setStudents([]);
+        return;
       }
+
+      // ==========================================
+      // 2. GET TUTOR RECORD
+      // ==========================================
+      const {
+        data: tutor,
+        error: tutorError,
+      } = await supabase
+        .from("tutors")
+        .select("id")
+        .eq("auth_id", user.id)
+        .single();
+
+      if (tutorError || !tutor) {
+        console.error(
+          "Tutor record not found:",
+          tutorError
+        );
+        setStudents([]);
+        return;
+      }
+
+      // ==========================================
+      // 3. GET ACTUAL TUTOR ASSIGNMENTS
+      // ==========================================
+      const {
+        data: assignments,
+        error: assignmentsError,
+      } = await supabase
+        .from("tutor_assignments")
+        .select(
+          "student_id, subject_id, active, status"
+        )
+        .eq("tutor_id", tutor.id)
+        .eq("active", true);
+
+      if (assignmentsError) {
+        console.error(
+          "Tutor assignments loading error:",
+          assignmentsError
+        );
+        setStudents([]);
+        return;
+      }
+
+      if (!assignments || assignments.length === 0) {
+        setStudents([]);
+        return;
+      }
+
+      // ==========================================
+      // 4. GET UNIQUE STUDENT IDS
+      // ==========================================
+      const studentIds = [
+        ...new Set(
+          assignments.map(
+            (assignment) =>
+              assignment.student_id
+          )
+        ),
+      ];
+
+      // ==========================================
+      // 5. GET UNIQUE SUBJECT IDS
+      // ==========================================
+      const subjectIds = [
+        ...new Set(
+          assignments
+            .map(
+              (assignment) =>
+                assignment.subject_id
+            )
+            .filter(Boolean)
+        ),
+      ];
+
+      // ==========================================
+      // 6. GET THOSE STUDENTS ONLY
+      // ==========================================
+      const {
+        data: studentData,
+        error: studentsError,
+      } = await supabase
+        .from("students")
+        .select(
+          "id, full_name, email, phone, package, status"
+        )
+        .in("id", studentIds);
+
+      if (studentsError) {
+        console.error(
+          "Students loading error:",
+          studentsError
+        );
+        setStudents([]);
+        return;
+      }
+
+      // ==========================================
+      // 7. GET SUBJECT NAMES
+      // ==========================================
+      let subjectData: {
+        id: string;
+        name: string;
+      }[] = [];
+
+      if (subjectIds.length > 0) {
+        const {
+          data,
+          error: subjectsError,
+        } = await supabase
+          .from("subjects")
+          .select("id, name")
+          .in("id", subjectIds);
+
+        if (subjectsError) {
+          console.error(
+            "Subjects loading error:",
+            subjectsError
+          );
+        } else {
+          subjectData = data || [];
+        }
+      }
+
+      // ==========================================
+      // 8. CREATE SUBJECT LOOKUP
+      // ==========================================
+      const subjectMap = new Map<
+        string,
+        string
+      >();
+
+      subjectData.forEach((subject) => {
+        subjectMap.set(
+          subject.id,
+          subject.name
+        );
+      });
+
+      // ==========================================
+      // 9. BUILD STUDENT LIST FROM ASSIGNMENTS
+      // ==========================================
+      const studentMap = new Map<
+        string,
+        Student
+      >();
+
+      (studentData || []).forEach((student) => {
+        studentMap.set(student.id, {
+          id: student.id,
+          full_name: student.full_name,
+          email: student.email,
+          phone: student.phone,
+          subjects: [],
+          package: student.package,
+          status: student.status,
+          tutor_id: tutor.id,
+        });
+      });
+
+      // ==========================================
+      // 10. ADD ONLY SUBJECTS ACTUALLY ASSIGNED
+      // ==========================================
+      assignments.forEach((assignment) => {
+        const student =
+          studentMap.get(
+            assignment.student_id
+          );
+
+        if (!student) return;
+
+        const subjectName =
+          assignment.subject_id
+            ? subjectMap.get(
+                assignment.subject_id
+              )
+            : null;
+
+        if (
+          subjectName &&
+          !student.subjects?.includes(
+            subjectName
+          )
+        ) {
+          student.subjects?.push(
+            subjectName
+          );
+        }
+      });
+
+      // ==========================================
+      // 11. FINAL STUDENT LIST
+      // ==========================================
+      setStudents(
+        Array.from(studentMap.values())
+      );
+    } catch (error) {
+      console.error(
+        "Tutor students loading error:",
+        error
+      );
+
+      setStudents([]);
+    } finally {
+      setLoading(false);
     }
+  }
 
-    loadStudents();
-  }, []);
-
+  loadStudents();
+}, []);
   const filteredStudents = useMemo(() => {
     const term = search.toLowerCase().trim();
 
