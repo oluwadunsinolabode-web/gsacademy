@@ -259,6 +259,8 @@ export default function DashboardPage() {
           error: authError,
         } =
           await supabase.auth.getUser();
+          console.log("CURRENT AUTH ID:", user?.id);
+console.log("CURRENT AUTH EMAIL:", user?.email);
 
         console.log(
           "AUTH USER:",
@@ -317,7 +319,8 @@ export default function DashboardPage() {
         setStudent(
           studentData
         );
-
+console.log("STUDENT PROFILE ID:", studentData.id);
+console.log("STUDENT AUTH ID:", studentData.auth_id);
         // =====================================
         // GET STUDENT SCHEDULES
         // =====================================
