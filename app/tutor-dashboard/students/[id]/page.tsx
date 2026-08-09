@@ -43,9 +43,9 @@ export default function StudentWorkspace() {
          * Use the same API that already works on
          * My Students page.
          */
-        const response = await fetch("/api/tutor/students", {
-          cache: "no-store",
-        });
+        const response = await fetch(`/api/tutor/students/${studentId}`, {
+  cache: "no-store",
+});
 
         const data = await response.json();
 
@@ -58,15 +58,15 @@ export default function StudentWorkspace() {
         /*
          * Find the student that was clicked.
          */
-        const selectedStudent = (data.students || []).find(
-          (item: Student) => item.id === studentId
-        );
+       const selectedStudent = (data.students || []).find(
+  (item: Student) => item.id === studentId
+);
 
-        if (!selectedStudent) {
-          throw new Error("Student not found");
-        }
+if (!selectedStudent) {
+  throw new Error("Student not found");
+}
 
-        setStudent(selectedStudent);
+setStudent(selectedStudent);
       } catch (err) {
         console.error("Student workspace loading error:", err);
 
