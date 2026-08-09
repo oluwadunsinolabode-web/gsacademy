@@ -4,11 +4,11 @@ import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 import {
   ArrowLeft,
-  ClipboardCheck,
   Plus,
   Loader2,
   CalendarDays,
   FileText,
+  Upload,
 } from "lucide-react";
 import { useParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
@@ -18,6 +18,11 @@ type Student = {
   full_name: string | null;
   subjects: string[] | null;
   package: string | null;
+};
+
+type Tutor = {
+  id: string;
+  subjects: string[] | null;
 };
 
 type Classwork = {
@@ -40,17 +45,18 @@ export default function StudentClassworkPage() {
 
   const [student, setStudent] = useState<Student | null>(null);
   const [classworks, setClassworks] = useState<Classwork[]>([]);
+  const [allowedSubject, setAllowedSubject] = useState("");
 
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
-
   const [showForm, setShowForm] = useState(false);
 
-  const [subject, setSubject] = useState("");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [dueDate, setDueDate] = useState("");
-  const [attachmentUrl, setAttachmentUrl] = useState("");
+  const [attachmentFile, setAttachmentFile] = useState<File | null>(
+    null
+  );
 
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -67,36 +73,74 @@ export default function StudentClassworkPage() {
       setError("");
 
       /*
-       * Get the student directly from the students table.
+       * Get logged-in tutor.
+       */
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
+
+      if (authError || !user) {
+        throw new Error("You must be logged in as a tutor.");
+      }
+
+      /*
+       * Get tutor profile and assigned subjects.
+       */
+      const {
+        data: tutor,
+        error: tutorError,
+      } = await supabase
+        .from("tutors")
+        .select("id, subjects")
+        .eq("auth_id", user.id)
+        .single();
+
+      if (tutorError || !tutor) {
+        throw new Error("Tutor profile not found.");
+      }
+
+      /*
+       * Get the student.
        */
       const {
         data: studentData,
         error: studentError,
       } = await supabase
         .from("students")
-        .select(
-          "id, full_name, subjects, package"
-        )
+        .select("id, full_name, subjects, package")
         .eq("id", studentId)
         .single();
 
       if (studentError || !studentData) {
         throw new Error(
-          studentError?.message ||
-            "Student could not be found."
+          studentError?.message || "Student could not be found."
         );
       }
 
       setStudent(studentData);
 
       /*
-       * Automatically select the first registered subject.
+       * Find subjects that BOTH the tutor and student have.
        */
-      if (
-        studentData.subjects &&
-        studentData.subjects.length > 0
-      ) {
-        setSubject(studentData.subjects[0]);
+      const tutorSubjects = tutor.subjects || [];
+      const studentSubjects = studentData.subjects || [];
+
+      const sharedSubjects = studentSubjects.filter((subject) =>
+        tutorSubjects.some(
+          (tutorSubject) =>
+            tutorSubject.toLowerCase().trim() ===
+            subject.toLowerCase().trim()
+        )
+      );
+
+      /*
+       * For now, we expect one shared subject.
+       */
+      if (sharedSubjects.length > 0) {
+        setAllowedSubject(sharedSubjects[0]);
+      } else {
+        setAllowedSubject("");
       }
 
       /*
@@ -115,15 +159,16 @@ export default function StudentClassworkPage() {
       }
 
       const classworkIds =
-        assignments?.map(
-          (item) => item.classwork_id
-        ) || [];
+        assignments?.map((item) => item.classwork_id) || [];
 
       if (classworkIds.length === 0) {
         setClassworks([]);
         return;
       }
 
+      /*
+       * Get the actual classworks.
+       */
       const {
         data: classworkData,
         error: classworkError,
@@ -152,10 +197,7 @@ export default function StudentClassworkPage() {
 
       setClassworks(classworkData || []);
     } catch (err) {
-      console.error(
-        "Classwork loading error:",
-        err
-      );
+      console.error("Classwork loading error:", err);
 
       setError(
         err instanceof Error
@@ -167,15 +209,18 @@ export default function StudentClassworkPage() {
     }
   }
 
-  async function createClasswork(
-    event: FormEvent<HTMLFormElement>
-  ) {
+  async function createClasswork(event: FormEvent) {
     event.preventDefault();
 
     if (!student) return;
 
-    if (!subject) {
-      setError("Please select a subject.");
+    /*
+     * A tutor must have a subject shared with this student.
+     */
+    if (!allowedSubject) {
+      setError(
+        "You are not assigned to teach any subject for this student."
+      );
       return;
     }
 
@@ -190,7 +235,7 @@ export default function StudentClassworkPage() {
       setMessage("");
 
       /*
-       * Get currently logged-in tutor.
+       * Get logged-in tutor.
        */
       const {
         data: { user },
@@ -198,27 +243,76 @@ export default function StudentClassworkPage() {
       } = await supabase.auth.getUser();
 
       if (authError || !user) {
-        throw new Error(
-          "You must be logged in as a tutor."
-        );
+        throw new Error("You must be logged in as a tutor.");
       }
 
       /*
-       * Find tutor profile.
+       * Get tutor profile.
        */
       const {
         data: tutor,
         error: tutorError,
       } = await supabase
         .from("tutors")
-        .select("id")
+        .select("id, subjects")
         .eq("auth_id", user.id)
         .single();
 
       if (tutorError || !tutor) {
+        throw new Error("Tutor profile not found.");
+      }
+
+      /*
+       * Verify the tutor still teaches this subject.
+       */
+      const tutorCanTeachSubject = (tutor.subjects || []).some(
+        (item) =>
+          item.toLowerCase().trim() ===
+          allowedSubject.toLowerCase().trim()
+      );
+
+      if (!tutorCanTeachSubject) {
         throw new Error(
-          "Tutor profile not found."
+          "You are not assigned to teach this subject."
         );
+      }
+
+      /*
+       * Optional attachment upload.
+       */
+      let attachmentUrl: string | null = null;
+
+      if (attachmentFile) {
+        const fileExtension =
+          attachmentFile.name.split(".").pop() || "file";
+
+        const safeFileName = attachmentFile.name
+          .replace(/[^a-zA-Z0-9._-]/g, "_")
+          .replace(/\s+/g, "_");
+
+        const filePath = `tutor-classworks/${user.id}/${student.id}/${crypto.randomUUID()}-${safeFileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from("classwork-submissions")
+          .upload(filePath, attachmentFile, {
+            cacheControl: "3600",
+            upsert: false,
+            contentType: attachmentFile.type || undefined,
+          });
+
+        if (uploadError) {
+          throw new Error(
+            `Attachment upload failed: ${uploadError.message}`
+          );
+        }
+
+        const {
+          data: publicUrlData,
+        } = supabase.storage
+          .from("classwork-submissions")
+          .getPublicUrl(filePath);
+
+        attachmentUrl = publicUrlData.publicUrl;
       }
 
       /*
@@ -231,12 +325,10 @@ export default function StudentClassworkPage() {
         .from("classworks")
         .insert({
           tutor_id: tutor.id,
-          subject,
+          subject: allowedSubject,
           title: title.trim(),
-          description:
-            description.trim() || null,
-          attachment_url:
-            attachmentUrl.trim() || null,
+          description: description.trim() || null,
+          attachment_url: attachmentUrl,
           due_date: dueDate
             ? new Date(dueDate).toISOString()
             : null,
@@ -253,8 +345,8 @@ export default function StudentClassworkPage() {
       }
 
       /*
-       * Assign this classwork to the student
-       * whose workspace we are currently inside.
+       * Automatically assign the classwork
+       * to the student whose workspace we are in.
        */
       const {
         error: assignmentError,
@@ -267,35 +359,38 @@ export default function StudentClassworkPage() {
 
       if (assignmentError) {
         /*
-         * If assignment fails, remove the
-         * classwork we just created.
+         * Remove the classwork if assignment fails.
          */
         await supabase
           .from("classworks")
           .delete()
           .eq("id", newClasswork.id);
 
-        throw new Error(
-          assignmentError.message
-        );
+        throw new Error(assignmentError.message);
       }
 
-      setMessage(
-        "Classwork published successfully."
-      );
+      setMessage("Classwork published successfully.");
 
       setTitle("");
       setDescription("");
       setDueDate("");
-      setAttachmentUrl("");
+      setAttachmentFile(null);
       setShowForm(false);
+
+      /*
+       * Reset file input visually.
+       */
+      const fileInput = document.getElementById(
+        "classwork-attachment"
+      ) as HTMLInputElement | null;
+
+      if (fileInput) {
+        fileInput.value = "";
+      }
 
       await loadStudentAndClasswork();
     } catch (err) {
-      console.error(
-        "Create classwork error:",
-        err
-      );
+      console.error("Create classwork error:", err);
 
       setError(
         err instanceof Error
@@ -309,51 +404,37 @@ export default function StudentClassworkPage() {
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-7xl">
-        <div className="rounded-3xl bg-white p-12 text-center shadow-sm">
-          <Loader2
-            className="mx-auto animate-spin text-yellow-500"
-            size={32}
-          />
-
-          <p className="mt-4 text-slate-500">
-            Loading classwork...
-          </p>
-        </div>
+      <div className="rounded-3xl bg-white p-10 shadow-sm">
+        <p className="text-slate-500">
+          Loading classwork...
+        </p>
       </div>
     );
   }
 
   if (!student) {
     return (
-      <div className="mx-auto max-w-7xl">
-        <div className="rounded-3xl bg-white p-12 text-center shadow-sm">
-          <ClipboardCheck
-            size={50}
-            className="mx-auto text-slate-300"
-          />
+      <div className="rounded-3xl bg-white p-10 shadow-sm">
+        <h1 className="text-2xl font-bold text-slate-900">
+          Student Not Found
+        </h1>
 
-          <h1 className="mt-5 text-2xl font-bold text-slate-900">
-            Student Not Found
-          </h1>
+        <p className="mt-3 text-slate-500">
+          {error || "Unable to load this student."}
+        </p>
 
-          <p className="mt-3 text-slate-500">
-            {error || "Unable to load this student."}
-          </p>
-
-          <Link
-            href="/tutor-dashboard/students"
-            className="mt-6 inline-flex rounded-xl bg-slate-900 px-6 py-3 font-bold text-white"
-          >
-            Back to My Students
-          </Link>
-        </div>
+        <Link
+          href="/tutor-dashboard/students"
+          className="mt-6 inline-flex rounded-xl bg-slate-900 px-6 py-3 font-bold text-white"
+        >
+          Back to My Students
+        </Link>
       </div>
     );
   }
 
   return (
-    <div className="mx-auto max-w-7xl">
+    <div>
       {/* Header */}
 
       <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
@@ -387,10 +468,10 @@ export default function StudentClassworkPage() {
             setMessage("");
             setError("");
           }}
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-yellow-500 px-6 py-4 font-bold text-slate-900 transition hover:bg-yellow-400"
+          disabled={!allowedSubject}
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-yellow-500 px-6 py-4 font-bold text-slate-900 transition hover:bg-yellow-400 disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Plus size={21} />
-
           Create Classwork
         </button>
       </div>
@@ -409,9 +490,24 @@ export default function StudentClassworkPage() {
         </div>
       )}
 
+      {/* No shared subject */}
+
+      {!allowedSubject && (
+        <div className="mt-6 rounded-2xl bg-yellow-50 p-5 text-yellow-800">
+          <p className="font-bold">
+            No teaching subject assigned
+          </p>
+
+          <p className="mt-1 text-sm">
+            You can only create classwork for subjects you
+            are assigned to teach this student.
+          </p>
+        </div>
+      )}
+
       {/* Create Form */}
 
-      {showForm && (
+      {showForm && allowedSubject && (
         <form
           onSubmit={createClasswork}
           className="mt-8 rounded-3xl bg-white p-8 shadow-sm"
@@ -421,39 +517,27 @@ export default function StudentClassworkPage() {
           </h2>
 
           <p className="mt-2 text-slate-500">
-            This classwork will automatically be
-            assigned to {student.full_name}.
+            This classwork will automatically be assigned
+            to {student.full_name}.
           </p>
 
-          <div className="mt-8 grid gap-6 md:grid-cols-2">
-            {/* Subject */}
+          {/* Subject + Due Date */}
 
+          <div className="mt-8 grid gap-6 md:grid-cols-2">
             <div>
               <label className="mb-2 block text-sm font-semibold text-slate-700">
                 Subject
               </label>
 
-              <select
-                value={subject}
-                onChange={(e) =>
-                  setSubject(e.target.value)
-                }
-                className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-yellow-500"
-              >
-                {student.subjects?.map(
-                  (item) => (
-                    <option
-                      key={item}
-                      value={item}
-                    >
-                      {item}
-                    </option>
-                  )
-                )}
-              </select>
-            </div>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 font-semibold text-slate-900">
+                {allowedSubject}
+              </div>
 
-            {/* Due Date */}
+              <p className="mt-2 text-xs text-slate-400">
+                Automatically selected from your assigned
+                subject for this student.
+              </p>
+            </div>
 
             <div>
               <label className="mb-2 block text-sm font-semibold text-slate-700">
@@ -507,25 +591,50 @@ export default function StudentClassworkPage() {
             />
           </div>
 
-          {/* Attachment URL for now */}
+          {/* Attachment */}
 
           <div className="mt-6">
-            <label className="mb-2 block text-sm font-semibold text-slate-700">
-              Attachment URL
+            <label
+              htmlFor="classwork-attachment"
+              className="mb-2 block text-sm font-semibold text-slate-700"
+            >
+              Attachment{" "}
+              <span className="font-normal text-slate-400">
+                (Optional)
+              </span>
+            </label>
+
+            <label
+              htmlFor="classwork-attachment"
+              className="flex cursor-pointer items-center gap-3 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-4 transition hover:border-yellow-500 hover:bg-yellow-50"
+            >
+              <Upload
+                size={21}
+                className="text-slate-500"
+              />
+
+              <span className="font-semibold text-slate-700">
+                {attachmentFile
+                  ? attachmentFile.name
+                  : "Choose a file"}
+              </span>
             </label>
 
             <input
-              type="url"
-              value={attachmentUrl}
-              onChange={(e) =>
-                setAttachmentUrl(e.target.value)
-              }
-              placeholder="Paste a file URL if needed"
-              className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-yellow-500"
+              id="classwork-attachment"
+              type="file"
+              accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+              className="hidden"
+              onChange={(e) => {
+                const file =
+                  e.target.files?.[0] || null;
+
+                setAttachmentFile(file);
+              }}
             />
 
             <p className="mt-2 text-xs text-slate-400">
-              File upload will be connected separately.
+              Optional: PDF, Word document or image.
             </p>
           </div>
 
@@ -551,9 +660,10 @@ export default function StudentClassworkPage() {
 
             <button
               type="button"
-              onClick={() =>
-                setShowForm(false)
-              }
+              onClick={() => {
+                setShowForm(false);
+                setAttachmentFile(null);
+              }}
               className="rounded-xl border border-slate-200 px-7 py-4 font-bold text-slate-700"
             >
               Cancel
