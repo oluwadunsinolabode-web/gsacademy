@@ -23,6 +23,7 @@ type Student = {
 type Tutor = {
   id: string;
 };
+
 type Classwork = {
   id: string;
   subject: string;
@@ -83,19 +84,22 @@ export default function StudentClassworkPage() {
       }
 
       /*
-       * Get tutor profile and assigned subjects.
+       * Get tutor profile.
        */
-     const {
-  data: tutor,
-  error: tutorError,
-} = await supabase
-  .from("tutors")
-  .select("id")
-  .eq("auth_id", user.id)
-  .single();
-if (tutorError || !tutor) {
-  throw new Error("Tutor profile not found.");
-}      /*
+      const {
+        data: tutor,
+        error: tutorError,
+      } = await supabase
+        .from("tutors")
+        .select("id")
+        .eq("auth_id", user.id)
+        .single();
+
+      if (tutorError || !tutor) {
+        throw new Error("Tutor profile not found.");
+      }
+
+      /*
        * Get the student.
        */
       const {
@@ -115,63 +119,64 @@ if (tutorError || !tutor) {
 
       setStudent(studentData);
 
-    /*
- * Get the subjects this tutor is ACTUALLY assigned
- * to teach this specific student.
- *
- * tutor_assignments is the source of truth.
- */
-const {
-  data: tutorAssignments,
-  error: assignmentError,
-} = await supabase
-  .from("tutor_assignments")
-  .select(`
-    subject_id,
-    subjects (
-      id,
-      name
-    )
-  `)
-  .eq("tutor_id", tutor.id)
-  .eq("student_id", studentId)
-  .eq("active", true)
-  .eq("status", "Scheduled");
+      /*
+       * Get the subjects this tutor is ACTUALLY assigned
+       * to teach this specific student.
+       *
+       * tutor_assignments is the source of truth.
+       */
+      const {
+        data: tutorAssignments,
+        error: assignmentError,
+      } = await supabase
+        .from("tutor_assignments")
+        .select(`
+          subject_id,
+          subjects (
+            id,
+            name
+          )
+        `)
+        .eq("tutor_id", tutor.id)
+        .eq("student_id", studentId)
+        .eq("active", true)
+        .eq("status", "Scheduled");
 
-if (assignmentError) {
-  throw new Error(assignmentError.message);
-}
+      if (assignmentError) {
+        throw new Error(assignmentError.message);
+      }
 
-/*
- * Get the actual subject name from the assignment.
- */
-const assignedSubjects =
-  tutorAssignments
-    ?.map((assignment: any) => assignment.subjects?.name)
-    .filter(Boolean) || [];
+      /*
+       * Get the actual subject name from the assignment.
+       */
+      const assignedSubjects =
+        tutorAssignments
+          ?.map((assignment: any) => assignment.subjects?.name)
+          .filter(Boolean) || [];
 
-/*
- * This tutor may be assigned to multiple subjects.
- * For now the classwork page uses the first assigned subject.
- */
-if (assignedSubjects.length > 0) {
-  setAllowedSubject(assignedSubjects[0]);
-} else {
-  setAllowedSubject("");
-}
+      /*
+       * This tutor may be assigned to multiple subjects.
+       * For now the classwork page uses the first assigned subject.
+       */
+      if (assignedSubjects.length > 0) {
+        setAllowedSubject(assignedSubjects[0]);
+      } else {
+        setAllowedSubject("");
+      }
+
       /*
        * Get classworks assigned to this student.
        */
       const {
         data: assignments,
-        error: assignmentError,
+        error: classworkAssignmentError,
       } = await supabase
         .from("classwork_assignments")
         .select("classwork_id")
         .eq("student_id", studentId);
 
-      if (assignmentError) {
-        throw new Error(assignmentError.message);
+      if (classworkAssignmentError) {
+        throw new Error(classworkAssignmentError.message);
       }
 
       const classworkIds =
@@ -231,7 +236,7 @@ if (assignedSubjects.length > 0) {
     if (!student) return;
 
     /*
-     * A tutor must have a subject shared with this student.
+     * A tutor must have a subject assigned to this student.
      */
     if (!allowedSubject) {
       setError(
@@ -279,47 +284,44 @@ if (assignedSubjects.length > 0) {
       }
 
       /*
-       * Verify the tutor still teaches this subject.
+       * Verify that this tutor is actively assigned to this
+       * student for the selected subject.
        */
-    /*
- * Verify that this tutor is actively assigned to this
- * student for the selected subject.
- */
-const {
-  data: subjectAssignment,
-  error: subjectAssignmentError,
-} = await supabase
-  .from("tutor_assignments")
-  .select(`
-    id,
-    subject_id,
-    subjects (
-      id,
-      name
-    )
-  `)
-  .eq("tutor_id", tutor.id)
-  .eq("student_id", student.id)
-  .eq("active", true)
-  .eq("status", "Scheduled");
+      const {
+        data: subjectAssignment,
+        error: subjectAssignmentError,
+      } = await supabase
+        .from("tutor_assignments")
+        .select(`
+          id,
+          subject_id,
+          subjects (
+            id,
+            name
+          )
+        `)
+        .eq("tutor_id", tutor.id)
+        .eq("student_id", student.id)
+        .eq("active", true)
+        .eq("status", "Scheduled");
 
-if (subjectAssignmentError) {
-  throw new Error(subjectAssignmentError.message);
-}
+      if (subjectAssignmentError) {
+        throw new Error(subjectAssignmentError.message);
+      }
 
-const canTeachSubject =
-  subjectAssignment?.some(
-    (assignment: any) =>
-      assignment.subjects?.name
-        ?.toLowerCase()
-        .trim() === allowedSubject.toLowerCase().trim()
-  );
+      const canTeachSubject =
+        subjectAssignment?.some(
+          (assignment: any) =>
+            assignment.subjects?.name
+              ?.toLowerCase()
+              .trim() === allowedSubject.toLowerCase().trim()
+        );
 
-if (!canTeachSubject) {
-  throw new Error(
-    "You are not assigned to teach this subject for this student."
-  );
-}
+      if (!canTeachSubject) {
+        throw new Error(
+          "You are not assigned to teach this subject for this student."
+        );
+      }
 
       /*
        * Optional attachment upload.
@@ -327,9 +329,6 @@ if (!canTeachSubject) {
       let attachmentUrl: string | null = null;
 
       if (attachmentFile) {
-        const fileExtension =
-          attachmentFile.name.split(".").pop() || "file";
-
         const safeFileName = attachmentFile.name
           .replace(/[^a-zA-Z0-9._-]/g, "_")
           .replace(/\s+/g, "_");
@@ -393,7 +392,7 @@ if (!canTeachSubject) {
        * to the student whose workspace we are in.
        */
       const {
-        error: assignmentError,
+        error: createAssignmentError,
       } = await supabase
         .from("classwork_assignments")
         .insert({
@@ -401,7 +400,7 @@ if (!canTeachSubject) {
           student_id: student.id,
         });
 
-      if (assignmentError) {
+      if (createAssignmentError) {
         /*
          * Remove the classwork if assignment fails.
          */
@@ -410,7 +409,7 @@ if (!canTeachSubject) {
           .delete()
           .eq("id", newClasswork.id);
 
-        throw new Error(assignmentError.message);
+        throw new Error(createAssignmentError.message);
       }
 
       setMessage("Classwork published successfully.");
@@ -534,7 +533,7 @@ if (!canTeachSubject) {
         </div>
       )}
 
-      {/* No shared subject */}
+      {/* No teaching subject */}
 
       {!allowedSubject && (
         <div className="mt-6 rounded-2xl bg-yellow-50 p-5 text-yellow-800">
@@ -808,3 +807,4 @@ if (!canTeachSubject) {
     </div>
   );
 }
+```
