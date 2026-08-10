@@ -93,79 +93,128 @@ export default function ClassPage() {
 
         /*
          * ==========================================
-         * GET SCHEDULE
+         * GET CLASS SCHEDULE
          * ==========================================
-         *
-         * We use schedule_id when available.
-         * This keeps the page connected to the
-         * student's existing class schedule.
          */
 
         if (scheduleId) {
-          const { data: scheduleData, error: scheduleError } =
-            await supabase
-              .from("class_schedules")
-              .select(`
-                id,
-                subject,
-                day,
-                start_time,
-                end_time,
-                tutor_name,
-                meeting_link
-              `)
-              .eq("id", scheduleId)
-              .single();
+          const {
+            data: scheduleData,
+            error: scheduleError,
+          } = await supabase
+            .from("class_schedules")
+            .select(`
+              id,
+              subject,
+              day,
+              start_time,
+              end_time,
+              tutor_name,
+              meeting_link
+            `)
+            .eq("id", scheduleId)
+            .single();
 
           if (!scheduleError && scheduleData) {
-            setSchedule(scheduleData);
+            setSchedule(scheduleData as Schedule);
           }
         }
 
         /*
          * ==========================================
-         * GET CLASSWORK FOR THIS SUBJECT
+         * GET CLASSWORK ASSIGNED TO THIS STUDENT
+         *
+         * IMPORTANT:
+         * We do NOT load every classwork in the
+         * database.
+         *
+         * We first get the classwork IDs assigned
+         * to this particular student.
          * ==========================================
          */
 
-       const { data: classworkData, error: classworkError } =
-  await supabase
-    .from("classworks")
-    .select(`
-      id,
-      subject,
-      title,
-      description,
-      due_date,
-      status,
-      created_at
-    `)
-    .eq("subject", subjectFromUrl)
-    .eq("status", "published")
-    .order("created_at", {
-      ascending: false,
-    });
-        if (classworkError) {
-          throw classworkError;
+        const {
+          data: assignmentData,
+          error: assignmentError,
+        } = await supabase
+          .from("classwork_assignments")
+          .select("classwork_id")
+          .eq("student_id", student.id);
+
+        if (assignmentError) {
+          throw new Error(assignmentError.message);
         }
 
-        setClassworks(classworkData || []);
+        const classworkIds =
+          (assignmentData || [])
+            .map((item) => item.classwork_id)
+            .filter(Boolean);
+
+        if (classworkIds.length === 0) {
+          setClassworks([]);
+          setSubmissions([]);
+          return;
+        }
 
         /*
          * ==========================================
-         * GET STUDENT SUBMISSIONS
-         * ==========================================
+         * GET THE ACTUAL CLASSWORK
          *
-         * Used only to determine whether each
-         * classwork has been submitted.
+         * Only classwork assigned to this student
+         * and matching the selected subject.
+         * ==========================================
          */
 
-        const classworkIds =
+        const {
+          data: classworkData,
+          error: classworkError,
+        } = await supabase
+          .from("classworks")
+          .select(`
+            id,
+            subject,
+            title,
+            description,
+            due_date,
+            status,
+            created_at
+          `)
+          .in("id", classworkIds)
+          .eq("subject", subjectFromUrl)
+          .eq("status", "published")
+          .order("created_at", {
+            ascending: false,
+          });
+
+        if (classworkError) {
+          throw new Error(classworkError.message);
+        }
+
+        setClassworks(
+          (classworkData || []) as Classwork[]
+        );
+
+        /*
+         * ==========================================
+         * GET STUDENT SUBMISSION STATUS
+         *
+         * We only need this here to show:
+         *
+         * Submitted
+         * or
+         * Not submitted
+         *
+         * The actual submission details belong on
+         * File 2.
+         * ==========================================
+         */
+
+        const visibleClassworkIds =
           (classworkData || []).map(
             (item) => item.id
           );
 
-        if (classworkIds.length > 0) {
+        if (visibleClassworkIds.length > 0) {
           const {
             data: submissionData,
             error: submissionError,
@@ -176,17 +225,15 @@ export default function ClassPage() {
               status
             `)
             .eq("student_id", student.id)
-            .in("classwork_id", classworkIds)
+            .in(
+              "classwork_id",
+              visibleClassworkIds
+            )
             .order("submitted_at", {
               ascending: false,
             });
 
-          if (submissionError) {
-            console.error(
-              "Submission loading error:",
-              submissionError
-            );
-          } else {
+          if (!submissionError) {
             setSubmissions(
               submissionData || []
             );
@@ -194,7 +241,7 @@ export default function ClassPage() {
         }
       } catch (err) {
         console.error(
-          "Class page loading error:",
+          "Classwork list loading error:",
           err
         );
 
@@ -270,9 +317,9 @@ export default function ClassPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-white px-6 py-10">
-        <div className="mx-auto max-w-4xl">
-          <p className="text-sm text-slate-500">
+      <main className="min-h-screen bg-slate-50">
+        <div className="mx-auto max-w-5xl px-6 py-10">
+          <p className="text-sm font-semibold text-slate-500">
             Loading classwork...
           </p>
         </div>
@@ -288,18 +335,21 @@ export default function ClassPage() {
 
   if (error) {
     return (
-      <main className="min-h-screen bg-white px-6 py-10">
-        <div className="mx-auto max-w-4xl">
+      <main className="min-h-screen bg-slate-50">
+        <div className="mx-auto max-w-5xl px-6 py-10">
           <Link
             href="/dashboard"
-            className="text-sm font-bold text-slate-700 hover:text-slate-950"
+            className="inline-flex items-center gap-2 text-sm font-bold text-slate-600 hover:text-slate-950"
           >
-            ← Back to Dashboard
+            <ArrowLeft size={16} />
+            Back to Dashboard
           </Link>
 
-          <p className="mt-8 text-sm font-semibold text-red-600">
-            {error}
-          </p>
+          <div className="mt-8 rounded-2xl border border-red-200 bg-red-50 p-5">
+            <p className="text-sm font-semibold text-red-700">
+              {error}
+            </p>
+          </div>
         </div>
       </main>
     );
@@ -312,10 +362,10 @@ export default function ClassPage() {
    */
 
   return (
-    <main className="min-h-screen bg-white px-6 py-10">
-      <div className="mx-auto max-w-4xl">
+    <main className="min-h-screen bg-slate-50">
+      <div className="mx-auto max-w-5xl px-6 py-10">
 
-        {/* Back */}
+        {/* BACK TO DASHBOARD */}
 
         <Link
           href="/dashboard"
@@ -325,9 +375,10 @@ export default function ClassPage() {
           Back to Dashboard
         </Link>
 
-        {/* Header */}
+        {/* HEADER */}
 
         <header className="mt-8">
+
           <p className="text-sm font-bold uppercase tracking-wider text-yellow-600">
             Classwork
           </p>
@@ -338,12 +389,19 @@ export default function ClassPage() {
 
           {schedule && (
             <div className="mt-4 space-y-1 text-sm text-slate-500">
+
               <p>
                 <span className="font-semibold text-slate-700">
                   {schedule.day}
                 </span>{" "}
-                — {formatTime(schedule.start_time)} -{" "}
-                {formatTime(schedule.end_time)}
+                —{" "}
+                {formatTime(
+                  schedule.start_time
+                )}{" "}
+                -{" "}
+                {formatTime(
+                  schedule.end_time
+                )}
               </p>
 
               <p>
@@ -352,6 +410,7 @@ export default function ClassPage() {
                   {schedule.tutor_name}
                 </span>
               </p>
+
             </div>
           )}
 
@@ -366,11 +425,13 @@ export default function ClassPage() {
               Join Live Class
             </a>
           )}
+
         </header>
 
-        {/* Classwork */}
+        {/* CLASSWORK */}
 
         <section className="mt-12">
+
           <h2 className="text-2xl font-black text-slate-950">
             Classwork
           </h2>
@@ -379,25 +440,47 @@ export default function ClassPage() {
             Assignments from your tutor for this class.
           </p>
 
+          {/* EMPTY */}
+
           {classworks.length === 0 ? (
-            <p className="mt-8 text-sm text-slate-500">
-              No classwork has been assigned yet.
-            </p>
+            <div className="mt-8 border-y border-slate-200 py-10">
+              <p className="text-sm font-medium text-slate-500">
+                No classwork has been assigned yet.
+              </p>
+            </div>
           ) : (
+
+            /*
+             * ========================================
+             * CLEAN LIST
+             *
+             * NO ASSIGNMENT DETAILS HERE.
+             * NO UPLOAD FORM HERE.
+             * NO SUBMISSION CONTENT HERE.
+             *
+             * Clicking the row opens File 2.
+             * ========================================
+             */
+
             <div className="mt-8 divide-y divide-slate-200 border-y border-slate-200">
 
               {classworks.map((work) => {
+
                 const submitted =
                   isSubmitted(work.id);
 
                 return (
                   <Link
                     key={work.id}
-                   href={`/dashboard/classwork/${work.id}`}
-                    className="group flex items-center justify-between gap-6 py-5 transition hover:bg-slate-50"
+                    href={`/dashboard/classwork/${work.id}`}
+                    className="group flex items-center justify-between gap-6 py-6 transition hover:bg-white"
                   >
+
+                    {/* TITLE */}
+
                     <div className="min-w-0">
-                      <h3 className="truncate text-base font-extrabold text-slate-900 group-hover:text-slate-950">
+
+                      <h3 className="truncate text-lg font-extrabold text-slate-900">
                         {work.title}
                       </h3>
 
@@ -406,9 +489,13 @@ export default function ClassPage() {
                           {work.description}
                         </p>
                       )}
+
                     </div>
 
+                    {/* STATUS */}
+
                     <div className="flex shrink-0 items-center gap-4">
+
                       <span
                         className={`text-sm font-bold ${
                           submitted
@@ -422,16 +509,19 @@ export default function ClassPage() {
                       </span>
 
                       <ArrowRight
-                        size={18}
+                        size={19}
                         className="text-slate-400 transition group-hover:translate-x-1 group-hover:text-slate-900"
                       />
+
                     </div>
+
                   </Link>
                 );
               })}
 
             </div>
           )}
+
         </section>
 
       </div>

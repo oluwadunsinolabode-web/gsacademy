@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
   Plus,
@@ -15,6 +15,10 @@ import {
 } from "lucide-react";
 import { useParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+
+/* =====================================================
+TYPES
+===================================================== */
 
 type Student = {
   id: string;
@@ -40,6 +44,18 @@ type Classwork = {
   created_at: string;
 };
 
+type Submission = {
+  id: string;
+  classwork_id: string;
+  student_id: string;
+  status: string | null;
+  submitted_at: string | null;
+};
+
+/* =====================================================
+PAGE
+===================================================== */
+
 export default function TutorClassworkPage() {
   const params = useParams();
 
@@ -48,7 +64,7 @@ export default function TutorClassworkPage() {
     : params.id;
 
   /* =====================================================
-     DATA
+  DATA
   ===================================================== */
 
   const [student, setStudent] =
@@ -60,8 +76,11 @@ export default function TutorClassworkPage() {
   const [classworks, setClassworks] =
     useState<Classwork[]>([]);
 
+  const [submissions, setSubmissions] =
+    useState<Submission[]>([]);
+
   /* =====================================================
-     STATE
+  STATE
   ===================================================== */
 
   const [loading, setLoading] =
@@ -80,7 +99,7 @@ export default function TutorClassworkPage() {
     useState("");
 
   /* =====================================================
-     FORM
+  FORM
   ===================================================== */
 
   const [subject, setSubject] =
@@ -99,7 +118,7 @@ export default function TutorClassworkPage() {
     useState<File | null>(null);
 
   /* =====================================================
-     LOAD EVERYTHING
+  LOAD EVERYTHING
   ===================================================== */
 
   useEffect(() => {
@@ -175,7 +194,7 @@ export default function TutorClassworkPage() {
       setStudent(studentData);
 
       /* -----------------------------------------------
-         TUTOR'S ASSIGNED SUBJECTS FOR THIS STUDENT
+         TUTOR'S ASSIGNED SUBJECTS
       ----------------------------------------------- */
 
       const {
@@ -210,11 +229,6 @@ export default function TutorClassworkPage() {
               item.subjects?.name
           )
           .filter(Boolean);
-
-      /*
-       * Use the tutor's actual assignment.
-       * No subject is hard-coded.
-       */
 
       const firstAssignedSubject =
         assignedSubjects[0] || "";
@@ -254,12 +268,6 @@ export default function TutorClassworkPage() {
         );
       }
 
-      /*
-       * Only show classwork that belongs to a
-       * subject the tutor is actually assigned
-       * to teach this student.
-       */
-
       const allowedSubjects =
         assignedSubjects.map(
           (item: string) =>
@@ -279,6 +287,69 @@ export default function TutorClassworkPage() {
       setClassworks(
         studentClassworks
       );
+
+      /* -----------------------------------------------
+         EXISTING STUDENT SUBMISSIONS
+         -----------------------------------------------
+
+         IMPORTANT:
+
+         We load submissions using BOTH:
+
+         classwork_id
+         +
+         student_id
+
+         This makes sure the tutor sees the
+         student's actual existing submission
+         for the classwork.
+      ------------------------------------------------ */
+
+      const classworkIds =
+        studentClassworks.map(
+          (work) => work.id
+        );
+
+      if (classworkIds.length === 0) {
+        setSubmissions([]);
+        return;
+      }
+
+      const {
+        data: submissionData,
+        error: submissionError,
+      } = await supabase
+        .from("classwork_submissions")
+        .select(
+          `
+            id,
+            classwork_id,
+            student_id,
+            status,
+            submitted_at
+          `
+        )
+        .eq(
+          "student_id",
+          studentData.id
+        )
+        .in(
+          "classwork_id",
+          classworkIds
+        )
+        .order("submitted_at", {
+          ascending: false,
+        });
+
+      if (submissionError) {
+        throw new Error(
+          submissionError.message
+        );
+      }
+
+      setSubmissions(
+        (submissionData || []) as Submission[]
+      );
     } catch (err) {
       console.error(
         "Tutor classwork loading error:",
@@ -296,7 +367,23 @@ export default function TutorClassworkPage() {
   }
 
   /* =====================================================
-     CREATE CLASSWORK
+  GET LATEST SUBMISSION
+  ===================================================== */
+
+  function getSubmission(
+    classworkId: string
+  ) {
+    return (
+      submissions.find(
+        (submission) =>
+          submission.classwork_id ===
+          classworkId
+      ) || null
+    );
+  }
+
+  /* =====================================================
+  CREATE CLASSWORK
   ===================================================== */
 
   async function createClasswork(
@@ -541,11 +628,6 @@ export default function TutorClassworkPage() {
         });
 
       if (assignmentInsertError) {
-        /*
-         * Roll back the classwork if
-         * assignment fails.
-         */
-
         await supabase
           .from("classworks")
           .delete()
@@ -600,13 +682,13 @@ export default function TutorClassworkPage() {
   }
 
   /* =====================================================
-     LOADING
+  LOADING
   ===================================================== */
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-slate-50 px-6 py-10">
-        <div className="mx-auto max-w-5xl">
+      <main className="min-h-screen bg-slate-50">
+        <div className="mx-auto max-w-6xl px-5 py-10">
           <p className="font-semibold text-slate-600">
             Loading classwork...
           </p>
@@ -616,13 +698,13 @@ export default function TutorClassworkPage() {
   }
 
   /* =====================================================
-     ERROR
+  ERROR
   ===================================================== */
 
   if (error && !student) {
     return (
-      <main className="min-h-screen bg-slate-50 px-6 py-10">
-        <div className="mx-auto max-w-5xl">
+      <main className="min-h-screen bg-slate-50">
+        <div className="mx-auto max-w-6xl px-5 py-10">
           <Link
             href={`/tutor-dashboard/students/${studentId}`}
             className="inline-flex items-center gap-2 font-semibold text-slate-600 hover:text-slate-900"
@@ -646,12 +728,12 @@ export default function TutorClassworkPage() {
   }
 
   /* =====================================================
-     MAIN PAGE
+  MAIN PAGE
   ===================================================== */
 
   return (
-    <main className="min-h-screen bg-slate-50 px-5 py-8 md:px-8">
-      <div className="mx-auto max-w-5xl">
+    <main className="min-h-screen bg-slate-50">
+      <div className="mx-auto max-w-6xl px-5 py-10">
 
         {/* BACK */}
 
@@ -736,9 +818,7 @@ export default function TutorClassworkPage() {
           </div>
         )}
 
-        {/* =================================================
-            CREATE FORM
-        ================================================= */}
+        {/* CREATE FORM */}
 
         {showForm && (
           <form
@@ -921,9 +1001,7 @@ export default function TutorClassworkPage() {
           </form>
         )}
 
-        {/* =================================================
-            CLASSWORK LIST
-        ================================================= */}
+        {/* CLASSWORK LIST */}
 
         <section className="mt-10">
 
@@ -956,63 +1034,88 @@ export default function TutorClassworkPage() {
             <div className="divide-y divide-slate-200 border-y border-slate-200 bg-white">
 
               {classworks.map(
-                (work) => (
-                  <Link
-                    key={work.id}
-                    href={`/tutor-dashboard/students/${studentId}/classwork/${work.id}`}
-                    className="group flex items-center justify-between gap-5 px-5 py-5 transition hover:bg-slate-50 md:px-6"
-                  >
-                    <div className="min-w-0">
+                (work) => {
+                  const submission =
+                    getSubmission(
+                      work.id
+                    );
 
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-extrabold uppercase tracking-wide text-yellow-600">
-                          {work.subject}
-                        </span>
+                  return (
+                    <Link
+                      key={work.id}
+                      href={`/tutor-dashboard/students/${studentId}/classwork/${work.id}`}
+                      className="group flex items-center justify-between gap-5 px-5 py-5 transition hover:bg-slate-50 md:px-6"
+                    >
+                      <div className="min-w-0">
 
-                        {work.status && (
-                          <span className="rounded-full bg-green-50 px-2.5 py-1 text-[11px] font-bold text-green-700">
-                            {work.status}
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-extrabold uppercase tracking-wide text-yellow-600">
+                            {work.subject}
                           </span>
-                        )}
-                      </div>
 
-                      <h3 className="mt-2 truncate text-base font-extrabold text-slate-900 group-hover:text-yellow-700 md:text-lg">
-                        {work.title}
-                      </h3>
+                          {work.status && (
+                            <span className="rounded-full bg-green-50 px-2.5 py-1 text-[11px] font-bold text-green-700">
+                              {work.status}
+                            </span>
+                          )}
+                        </div>
 
-                      <div className="mt-2 flex flex-wrap items-center gap-4 text-xs text-slate-500">
+                        <h3 className="mt-2 truncate text-base font-extrabold text-slate-900 group-hover:text-yellow-700 md:text-lg">
+                          {work.title}
+                        </h3>
 
-                        <span className="inline-flex items-center gap-1.5">
-                          <CalendarDays
-                            size={14}
-                          />
+                        <div className="mt-2 flex flex-wrap items-center gap-4 text-xs text-slate-500">
 
-                          {new Date(
-                            work.created_at
-                          ).toLocaleDateString()}
-                        </span>
+                          <span className="inline-flex items-center gap-1.5">
+                            <CalendarDays
+                              size={14}
+                            />
 
-                        {work.due_date && (
-                          <span>
-                            Due{" "}
                             {new Date(
-                              work.due_date
+                              work.created_at
                             ).toLocaleDateString()}
                           </span>
+
+                          {work.due_date && (
+                            <span>
+                              Due{" "}
+                              {new Date(
+                                work.due_date
+                              ).toLocaleDateString()}
+                            </span>
+                          )}
+
+                        </div>
+                      </div>
+
+                      <div className="flex shrink-0 items-center gap-3">
+
+                        {submission ? (
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-green-50 px-3 py-1.5 text-xs font-bold text-green-700">
+                            <CheckCircle2
+                              size={14}
+                            />
+                            Submitted
+                          </span>
+                        ) : (
+                          <span className="rounded-full bg-orange-50 px-3 py-1.5 text-xs font-bold text-orange-600">
+                            Awaiting Submission
+                          </span>
                         )}
 
-                      </div>
-                    </div>
+                        <span className="text-sm font-bold text-slate-400 transition group-hover:translate-x-1 group-hover:text-slate-900">
+                          Open →
+                        </span>
 
-                    <span className="shrink-0 text-sm font-bold text-slate-400 transition group-hover:translate-x-1 group-hover:text-slate-900">
-                      Open →
-                    </span>
-                  </Link>
-                )
+                      </div>
+                    </Link>
+                  );
+                }
               )}
 
             </div>
           )}
+
         </section>
 
       </div>

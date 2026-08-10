@@ -1,21 +1,23 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
-  Upload,
-  FileText,
+  Download,
   ExternalLink,
-  Send,
+  FileText,
   Loader2,
-  CheckCircle,
-  Clock,
-  MessageSquare,
-  Award,
-  History,
+  Upload,
+  CheckCircle2,
+  AlertCircle,
 } from "lucide-react";
+import { useParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+
+/* =========================================================
+   TYPES
+========================================================= */
 
 type Classwork = {
   id: string;
@@ -29,128 +31,247 @@ type Classwork = {
   created_at: string;
 };
 
-type Student = {
-  id: string;
-  auth_id: string;
-  full_name: string | null;
-  email: string | null;
-};
-
 type Submission = {
   id: string;
-  classwork_id: string | null;
-  student_id: string | null;
+  classwork_id: string;
+  student_id: string;
   student_email: string | null;
   subject: string | null;
   title: string | null;
   image_url: string | null;
   text_answer: string | null;
   status: string | null;
+  tutor_feedback: string | null;
+  teacher_feedback: string | null;
   submitted_at: string | null;
   score: number | null;
   total_marks: number | null;
   percentage: number | null;
   grade: string | null;
-  tutor_feedback: string | null;
-  teacher_feedback: string | null;
   correction_file_url: string | null;
 };
 
+/* =========================================================
+   HELPERS
+========================================================= */
+
+function formatDate(value: string | null) {
+  if (!value) return "No date";
+
+  return new Date(value).toLocaleString();
+}
+
+function formatShortDate(value: string | null) {
+  if (!value) return null;
+
+  return new Date(value).toLocaleDateString(undefined, {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function isImage(url: string | null) {
+  if (!url) return false;
+
+  return /\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i.test(url);
+}
+
+function isPdf(url: string | null) {
+  if (!url) return false;
+
+  return /\.pdf(\?.*)?$/i.test(url);
+}
+
+function isBrowserViewable(url: string | null) {
+  return isImage(url) || isPdf(url);
+}
+
+/* =========================================================
+   PAGE
+========================================================= */
+
 export default function ClassworkDetailPage() {
-  const [classwork, setClasswork] = useState<Classwork | null>(null);
-  const [student, setStudent] = useState<Student | null>(null);
-  const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const params = useParams();
 
-  const [textAnswer, setTextAnswer] = useState("");
-  const [file, setFile] = useState<File | null>(null);
+  const classworkId = Array.isArray(params.id)
+    ? params.id[0]
+    : params.id;
 
-  const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
+  /* =======================================================
+     DATA
+  ======================================================= */
 
-  const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
+  const [classwork, setClasswork] =
+    useState<Classwork | null>(null);
+
+  const [submission, setSubmission] =
+    useState<Submission | null>(null);
+
+  /* =======================================================
+     FORM
+  ======================================================= */
+
+  const [textAnswer, setTextAnswer] =
+    useState("");
+
+  const [selectedFile, setSelectedFile] =
+    useState<File | null>(null);
+
+  /* =======================================================
+     UI
+  ======================================================= */
+
+  const [loading, setLoading] =
+    useState(true);
+
+  const [submitting, setSubmitting] =
+    useState(false);
+
+  const [message, setMessage] =
+    useState("");
+
+  const [error, setError] =
+    useState("");
+
+  /* =======================================================
+     LOAD CLASSWORK
+  ======================================================= */
 
   useEffect(() => {
-    async function loadPage() {
-      try {
-        setLoading(true);
-        setError("");
+    if (!classworkId) return;
 
-        const {
-          data: { user },
-          error: authError,
-        } = await supabase.auth.getUser();
+    loadClasswork();
+  }, [classworkId]);
 
-        if (authError || !user) {
-          throw new Error("You must be logged in.");
-        }
+  async function loadClasswork() {
+    try {
+      setLoading(true);
+      setError("");
+      setMessage("");
 
-        const { data: studentData, error: studentError } =
-          await supabase
-            .from("students")
-            .select(`
-              id,
-              auth_id,
-              full_name,
-              email
-            `)
-            .eq("auth_id", user.id)
-            .single();
+      /* -----------------------------------------------
+         LOGGED-IN STUDENT
+      ------------------------------------------------ */
 
-        if (studentError || !studentData) {
-          throw new Error(
-            studentError?.message ||
-              "Student profile could not be found."
-          );
-        }
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
 
-        setStudent(studentData);
-
-        const params = new URLSearchParams(
-          window.location.search
+      if (authError || !user) {
+        throw new Error(
+          "You must be logged in as a student."
         );
+      }
 
-        const classworkId =
-          params.get("id") ||
-          window.location.pathname.split("/").pop();
+      /* -----------------------------------------------
+         STUDENT PROFILE
+      ------------------------------------------------ */
 
-        if (!classworkId) {
-          throw new Error("No classwork was selected.");
-        }
+      const {
+        data: student,
+        error: studentError,
+      } = await supabase
+        .from("students")
+        .select(
+          "id, auth_id, full_name, email"
+        )
+        .eq("auth_id", user.id)
+        .single();
 
-        const { data: classworkData, error: classworkError } =
-          await supabase
-            .from("classworks")
-            .select(`
-              id,
-              tutor_id,
-              subject,
-              title,
-              description,
-              attachment_url,
-              due_date,
-              status,
-              created_at
-            `)
-            .eq("id", classworkId)
-            .eq("status", "published")
-            .single();
+      if (studentError || !student) {
+        throw new Error(
+          studentError?.message ||
+            "Student profile could not be found."
+        );
+      }
 
-        if (classworkError || !classworkData) {
-          throw new Error(
-            classworkError?.message ||
-              "Published classwork could not be found."
-          );
-        }
+      /* -----------------------------------------------
+         VERIFY CLASSWORK IS ASSIGNED TO STUDENT
+      ------------------------------------------------ */
 
-        setClasswork(classworkData);
+      const {
+        data: assignment,
+        error: assignmentError,
+      } = await supabase
+        .from("classwork_assignments")
+        .select("classwork_id, student_id")
+        .eq(
+          "classwork_id",
+          classworkId
+        )
+        .eq(
+          "student_id",
+          student.id
+        )
+        .maybeSingle();
 
-        const {
-          data: submissionData,
-          error: submissionError,
-        } = await supabase
-          .from("classwork_submissions")
-          .select(`
+      if (assignmentError) {
+        throw new Error(
+          assignmentError.message
+        );
+      }
+
+      if (!assignment) {
+        throw new Error(
+          "This classwork is not assigned to you."
+        );
+      }
+
+      /* -----------------------------------------------
+         GET CLASSWORK
+      ------------------------------------------------ */
+
+      const {
+        data: classworkData,
+        error: classworkError,
+      } = await supabase
+        .from("classworks")
+        .select(
+          `
+            id,
+            tutor_id,
+            subject,
+            title,
+            description,
+            attachment_url,
+            due_date,
+            status,
+            created_at
+          `
+        )
+        .eq(
+          "id",
+          classworkId
+        )
+        .single();
+
+      if (
+        classworkError ||
+        !classworkData
+      ) {
+        throw new Error(
+          classworkError?.message ||
+            "Classwork could not be found."
+        );
+      }
+
+      setClasswork(
+        classworkData as Classwork
+      );
+
+      /* -----------------------------------------------
+         GET LATEST STUDENT SUBMISSION
+      ------------------------------------------------ */
+
+      const {
+        data: submissionData,
+        error: submissionError,
+      } = await supabase
+        .from("classwork_submissions")
+        .select(
+          `
             id,
             classwork_id,
             student_id,
@@ -160,88 +281,237 @@ export default function ClassworkDetailPage() {
             image_url,
             text_answer,
             status,
+            tutor_feedback,
+            teacher_feedback,
             submitted_at,
             score,
             total_marks,
             percentage,
             grade,
-            tutor_feedback,
-            teacher_feedback,
             correction_file_url
-          `)
-          .eq("student_id", studentData.id)
-          .eq("classwork_id", classworkData.id)
-          .order("submitted_at", {
+          `
+        )
+        .eq(
+          "classwork_id",
+          classworkId
+        )
+        .eq(
+          "student_id",
+          student.id
+        )
+        .order(
+          "submitted_at",
+          {
             ascending: false,
-          });
+          }
+        )
+        .limit(1)
+        .maybeSingle();
 
-        if (submissionError) {
-          throw submissionError;
-        }
-
-        setSubmissions(submissionData || []);
-      } catch (err) {
-        console.error("Classwork detail error:", err);
-
-        setError(
-          err instanceof Error
-            ? err.message
-            : "Unable to load classwork."
+      if (submissionError) {
+        throw new Error(
+          submissionError.message
         );
-      } finally {
-        setLoading(false);
       }
-    }
 
-    loadPage();
-  }, []);
+      if (submissionData) {
+        setSubmission(
+          submissionData as Submission
+        );
 
-  const latestSubmission =
-    submissions.length > 0
-      ? submissions[0]
-      : null;
-
-  async function submitAnswer() {
-    if (!classwork || !student) return;
-
-    if (!file && !textAnswer.trim()) {
-      setError(
-        "Please write an answer or upload your work."
+        setTextAnswer(
+          submissionData.text_answer ||
+            ""
+        );
+      } else {
+        setSubmission(null);
+        setTextAnswer("");
+      }
+    } catch (err) {
+      console.error(
+        "Classwork detail loading error:",
+        err
       );
+
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Unable to load classwork."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  /* =======================================================
+     FILE SELECT
+  ======================================================= */
+
+  function handleFileChange(
+    event: ChangeEvent<HTMLInputElement>
+  ) {
+    const file =
+      event.target.files?.[0] ||
+      null;
+
+    setError("");
+    setMessage("");
+
+    if (!file) {
+      setSelectedFile(null);
       return;
     }
+
+    /* 10MB LIMIT */
+
+    const maxSize =
+      10 * 1024 * 1024;
+
+    if (file.size > maxSize) {
+      setError(
+        "The selected file is larger than 10MB."
+      );
+
+      event.target.value = "";
+      setSelectedFile(null);
+
+      return;
+    }
+
+    const allowedTypes = [
+      "application/pdf",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "image/jpeg",
+      "image/png",
+    ];
+
+    if (
+      file.type &&
+      !allowedTypes.includes(file.type)
+    ) {
+      setError(
+        "Please upload a PDF, DOC, DOCX, JPG or PNG file."
+      );
+
+      event.target.value = "";
+      setSelectedFile(null);
+
+      return;
+    }
+
+    setSelectedFile(file);
+  }
+
+  /* =======================================================
+     SUBMIT ANSWER
+  ======================================================= */
+
+  async function submitAnswer(
+    event: FormEvent
+  ) {
+    event.preventDefault();
+
+    if (!classwork) return;
 
     try {
       setSubmitting(true);
       setError("");
       setMessage("");
 
+      /* -----------------------------------------------
+         USER
+      ------------------------------------------------ */
+
       const {
         data: { user },
+        error: authError,
       } = await supabase.auth.getUser();
 
-      if (!user) {
-        throw new Error("Your session has expired.");
+      if (authError || !user) {
+        throw new Error(
+          "You must be logged in."
+        );
       }
 
-      let uploadedFileUrl: string | null = null;
+      /* -----------------------------------------------
+         STUDENT
+      ------------------------------------------------ */
 
-      if (file) {
-        const safeFileName = file.name
-          .replace(/[^a-zA-Z0-9._-]/g, "_")
-          .replace(/\s+/g, "_");
+      const {
+        data: student,
+        error: studentError,
+      } = await supabase
+        .from("students")
+        .select(
+          "id, auth_id, email"
+        )
+        .eq(
+          "auth_id",
+          user.id
+        )
+        .single();
+
+      if (studentError || !student) {
+        throw new Error(
+          studentError?.message ||
+            "Student profile could not be found."
+        );
+      }
+
+      /* -----------------------------------------------
+         REQUIRE TEXT OR FILE
+      ------------------------------------------------ */
+
+      if (
+        !textAnswer.trim() &&
+        !selectedFile
+      ) {
+        throw new Error(
+          "Please enter a written answer or upload your completed work."
+        );
+      }
+
+      /* -----------------------------------------------
+         UPLOAD FILE
+      ------------------------------------------------ */
+
+      let uploadedFileUrl:
+        | string
+        | null = null;
+
+      if (selectedFile) {
+        const safeFileName =
+          selectedFile.name
+            .replace(
+              /[^a-zA-Z0-9._-]/g,
+              "_"
+            )
+            .replace(
+              /\s+/g,
+              "_"
+            );
 
         const filePath =
           `students/${student.id}/classwork/${classwork.id}/${crypto.randomUUID()}-${safeFileName}`;
 
-        const { error: uploadError } =
-          await supabase.storage
-            .from("classwork-submissions")
-            .upload(filePath, file, {
+        const {
+          error: uploadError,
+        } = await supabase.storage
+          .from(
+            "classwork-submissions"
+          )
+          .upload(
+            filePath,
+            selectedFile,
+            {
               cacheControl: "3600",
               upsert: false,
-              contentType: file.type || undefined,
-            });
+              contentType:
+                selectedFile.type ||
+                undefined,
+            }
+          );
 
         if (uploadError) {
           throw new Error(
@@ -249,43 +519,65 @@ export default function ClassworkDetailPage() {
           );
         }
 
-        const { data: publicData } =
+        const {
+          data: publicUrlData,
+        } =
           supabase.storage
-            .from("classwork-submissions")
-            .getPublicUrl(filePath);
+            .from(
+              "classwork-submissions"
+            )
+            .getPublicUrl(
+              filePath
+            );
 
         uploadedFileUrl =
-          publicData.publicUrl;
+          publicUrlData.publicUrl;
       }
 
-      const { error: submissionError } =
-        await supabase
-          .from("classwork_submissions")
-          .insert({
-            student_id: student.id,
-            student_email:
-              student.email ||
-              user.email ||
-              null,
-            classwork_id: classwork.id,
-            subject: classwork.subject,
-            title: classwork.title,
-            status: "Submitted",
-            image_url: uploadedFileUrl,
-            text_answer:
-              textAnswer.trim() || null,
-          });
+      /* -----------------------------------------------
+         CREATE SUBMISSION
+      ------------------------------------------------ */
 
-      if (submissionError) {
-        throw new Error(
-          `Submission failed: ${submissionError.message}`
-        );
-      }
+      const {
+        data: newSubmission,
+        error: submissionError,
+      } = await supabase
+        .from(
+          "classwork_submissions"
+        )
+        .insert({
+          classwork_id:
+            classwork.id,
 
-      const { data: updatedSubmissions } =
-        await supabase
-          .from("classwork_submissions")
-          .select(`
+          student_id:
+            student.id,
+
+          student_email:
+            student.email ||
+            user.email ||
+            null,
+
+          subject:
+            classwork.subject,
+
+          title:
+            classwork.title,
+
+          text_answer:
+            textAnswer.trim() ||
+            null,
+
+          image_url:
+            uploadedFileUrl,
+
+          status:
+            "submitted",
+
+          submitted_at:
+            new Date().toISOString(),
+        })
+        .select(
+          `
             id,
             classwork_id,
             student_id,
@@ -295,30 +587,56 @@ export default function ClassworkDetailPage() {
             image_url,
             text_answer,
             status,
+            tutor_feedback,
+            teacher_feedback,
             submitted_at,
             score,
             total_marks,
             percentage,
             grade,
-            tutor_feedback,
-            teacher_feedback,
             correction_file_url
-          `)
-          .eq("student_id", student.id)
-          .eq("classwork_id", classwork.id)
-          .order("submitted_at", {
-            ascending: false,
-          });
+          `
+        )
+        .single();
 
-      setSubmissions(
-        updatedSubmissions || []
+      if (
+        submissionError ||
+        !newSubmission
+      ) {
+        throw new Error(
+          submissionError?.message ||
+            "Unable to submit your answer."
+        );
+      }
+
+      setSubmission(
+        newSubmission as Submission
       );
 
-      setTextAnswer("");
-      setFile(null);
+      setSelectedFile(null);
+
+      const fileInput =
+        document.getElementById(
+          "student-answer-file"
+        ) as HTMLInputElement | null;
+
+      if (fileInput) {
+        fileInput.value = "";
+      }
 
       setMessage(
         "Your answer has been submitted successfully."
+      );
+
+      /*
+       * Keep the submitted text visible.
+       * The latest submission is now loaded
+       * from Supabase.
+       */
+
+      setTextAnswer(
+        newSubmission.text_answer ||
+          ""
       );
     } catch (err) {
       console.error(
@@ -336,33 +654,64 @@ export default function ClassworkDetailPage() {
     }
   }
 
+  /* =======================================================
+     LOADING
+  ======================================================= */
+
   if (loading) {
     return (
-      <main className="min-h-screen bg-slate-50 px-6 py-12">
-        <div className="mx-auto max-w-4xl">
-          <p className="text-sm font-semibold text-slate-500">
-            Loading classwork...
-          </p>
+      <main className="min-h-screen bg-slate-50">
+        <div className="mx-auto max-w-5xl px-6 py-12">
+          <div className="rounded-3xl bg-white p-10 shadow-sm">
+            <div className="flex items-center gap-3 text-slate-600">
+              <Loader2
+                size={21}
+                className="animate-spin"
+              />
+              <p className="font-semibold">
+                Loading classwork...
+              </p>
+            </div>
+          </div>
         </div>
       </main>
     );
   }
 
+  /* =======================================================
+     ERROR
+  ======================================================= */
+
   if (error && !classwork) {
     return (
-      <main className="min-h-screen bg-slate-50 px-6 py-12">
-        <div className="mx-auto max-w-4xl">
+      <main className="min-h-screen bg-slate-50">
+        <div className="mx-auto max-w-5xl px-6 py-12">
           <Link
             href="/dashboard"
-            className="inline-flex items-center gap-2 text-sm font-bold text-slate-600"
+            className="inline-flex items-center gap-2 text-sm font-bold text-slate-600 hover:text-slate-950"
           >
-            <ArrowLeft size={16} />
+            <ArrowLeft size={17} />
             Back to Dashboard
           </Link>
 
-          <p className="mt-8 text-sm font-semibold text-red-600">
-            {error}
-          </p>
+          <div className="mt-8 rounded-3xl border border-red-200 bg-red-50 p-7">
+            <div className="flex items-start gap-3">
+              <AlertCircle
+                size={22}
+                className="mt-0.5 text-red-600"
+              />
+
+              <div>
+                <h1 className="font-bold text-red-900">
+                  Unable to load classwork
+                </h1>
+
+                <p className="mt-2 text-sm text-red-700">
+                  {error}
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       </main>
     );
@@ -372,9 +721,13 @@ export default function ClassworkDetailPage() {
     return null;
   }
 
+  /* =======================================================
+     MAIN PAGE
+  ======================================================= */
+
   return (
-    <main className="min-h-screen bg-slate-50 px-6 py-10">
-      <div className="mx-auto max-w-4xl">
+    <main className="min-h-screen bg-slate-50">
+      <div className="mx-auto max-w-5xl px-6 py-10">
 
         {/* BACK */}
 
@@ -384,7 +737,7 @@ export default function ClassworkDetailPage() {
           )}`}
           className="inline-flex items-center gap-2 text-sm font-bold text-slate-600 transition hover:text-slate-950"
         >
-          <ArrowLeft size={16} />
+          <ArrowLeft size={17} />
           Back to Classwork
         </Link>
 
@@ -395,440 +748,554 @@ export default function ClassworkDetailPage() {
             {classwork.subject}
           </p>
 
-          <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
+          <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-950 md:text-4xl">
             {classwork.title}
           </h1>
 
-          <div className="mt-4 flex flex-wrap items-center gap-4 text-sm text-slate-500">
-            {classwork.created_at && (
-              <span>
-                Posted{" "}
-                {new Date(
-                  classwork.created_at
-                ).toLocaleDateString(
-                  undefined,
-                  {
-                    day: "numeric",
-                    month: "short",
-                    year: "numeric",
-                  }
-                )}
-              </span>
-            )}
+          <div className="mt-4 flex flex-wrap gap-4 text-sm text-slate-500">
+            <span>
+              Posted{" "}
+              {formatShortDate(
+                classwork.created_at
+              )}
+            </span>
 
             {classwork.due_date && (
-              <span className="flex items-center gap-1.5">
-                <Clock size={15} />
+              <span>
                 Due{" "}
-                {new Date(
+                {formatShortDate(
                   classwork.due_date
-                ).toLocaleDateString(
-                  undefined,
-                  {
-                    day: "numeric",
-                    month: "short",
-                    year: "numeric",
-                  }
                 )}
               </span>
             )}
           </div>
         </header>
 
-        {/* TUTOR'S CLASSWORK */}
+        {/* MESSAGES */}
 
-        <section className="mt-10">
-          <div className="mb-4">
-            <h2 className="text-xl font-black text-slate-950">
-              Classwork
-            </h2>
+        {message && (
+          <div className="mt-7 flex items-start gap-3 rounded-2xl border border-green-200 bg-green-50 p-5 text-green-800">
+            <CheckCircle2
+              size={21}
+              className="mt-0.5 shrink-0"
+            />
 
-            <p className="mt-1 text-sm text-slate-500">
-              Instructions from your tutor
+            <p className="font-semibold">
+              {message}
             </p>
           </div>
+        )}
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-6">
-            {classwork.description ? (
-              <p className="whitespace-pre-wrap text-[15px] leading-7 text-slate-700">
-                {classwork.description}
-              </p>
-            ) : (
-              <p className="text-sm text-slate-500">
-                No additional instructions were provided.
-              </p>
-            )}
+        {error && (
+          <div className="mt-7 flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 p-5 text-red-800">
+            <AlertCircle
+              size={21}
+              className="mt-0.5 shrink-0"
+            />
 
-            {classwork.attachment_url && (
-              <div className="mt-6 flex flex-col gap-4 border-t border-slate-100 pt-5 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100">
-                    <FileText
-                      size={19}
-                      className="text-slate-600"
-                    />
-                  </div>
-
-                  <div>
-                    <p className="text-sm font-bold text-slate-800">
-                      Tutor attachment
-                    </p>
-
-                    <p className="text-xs text-slate-500">
-                      Open the file before answering.
-                    </p>
-                  </div>
-                </div>
-
-                <a
-                  href={classwork.attachment_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-bold text-white"
-                >
-                  <ExternalLink size={16} />
-                  Open File
-                </a>
-              </div>
-            )}
+            <p className="font-semibold">
+              {error}
+            </p>
           </div>
+        )}
+
+        {/* =================================================
+            TUTOR ASSIGNMENT
+        ================================================= */}
+
+        <section className="mt-8 rounded-3xl bg-white p-6 shadow-sm md:p-8">
+
+          <div className="flex items-center gap-3">
+            <FileText
+              size={23}
+              className="text-yellow-600"
+            />
+
+            <h2 className="text-xl font-black text-slate-950">
+              Tutor's Assignment
+            </h2>
+          </div>
+
+          {classwork.description ? (
+            <div className="mt-5 whitespace-pre-wrap leading-8 text-slate-700">
+              {classwork.description}
+            </div>
+          ) : (
+            <p className="mt-5 text-sm text-slate-500">
+              No written instructions were provided.
+            </p>
+          )}
+
         </section>
 
-        {/* LATEST SUBMISSION */}
+        {/* =================================================
+            TUTOR ATTACHMENT
+        ================================================= */}
 
-        {latestSubmission && (
-          <section className="mt-8">
-            <div className="mb-4 flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-black text-slate-950">
-                  Your submission
-                </h2>
+        {classwork.attachment_url && (
+          <section className="mt-5 rounded-3xl bg-white p-6 shadow-sm md:p-8">
 
-                <p className="mt-1 text-sm text-slate-500">
-                  Latest attempt
-                </p>
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+
+              <div className="flex items-center gap-3">
+                <FileText
+                  size={23}
+                  className="text-yellow-600"
+                />
+
+                <div>
+                  <h2 className="font-black text-slate-950">
+                    Tutor Attachment
+                  </h2>
+
+                  <p className="mt-1 text-sm text-slate-500">
+                    Open or download the file provided by your tutor.
+                  </p>
+                </div>
               </div>
 
-              <span className="rounded-full bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-700">
-                {latestSubmission.status ||
-                  "Submitted"}
-              </span>
+              <div className="flex flex-wrap gap-2">
+
+                <a
+                  href={
+                    classwork.attachment_url
+                  }
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-sm font-bold text-white transition hover:bg-slate-800"
+                >
+                  <ExternalLink
+                    size={17}
+                  />
+                  View
+                </a>
+
+                <a
+                  href={
+                    classwork.attachment_url
+                  }
+                  download
+                  className="inline-flex items-center gap-2 rounded-xl bg-yellow-500 px-4 py-3 text-sm font-bold text-slate-950 transition hover:bg-yellow-400"
+                >
+                  <Download
+                    size={17}
+                  />
+                  Download
+                </a>
+
+              </div>
+
             </div>
 
-            <div className="rounded-2xl border border-slate-200 bg-white p-6">
+            {/* BROWSER PREVIEW */}
 
-              {latestSubmission.submitted_at && (
-                <p className="text-xs text-slate-500">
-                  Submitted{" "}
-                  {new Date(
-                    latestSubmission.submitted_at
-                  ).toLocaleString()}
-                </p>
-              )}
+            {isBrowserViewable(
+              classwork.attachment_url
+            ) && (
+              <div className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
 
-              {latestSubmission.text_answer && (
-                <div className="mt-5">
-                  <p className="mb-2 text-sm font-bold text-slate-800">
-                    Written answer
-                  </p>
-
-                  <div className="rounded-xl bg-slate-50 p-4">
-                    <p className="whitespace-pre-wrap text-sm leading-7 text-slate-700">
-                      {latestSubmission.text_answer}
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {latestSubmission.image_url && (
-                <div className="mt-5">
-                  <p className="mb-2 text-sm font-bold text-slate-800">
-                    Uploaded work
-                  </p>
-
-                  <a
-                    href={latestSubmission.image_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-bold text-white"
-                  >
-                    <ExternalLink size={16} />
-                    View Submission
-                  </a>
-                </div>
-              )}
-
-              {(latestSubmission.score !== null ||
-                latestSubmission.percentage !== null ||
-                latestSubmission.grade) && (
-                <div className="mt-6 grid grid-cols-3 divide-x overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
-                  <div className="p-4 text-center">
-                    <p className="text-[11px] font-bold uppercase text-slate-400">
-                      Score
-                    </p>
-                    <p className="mt-1 font-black text-slate-900">
-                      {latestSubmission.score ?? "—"}
-                      {latestSubmission.total_marks !==
-                        null &&
-                        ` / ${latestSubmission.total_marks}`}
-                    </p>
-                  </div>
-
-                  <div className="p-4 text-center">
-                    <p className="text-[11px] font-bold uppercase text-slate-400">
-                      Percentage
-                    </p>
-                    <p className="mt-1 font-black text-slate-900">
-                      {latestSubmission.percentage !==
-                      null
-                        ? `${latestSubmission.percentage}%`
-                        : "—"}
-                    </p>
-                  </div>
-
-                  <div className="p-4 text-center">
-                    <p className="text-[11px] font-bold uppercase text-slate-400">
-                      Grade
-                    </p>
-                    <p className="mt-1 font-black text-slate-900">
-                      {latestSubmission.grade ||
-                        "—"}
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {(latestSubmission.tutor_feedback ||
-                latestSubmission.teacher_feedback) && (
-                <div className="mt-6 rounded-xl border border-blue-100 bg-blue-50 p-4">
-                  <div className="flex items-center gap-2">
-                    <MessageSquare
-                      size={17}
-                      className="text-blue-600"
-                    />
-
-                    <p className="text-sm font-bold text-blue-900">
-                      Tutor feedback
-                    </p>
-                  </div>
-
-                  <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-blue-900">
-                    {latestSubmission.tutor_feedback ||
-                      latestSubmission.teacher_feedback}
-                  </p>
-                </div>
-              )}
-
-              {latestSubmission.correction_file_url && (
-                <div className="mt-6 flex items-center justify-between gap-4 rounded-xl bg-orange-50 p-4">
-                  <div>
-                    <p className="text-sm font-bold text-orange-900">
-                      Correction available
-                    </p>
-
-                    <p className="mt-1 text-xs text-orange-700">
-                      Your tutor has provided a correction.
-                    </p>
-                  </div>
-
-                  <a
-                    href={
-                      latestSubmission.correction_file_url
+                {isImage(
+                  classwork.attachment_url
+                ) ? (
+                  <img
+                    src={
+                      classwork.attachment_url
                     }
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="shrink-0 rounded-lg bg-orange-600 px-4 py-2 text-sm font-bold text-white"
-                  >
-                    View
-                  </a>
-                </div>
-              )}
-            </div>
+                    alt="Tutor attachment"
+                    className="mx-auto max-h-[700px] w-auto max-w-full object-contain"
+                  />
+                ) : (
+                  <iframe
+                    src={
+                      classwork.attachment_url
+                    }
+                    title="Tutor attachment"
+                    className="h-[700px] w-full"
+                  />
+                )}
+
+              </div>
+            )}
+
           </section>
         )}
 
-        {/* SUBMIT */}
+        {/* =================================================
+            STUDENT SUBMISSION
+        ================================================= */}
 
-        <section className="mt-8">
-          <div className="mb-4">
+        <section className="mt-5 rounded-3xl bg-white p-6 shadow-sm md:p-8">
+
+          <div>
             <h2 className="text-xl font-black text-slate-950">
-              {latestSubmission
-                ? "Submit another attempt"
-                : "Submit your answer"}
+              Your Submission
             </h2>
 
             <p className="mt-1 text-sm text-slate-500">
-              Write your answer or upload your completed work.
+              Submit your answer as text, a file, or both.
             </p>
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-6">
+          {/* EXISTING SUBMISSION */}
+
+          {submission && (
+            <div className="mt-6 rounded-2xl border border-green-200 bg-green-50 p-5">
+
+              <div className="flex flex-wrap items-center justify-between gap-3">
+
+                <div>
+                  <span className="inline-flex items-center gap-2 rounded-full bg-green-100 px-3 py-1 text-xs font-bold text-green-700">
+                    <CheckCircle2
+                      size={14}
+                    />
+                    {submission.status ||
+                      "Submitted"}
+                  </span>
+
+                  {submission.submitted_at && (
+                    <p className="mt-2 text-sm text-green-700">
+                      Submitted{" "}
+                      {formatDate(
+                        submission.submitted_at
+                      )}
+                    </p>
+                  )}
+                </div>
+
+                {submission.grade && (
+                  <div className="rounded-xl bg-white px-4 py-3 text-center">
+                    <p className="text-xs font-bold uppercase text-slate-400">
+                      Grade
+                    </p>
+
+                    <p className="text-xl font-black text-blue-600">
+                      {submission.grade}
+                    </p>
+                  </div>
+                )}
+
+              </div>
+
+              {/* EXISTING TEXT */}
+
+              {submission.text_answer && (
+                <div className="mt-5 rounded-2xl bg-white p-5">
+
+                  <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
+                    Written Answer
+                  </p>
+
+                  <p className="mt-3 whitespace-pre-wrap leading-7 text-slate-700">
+                    {submission.text_answer}
+                  </p>
+
+                </div>
+              )}
+
+              {/* EXISTING FILE */}
+
+              {submission.image_url && (
+                <div className="mt-5 rounded-2xl bg-white p-5">
+
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+
+                    <div>
+                      <p className="font-bold text-slate-900">
+                        Submitted File
+                      </p>
+
+                      <p className="mt-1 text-sm text-slate-500">
+                        Your latest uploaded work.
+                      </p>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+
+                      <a
+                        href={
+                          submission.image_url
+                        }
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-bold text-white"
+                      >
+                        <ExternalLink
+                          size={16}
+                        />
+                        View
+                      </a>
+
+                      <a
+                        href={
+                          submission.image_url
+                        }
+                        download
+                        className="inline-flex items-center gap-2 rounded-xl bg-yellow-500 px-4 py-2 text-sm font-bold text-slate-950"
+                      >
+                        <Download
+                          size={16}
+                        />
+                        Download
+                      </a>
+
+                    </div>
+
+                  </div>
+
+                  {isImage(
+                    submission.image_url
+                  ) && (
+                    <div className="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                      <img
+                        src={
+                          submission.image_url
+                        }
+                        alt="Your submitted work"
+                        className="mx-auto max-h-[650px] w-auto max-w-full rounded-xl object-contain"
+                      />
+                    </div>
+                  )}
+
+                  {isPdf(
+                    submission.image_url
+                  ) && (
+                    <div className="mt-5 overflow-hidden rounded-2xl border border-slate-200">
+                      <iframe
+                        src={
+                          submission.image_url
+                        }
+                        title="Your submitted PDF"
+                        className="h-[650px] w-full"
+                      />
+                    </div>
+                  )}
+
+                </div>
+              )}
+
+            </div>
+          )}
+
+          {/* SUBMISSION FORM */}
+
+          <form
+            onSubmit={submitAnswer}
+            className="mt-7"
+          >
 
             <div>
-              <label className="text-sm font-bold text-slate-800">
-                Written answer
+              <label className="mb-2 block text-sm font-bold text-slate-700">
+                Written Answer
               </label>
 
               <textarea
                 value={textAnswer}
-                onChange={(e) => {
-                  setTextAnswer(e.target.value);
-                  setError("");
-                  setMessage("");
-                }}
-                rows={7}
-                placeholder="Write your answer here..."
-                className="mt-2 w-full resize-y rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-yellow-400 focus:ring-4 focus:ring-yellow-50"
+                onChange={(event) =>
+                  setTextAnswer(
+                    event.target.value
+                  )
+                }
+                rows={8}
+                placeholder="Type your answer here..."
+                className="w-full rounded-2xl border border-slate-200 px-5 py-4 leading-7 outline-none transition focus:border-yellow-500 focus:ring-2 focus:ring-yellow-100"
               />
             </div>
 
-            <div className="mt-5">
-              <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 transition hover:border-yellow-400 hover:bg-yellow-50">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white">
-                  <Upload
-                    size={19}
-                    className="text-slate-500"
-                  />
-                </div>
+            {/* FILE */}
 
-                <div>
-                  <p className="text-sm font-bold text-slate-800">
-                    Upload completed work
-                  </p>
+            <div className="mt-6">
 
-                  <p className="text-xs text-slate-500">
-                    PDF, JPG, PNG, DOC or DOCX
-                  </p>
-                </div>
-
-                <input
-                  type="file"
-                  accept="image/*,.pdf,.doc,.docx"
-                  onChange={(e) => {
-                    setFile(
-                      e.target.files?.[0] ||
-                        null
-                    );
-                    setError("");
-                    setMessage("");
-                  }}
-                  className="hidden"
-                />
+              <label className="mb-2 block text-sm font-bold text-slate-700">
+                Upload Completed Work
               </label>
 
-              {file && (
-                <div className="mt-3 flex items-center gap-3 rounded-xl bg-slate-50 p-3">
-                  <FileText
-                    size={18}
-                    className="text-slate-500"
-                  />
+              <label
+                htmlFor="student-answer-file"
+                className="flex cursor-pointer items-center gap-4 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5 transition hover:border-yellow-500 hover:bg-yellow-50"
+              >
+                <Upload
+                  size={23}
+                  className="text-slate-500"
+                />
 
-                  <p className="truncate text-sm font-semibold text-slate-700">
-                    {file.name}
+                <div>
+                  <p className="font-bold text-slate-800">
+                    {selectedFile
+                      ? selectedFile.name
+                      : "Choose a file"}
+                  </p>
+
+                  <p className="mt-1 text-xs text-slate-500">
+                    PDF, DOC, DOCX, JPG or PNG · Maximum 10MB
                   </p>
                 </div>
-              )}
-            </div>
+              </label>
 
-            {message && (
-              <div className="mt-5 flex items-center gap-2 rounded-xl bg-green-50 p-4 text-sm font-semibold text-green-700">
-                <CheckCircle size={18} />
-                {message}
-              </div>
-            )}
-
-            {error && (
-              <div className="mt-5 rounded-xl bg-red-50 p-4 text-sm font-semibold text-red-700">
-                {error}
-              </div>
-            )}
-
-            <button
-              type="button"
-              onClick={submitAnswer}
-              disabled={submitting}
-              className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-yellow-500 px-5 py-3.5 text-sm font-black text-slate-950 transition hover:bg-yellow-400 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {submitting ? (
-                <>
-                  <Loader2
-                    size={18}
-                    className="animate-spin"
-                  />
-                  Submitting...
-                </>
-              ) : (
-                <>
-                  <Send size={18} />
-                  Submit Answer
-                </>
-              )}
-            </button>
-          </div>
-        </section>
-
-        {/* PREVIOUS ATTEMPTS */}
-
-        {submissions.length > 1 && (
-          <section className="mt-8 pb-12">
-            <div className="mb-4 flex items-center gap-3">
-              <History
-                size={20}
-                className="text-slate-500"
+              <input
+                id="student-answer-file"
+                type="file"
+                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                onChange={
+                  handleFileChange
+                }
+                className="hidden"
               />
 
+            </div>
+
+            {/* SUBMIT */}
+
+            <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:items-center">
+
+              <button
+                type="submit"
+                disabled={submitting}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-950 px-6 py-4 font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {submitting && (
+                  <Loader2
+                    size={19}
+                    className="animate-spin"
+                  />
+                )}
+
+                {submitting
+                  ? "Submitting..."
+                  : submission
+                  ? "Submit New Version"
+                  : "Submit Answer"}
+              </button>
+
+              {submission && (
+                <p className="text-sm text-slate-500">
+                  Submitting again will create a new latest version.
+                </p>
+              )}
+
+            </div>
+
+          </form>
+
+        </section>
+
+        {/* =================================================
+            MARKED RESULT
+        ================================================= */}
+
+        {submission &&
+          (submission.score !== null ||
+            submission.percentage !== null ||
+            submission.grade) && (
+            <section className="mt-5 rounded-3xl bg-white p-6 shadow-sm md:p-8">
+
+              <h2 className="text-xl font-black text-slate-950">
+                Result
+              </h2>
+
+              <div className="mt-5 grid gap-4 sm:grid-cols-3">
+
+                {submission.score !==
+                  null && (
+                  <div className="rounded-2xl bg-blue-50 p-5">
+                    <p className="text-xs font-bold uppercase text-slate-400">
+                      Score
+                    </p>
+
+                    <p className="mt-2 text-2xl font-black text-blue-700">
+                      {submission.score}
+                      {submission.total_marks !==
+                        null &&
+                        ` / ${submission.total_marks}`}
+                    </p>
+                  </div>
+                )}
+
+                {submission.percentage !==
+                  null && (
+                  <div className="rounded-2xl bg-purple-50 p-5">
+                    <p className="text-xs font-bold uppercase text-slate-400">
+                      Percentage
+                    </p>
+
+                    <p className="mt-2 text-2xl font-black text-purple-700">
+                      {submission.percentage}%
+                    </p>
+                  </div>
+                )}
+
+                {submission.grade && (
+                  <div className="rounded-2xl bg-yellow-50 p-5">
+                    <p className="text-xs font-bold uppercase text-slate-400">
+                      Grade
+                    </p>
+
+                    <p className="mt-2 text-2xl font-black text-yellow-700">
+                      {submission.grade}
+                    </p>
+                  </div>
+                )}
+
+              </div>
+
+            </section>
+          )}
+
+        {/* =================================================
+            TUTOR FEEDBACK
+        ================================================= */}
+
+        {submission &&
+          (submission.teacher_feedback ||
+            submission.tutor_feedback) && (
+            <section className="mt-5 rounded-3xl bg-white p-6 shadow-sm md:p-8">
+
+              <h2 className="text-xl font-black text-slate-950">
+                Tutor Feedback
+              </h2>
+
+              <p className="mt-4 whitespace-pre-wrap leading-8 text-slate-700">
+                {submission.teacher_feedback ||
+                  submission.tutor_feedback}
+              </p>
+
+            </section>
+          )}
+
+        {/* =================================================
+            CORRECTION LINK
+        ================================================= */}
+
+        {submission?.correction_file_url && (
+          <section className="mt-5 rounded-3xl bg-white p-6 shadow-sm md:p-8">
+
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+
               <div>
-                <h2 className="text-xl font-black text-slate-950">
-                  Previous attempts
+                <h2 className="font-black text-slate-950">
+                  Tutor Correction
                 </h2>
 
-                <p className="text-sm text-slate-500">
-                  Earlier submissions for this classwork
+                <p className="mt-1 text-sm text-slate-500">
+                  Your tutor has provided a correction file.
                 </p>
               </div>
+
+              <a
+                href={
+                  submission.correction_file_url
+                }
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-950 px-5 py-3 text-sm font-bold text-white transition hover:bg-slate-800"
+              >
+                <ExternalLink
+                  size={17}
+                />
+                View Correction
+              </a>
+
             </div>
 
-            <div className="divide-y divide-slate-200 rounded-2xl border border-slate-200 bg-white">
-              {submissions
-                .slice(1)
-                .map((submission, index) => (
-                  <div
-                    key={submission.id}
-                    className="flex items-center justify-between gap-4 p-4"
-                  >
-                    <div>
-                      <p className="text-sm font-bold text-slate-800">
-                        Attempt{" "}
-                        {submissions.length -
-                          index -
-                          1}
-                      </p>
-
-                      {submission.submitted_at && (
-                        <p className="mt-1 text-xs text-slate-500">
-                          {new Date(
-                            submission.submitted_at
-                          ).toLocaleString()}
-                        </p>
-                      )}
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                      {submission.percentage !==
-                        null && (
-                        <span className="text-sm font-bold text-slate-700">
-                          {submission.percentage}%
-                        </span>
-                      )}
-
-                      <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">
-                        {submission.status ||
-                          "Submitted"}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-            </div>
           </section>
         )}
 

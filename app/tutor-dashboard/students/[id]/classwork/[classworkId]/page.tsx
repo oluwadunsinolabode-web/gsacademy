@@ -19,7 +19,7 @@ import { useParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
 /* =========================================================
-   TYPES
+TYPES
 ========================================================= */
 
 type Classwork = {
@@ -43,7 +43,7 @@ type Student = {
 type Submission = {
   id: string;
   classwork_id: string;
-  student_id: string;
+  student_id: string | null;
   student_email: string | null;
   subject: string | null;
   title: string | null;
@@ -61,7 +61,7 @@ type Submission = {
 };
 
 /* =========================================================
-   HELPERS
+HELPERS
 ========================================================= */
 
 function formatDate(value: string | null) {
@@ -87,18 +87,19 @@ function formatShortDate(value: string | null) {
 }
 
 function isImage(url: string | null) {
-  return (
-    !!url &&
-    /\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i.test(url)
-  );
+  if (!url) return false;
+
+  return /\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i.test(url);
 }
 
 function isPdf(url: string | null) {
-  return !!url && /\.pdf(\?.*)?$/i.test(url);
+  if (!url) return false;
+
+  return /\.pdf(\?.*)?$/i.test(url);
 }
 
 /* =========================================================
-   PAGE
+PAGE
 ========================================================= */
 
 export default function TutorClassworkDetailsPage() {
@@ -108,14 +109,12 @@ export default function TutorClassworkDetailsPage() {
     ? params.id[0]
     : params.id;
 
-  const classworkId = Array.isArray(
-    params.classworkId
-  )
+  const classworkId = Array.isArray(params.classworkId)
     ? params.classworkId[0]
     : params.classworkId;
 
   /* =======================================================
-     DATA
+  DATA
   ======================================================= */
 
   const [student, setStudent] =
@@ -128,7 +127,7 @@ export default function TutorClassworkDetailsPage() {
     useState<Submission | null>(null);
 
   /* =======================================================
-     STATE
+  STATE
   ======================================================= */
 
   const [loading, setLoading] =
@@ -147,7 +146,7 @@ export default function TutorClassworkDetailsPage() {
     useState("");
 
   /* =======================================================
-     MARKING / FEEDBACK
+  MARKING / FEEDBACK
   ======================================================= */
 
   const [score, setScore] =
@@ -169,7 +168,7 @@ export default function TutorClassworkDetailsPage() {
     useState<File | null>(null);
 
   /* =======================================================
-     LOAD PAGE
+  LOAD PAGE
   ======================================================= */
 
   useEffect(() => {
@@ -182,9 +181,10 @@ export default function TutorClassworkDetailsPage() {
     try {
       setLoading(true);
       setError("");
+      setMessage("");
 
       /* -----------------------------------------------
-         LOGGED-IN TUTOR
+         LOGGED-IN USER
       ----------------------------------------------- */
 
       const {
@@ -227,7 +227,9 @@ export default function TutorClassworkDetailsPage() {
         error: studentError,
       } = await supabase
         .from("students")
-        .select("id, full_name, email")
+        .select(
+          "id, full_name, email"
+        )
         .eq("id", studentId)
         .single();
 
@@ -280,7 +282,7 @@ export default function TutorClassworkDetailsPage() {
       setClasswork(classworkData);
 
       /* -----------------------------------------------
-         VERIFY CLASSWORK IS ASSIGNED TO STUDENT
+         VERIFY CLASSWORK ASSIGNMENT
       ----------------------------------------------- */
 
       const {
@@ -288,7 +290,9 @@ export default function TutorClassworkDetailsPage() {
         error: assignmentError,
       } = await supabase
         .from("classwork_assignments")
-        .select("classwork_id, student_id")
+        .select(
+          "classwork_id, student_id"
+        )
         .eq(
           "classwork_id",
           classworkId
@@ -312,11 +316,17 @@ export default function TutorClassworkDetailsPage() {
       }
 
       /* -----------------------------------------------
-         GET STUDENT SUBMISSION
+         GET ALL SUBMISSIONS FOR THIS CLASSWORK
+         We deliberately fetch the records first,
+         then identify the student's submission.
+
+         This handles both:
+         - newer submissions using student_id
+         - older submissions using student_email
       ----------------------------------------------- */
 
       const {
-        data: submissionData,
+        data: submissionRows,
         error: submissionError,
       } = await supabase
         .from("classwork_submissions")
@@ -345,18 +355,12 @@ export default function TutorClassworkDetailsPage() {
           "classwork_id",
           classworkId
         )
-        .eq(
-          "student_id",
-          studentId
-        )
         .order(
           "submitted_at",
           {
             ascending: false,
           }
-        )
-        .limit(1)
-        .maybeSingle();
+        );
 
       if (submissionError) {
         throw new Error(
@@ -364,41 +368,100 @@ export default function TutorClassworkDetailsPage() {
         );
       }
 
+      /* -----------------------------------------------
+         MATCH STUDENT
+
+         Primary match:
+         student_id
+
+         Fallback:
+         student_email
+      ----------------------------------------------- */
+
+      const normalizedStudentEmail =
+        studentData.email
+          ?.trim()
+          .toLowerCase() || "";
+
+      const matchingSubmissions =
+        (submissionRows || []).filter(
+          (item: Submission) => {
+            const sameStudentId =
+              !!item.student_id &&
+              item.student_id ===
+                studentData.id;
+
+            const sameStudentEmail =
+              !!normalizedStudentEmail &&
+              !!item.student_email &&
+              item.student_email
+                .trim()
+                .toLowerCase() ===
+                normalizedStudentEmail;
+
+            return (
+              sameStudentId ||
+              sameStudentEmail
+            );
+          }
+        );
+
+      /*
+       * Because submissions are ordered newest first,
+       * the first matching record is the student's
+       * latest submission.
+       */
+
+      const latestSubmission =
+        matchingSubmissions[0] ||
+        null;
+
       setSubmission(
-        submissionData || null
+        latestSubmission
       );
 
       /* -----------------------------------------------
          LOAD EXISTING MARKING
       ----------------------------------------------- */
 
-      if (submissionData) {
+      if (latestSubmission) {
         setScore(
-          submissionData.score !== null
+          latestSubmission.score !== null
             ? String(
-                submissionData.score
+                latestSubmission.score
               )
             : ""
         );
 
         setTotalMarks(
-          submissionData.total_marks !==
+          latestSubmission.total_marks !==
           null
             ? String(
-                submissionData.total_marks
+                latestSubmission.total_marks
               )
             : ""
         );
 
         setGrade(
-          submissionData.grade || ""
+          latestSubmission.grade || ""
         );
 
         setFeedback(
-          submissionData.teacher_feedback ||
-            submissionData.tutor_feedback ||
+          latestSubmission.teacher_feedback ||
+            latestSubmission.tutor_feedback ||
             ""
         );
+
+        setCorrectionText(
+          latestSubmission.tutor_feedback ||
+            ""
+        );
+      } else {
+        setScore("");
+        setTotalMarks("");
+        setGrade("");
+        setFeedback("");
+        setCorrectionText("");
       }
     } catch (err) {
       console.error(
@@ -417,7 +480,7 @@ export default function TutorClassworkDetailsPage() {
   }
 
   /* =======================================================
-     SAVE MARK / FEEDBACK
+  SAVE MARK / FEEDBACK
   ======================================================= */
 
   async function saveMarking(
@@ -446,6 +509,34 @@ export default function TutorClassworkDetailsPage() {
         totalMarks.trim() !== ""
           ? Number(totalMarks)
           : null;
+
+      if (
+        numericScore !== null &&
+        Number.isNaN(numericScore)
+      ) {
+        throw new Error(
+          "Please enter a valid score."
+        );
+      }
+
+      if (
+        numericTotal !== null &&
+        Number.isNaN(numericTotal)
+      ) {
+        throw new Error(
+          "Please enter valid total marks."
+        );
+      }
+
+      if (
+        numericScore !== null &&
+        numericTotal !== null &&
+        numericScore > numericTotal
+      ) {
+        throw new Error(
+          "Score cannot be greater than total marks."
+        );
+      }
 
       let percentage: number | null =
         null;
@@ -542,7 +633,7 @@ export default function TutorClassworkDetailsPage() {
   }
 
   /* =======================================================
-     SAVE CORRECTION
+  SAVE CORRECTION
   ======================================================= */
 
   async function saveCorrection() {
@@ -631,7 +722,9 @@ export default function TutorClassworkDetailsPage() {
           .from(
             "classwork-submissions"
           )
-          .getPublicUrl(filePath);
+          .getPublicUrl(
+            filePath
+          );
 
         correctionFileUrl =
           publicUrlData.publicUrl;
@@ -652,6 +745,7 @@ export default function TutorClassworkDetailsPage() {
           correction_file_url:
             correctionFileUrl ||
             null,
+
           tutor_feedback:
             correctionText.trim() ||
             submission.tutor_feedback ||
@@ -705,6 +799,11 @@ export default function TutorClassworkDetailsPage() {
         fileInput.value = "";
       }
 
+      setCorrectionText(
+        updatedSubmission.tutor_feedback ||
+          ""
+      );
+
       setMessage(
         "Correction saved successfully."
       );
@@ -725,29 +824,36 @@ export default function TutorClassworkDetailsPage() {
   }
 
   /* =======================================================
-     LOADING
+  LOADING
   ======================================================= */
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-slate-50 px-5 py-10">
-        <div className="mx-auto max-w-4xl">
-          <p className="font-semibold text-slate-600">
-            Loading classwork...
-          </p>
+      <main className="min-h-screen bg-slate-50">
+        <div className="mx-auto max-w-5xl px-5 py-12">
+          <div className="flex items-center gap-3 text-slate-600">
+            <Loader2
+              size={20}
+              className="animate-spin"
+            />
+
+            <span className="font-semibold">
+              Loading classwork...
+            </span>
+          </div>
         </div>
       </main>
     );
   }
 
   /* =======================================================
-     ERROR
+  ERROR
   ======================================================= */
 
   if (error && !classwork) {
     return (
-      <main className="min-h-screen bg-slate-50 px-5 py-10">
-        <div className="mx-auto max-w-4xl">
+      <main className="min-h-screen bg-slate-50">
+        <div className="mx-auto max-w-5xl px-5 py-12">
 
           <Link
             href={`/tutor-dashboard/students/${studentId}/classwork`}
@@ -760,6 +866,7 @@ export default function TutorClassworkDetailsPage() {
           <div className="mt-8 rounded-3xl border border-red-200 bg-red-50 p-7">
             <div className="flex items-center gap-3 text-red-700">
               <AlertCircle size={22} />
+
               <p className="font-bold">
                 {error}
               </p>
@@ -772,12 +879,12 @@ export default function TutorClassworkDetailsPage() {
   }
 
   /* =======================================================
-     MAIN PAGE
+  MAIN PAGE
   ======================================================= */
 
   return (
-    <main className="min-h-screen bg-slate-50 px-5 py-8 md:px-8">
-      <div className="mx-auto max-w-4xl">
+    <main className="min-h-screen bg-slate-50">
+      <div className="mx-auto max-w-5xl px-5 py-10">
 
         {/* BACK */}
 
@@ -823,6 +930,7 @@ export default function TutorClassworkDetailsPage() {
         <header className="mt-8">
 
           <div className="flex flex-wrap items-center gap-2">
+
             <span className="rounded-full bg-yellow-100 px-3 py-1 text-xs font-extrabold text-yellow-700">
               {classwork?.subject}
             </span>
@@ -830,6 +938,7 @@ export default function TutorClassworkDetailsPage() {
             <span className="rounded-full bg-green-50 px-3 py-1 text-xs font-bold text-green-700">
               {classwork?.status}
             </span>
+
           </div>
 
           <h1 className="mt-4 text-3xl font-black tracking-tight text-slate-950 md:text-4xl">
@@ -868,6 +977,7 @@ export default function TutorClassworkDetailsPage() {
         <section className="mt-8 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm md:p-7">
 
           <div className="flex items-center gap-3">
+
             <FileText
               size={22}
               className="text-yellow-600"
@@ -876,6 +986,7 @@ export default function TutorClassworkDetailsPage() {
             <h2 className="text-xl font-extrabold text-slate-950">
               Tutor's Assignment
             </h2>
+
           </div>
 
           {classwork?.description ? (
@@ -888,14 +999,13 @@ export default function TutorClassworkDetailsPage() {
             </p>
           )}
 
-          {/* ATTACHMENT */}
-
           {classwork?.attachment_url && (
             <div className="mt-6 border-t border-slate-100 pt-5">
 
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 
                 <div className="flex items-center gap-3">
+
                   <FileText
                     size={22}
                     className="text-slate-500"
@@ -910,6 +1020,7 @@ export default function TutorClassworkDetailsPage() {
                       Supporting file for this assignment.
                     </p>
                   </div>
+
                 </div>
 
                 <a
@@ -938,19 +1049,25 @@ export default function TutorClassworkDetailsPage() {
         <section className="mt-6">
 
           <div className="mb-4">
+
             <h2 className="text-xl font-extrabold text-slate-950">
               Student Submission
             </h2>
 
             <p className="mt-1 text-sm text-slate-500">
-              Review the student's submitted work below.
+              {student?.full_name
+                ? `Submission from ${student.full_name}.`
+                : "Review the student's submitted work below."}
             </p>
+
           </div>
 
           {!submission ? (
+
             <div className="rounded-3xl border border-orange-200 bg-orange-50 p-7">
 
               <div className="flex items-center gap-3 text-orange-700">
+
                 <AlertCircle size={23} />
 
                 <div>
@@ -962,19 +1079,23 @@ export default function TutorClassworkDetailsPage() {
                     The student has not submitted this classwork.
                   </p>
                 </div>
+
               </div>
 
             </div>
+
           ) : (
+
             <div className="space-y-5">
 
               {/* SUBMISSION META */}
 
               <div className="rounded-3xl border border-green-200 bg-green-50 p-6">
 
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 
                   <div>
+
                     <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-extrabold text-green-700">
                       {submission.status ||
                         "Submitted"}
@@ -988,10 +1109,36 @@ export default function TutorClassworkDetailsPage() {
                         )}
                       </p>
                     )}
+
                   </div>
+
+                  {submission.score !== null &&
+                    submission.total_marks !== null && (
+                      <div className="rounded-xl bg-white px-5 py-3 text-center">
+
+                        <p className="text-xs font-bold uppercase text-slate-400">
+                          Score
+                        </p>
+
+                        <p className="text-2xl font-black text-blue-600">
+                          {submission.score}
+                          {" / "}
+                          {submission.total_marks}
+                        </p>
+
+                        {submission.percentage !==
+                          null && (
+                          <p className="text-xs font-bold text-slate-500">
+                            {submission.percentage}%
+                          </p>
+                        )}
+
+                      </div>
+                    )}
 
                   {submission.grade && (
                     <div className="rounded-xl bg-white px-5 py-3 text-center">
+
                       <p className="text-xs font-bold uppercase text-slate-400">
                         Grade
                       </p>
@@ -999,6 +1146,7 @@ export default function TutorClassworkDetailsPage() {
                       <p className="text-2xl font-black text-blue-600">
                         {submission.grade}
                       </p>
+
                     </div>
                   )}
 
@@ -1012,6 +1160,7 @@ export default function TutorClassworkDetailsPage() {
                 <div className="rounded-3xl border border-yellow-200 bg-yellow-50 p-6">
 
                   <div className="flex items-center gap-3">
+
                     <MessageSquare
                       size={22}
                       className="text-yellow-600"
@@ -1020,12 +1169,15 @@ export default function TutorClassworkDetailsPage() {
                     <h3 className="text-lg font-extrabold text-slate-950">
                       Written Submission
                     </h3>
+
                   </div>
 
                   <div className="mt-4 rounded-2xl bg-white p-5">
+
                     <p className="whitespace-pre-wrap leading-8 text-slate-700">
                       {submission.text_answer}
                     </p>
+
                   </div>
 
                 </div>
@@ -1039,12 +1191,14 @@ export default function TutorClassworkDetailsPage() {
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 
                     <div className="flex items-center gap-3">
+
                       <FileText
                         size={23}
                         className="text-slate-500"
                       />
 
                       <div>
+
                         <h3 className="font-extrabold text-slate-950">
                           Uploaded Submission
                         </h3>
@@ -1052,7 +1206,9 @@ export default function TutorClassworkDetailsPage() {
                         <p className="text-sm text-slate-500">
                           File submitted by the student.
                         </p>
+
                       </div>
+
                     </div>
 
                     <div className="flex flex-wrap gap-2">
@@ -1084,12 +1240,11 @@ export default function TutorClassworkDetailsPage() {
 
                   </div>
 
-                  {/* IMAGE */}
-
                   {isImage(
                     submission.image_url
                   ) && (
                     <div className="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-4">
+
                       <img
                         src={
                           submission.image_url
@@ -1097,15 +1252,15 @@ export default function TutorClassworkDetailsPage() {
                         alt="Student submission"
                         className="mx-auto max-h-[700px] max-w-full rounded-xl object-contain"
                       />
+
                     </div>
                   )}
-
-                  {/* PDF */}
 
                   {isPdf(
                     submission.image_url
                   ) && (
                     <div className="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-slate-100">
+
                       <iframe
                         src={
                           submission.image_url
@@ -1113,6 +1268,7 @@ export default function TutorClassworkDetailsPage() {
                         title="Student submitted PDF"
                         className="h-[700px] w-full"
                       />
+
                     </div>
                   )}
 
@@ -1129,12 +1285,14 @@ export default function TutorClassworkDetailsPage() {
               >
 
                 <div className="flex items-center gap-3">
+
                   <CheckCircle2
                     size={23}
                     className="text-blue-600"
                   />
 
                   <div>
+
                     <h3 className="text-xl font-extrabold text-slate-950">
                       Mark Submission
                     </h3>
@@ -1142,7 +1300,9 @@ export default function TutorClassworkDetailsPage() {
                     <p className="text-sm text-slate-500">
                       Add the student's score, grade and feedback.
                     </p>
+
                   </div>
+
                 </div>
 
                 <div className="mt-6 grid gap-4 sm:grid-cols-3">
@@ -1206,6 +1366,7 @@ export default function TutorClassworkDetailsPage() {
                 </div>
 
                 <div className="mt-5">
+
                   <label className="mb-2 block text-sm font-bold text-slate-700">
                     Tutor Feedback
                   </label>
@@ -1221,6 +1382,7 @@ export default function TutorClassworkDetailsPage() {
                     placeholder="Write feedback for the student..."
                     className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 leading-7 outline-none focus:border-blue-500"
                   />
+
                 </div>
 
                 <button
@@ -1228,6 +1390,7 @@ export default function TutorClassworkDetailsPage() {
                   disabled={saving}
                   className="mt-5 inline-flex items-center gap-2 rounded-xl bg-slate-950 px-6 py-3 font-bold text-white hover:bg-slate-800 disabled:opacity-60"
                 >
+
                   {saving ? (
                     <Loader2
                       size={18}
@@ -1240,6 +1403,7 @@ export default function TutorClassworkDetailsPage() {
                   {saving
                     ? "Saving..."
                     : "Save Mark & Feedback"}
+
                 </button>
 
               </form>
@@ -1251,12 +1415,14 @@ export default function TutorClassworkDetailsPage() {
               <section className="rounded-3xl border border-yellow-200 bg-yellow-50 p-6">
 
                 <div className="flex items-center gap-3">
+
                   <MessageSquare
                     size={23}
                     className="text-yellow-600"
                   />
 
                   <div>
+
                     <h3 className="text-xl font-extrabold text-slate-950">
                       Correction
                     </h3>
@@ -1264,7 +1430,9 @@ export default function TutorClassworkDetailsPage() {
                     <p className="text-sm text-slate-500">
                       Send the student a correction as text or a file.
                     </p>
+
                   </div>
+
                 </div>
 
                 <textarea
@@ -1280,10 +1448,12 @@ export default function TutorClassworkDetailsPage() {
                 />
 
                 <div className="mt-5">
+
                   <label
                     htmlFor="correction-file"
                     className="flex cursor-pointer items-center gap-3 rounded-xl border border-dashed border-slate-300 bg-white px-4 py-4 hover:border-yellow-500"
                   >
+
                     <FileText
                       size={20}
                       className="text-slate-500"
@@ -1294,6 +1464,7 @@ export default function TutorClassworkDetailsPage() {
                         ? correctionFile.name
                         : "Attach correction file"}
                     </span>
+
                   </label>
 
                   <input
@@ -1309,6 +1480,7 @@ export default function TutorClassworkDetailsPage() {
                       )
                     }
                   />
+
                 </div>
 
                 <button
@@ -1321,6 +1493,7 @@ export default function TutorClassworkDetailsPage() {
                   }
                   className="mt-5 inline-flex items-center gap-2 rounded-xl bg-yellow-500 px-6 py-3 font-bold text-slate-950 hover:bg-yellow-400 disabled:opacity-60"
                 >
+
                   {uploadingCorrection ? (
                     <Loader2
                       size={18}
@@ -1333,9 +1506,10 @@ export default function TutorClassworkDetailsPage() {
                   {uploadingCorrection
                     ? "Saving..."
                     : "Send Correction"}
+
                 </button>
 
-                {/* EXISTING CORRECTION LINK */}
+                {/* EXISTING CORRECTION */}
 
                 {submission.correction_file_url && (
                   <div className="mt-6 border-t border-yellow-200 pt-5">
