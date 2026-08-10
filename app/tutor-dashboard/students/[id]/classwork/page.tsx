@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -12,6 +12,7 @@ import {
   Download,
   Loader2,
   MessageSquare,
+  ChevronDown,
 } from "lucide-react";
 
 import { supabase } from "@/lib/supabase";
@@ -29,6 +30,13 @@ type Student = {
   full_name: string;
   email: string | null;
   tutor_id: string | null;
+};
+
+type TutorAssignment = {
+  id: string;
+  tutor_id: string;
+  student_id: string;
+  subject_id: string | null;
 };
 
 type Classwork = {
@@ -77,30 +85,28 @@ function isImage(url: string | null) {
 }
 
 function isPdf(url: string | null) {
-  return (
-    !!url &&
-    /\.pdf(\?.*)?$/i.test(url)
-  );
+  return !!url && /\.pdf(\?.*)?$/i.test(url);
 }
 
 export default function TutorStudentClassworkPage() {
-  const [tutor, setTutor] =
-    useState<Tutor | null>(null);
+  const [tutor, setTutor] = useState<Tutor | null>(null);
 
-  const [student, setStudent] =
-    useState<Student | null>(null);
+  const [student, setStudent] = useState<Student | null>(null);
 
-  const [classworks, setClassworks] =
-    useState<Classwork[]>([]);
+  const [classworks, setClassworks] = useState<Classwork[]>([]);
 
-  const [submissions, setSubmissions] =
-    useState<Submission[]>([]);
+  const [submissions, setSubmissions] = useState<Submission[]>([]);
 
-  const [loading, setLoading] =
-    useState(true);
+  const [tutorAssignments, setTutorAssignments] = useState<
+    TutorAssignment[]
+  >([]);
 
-  const [error, setError] =
-    useState("");
+  const [selectedSubject, setSelectedSubject] =
+    useState<string>("All Subjects");
+
+  const [loading, setLoading] = useState(true);
+
+  const [error, setError] = useState("");
 
   const [expandedSubmission, setExpandedSubmission] =
     useState<string | null>(null);
@@ -116,11 +122,9 @@ export default function TutorStudentClassworkPage() {
       return "";
     }
 
-    const parts =
-      window.location.pathname.split("/");
+    const parts = window.location.pathname.split("/");
 
-    const studentsIndex =
-      parts.indexOf("students");
+    const studentsIndex = parts.indexOf("students");
 
     if (
       studentsIndex === -1 ||
@@ -134,7 +138,7 @@ export default function TutorStudentClassworkPage() {
 
   /*
    * ==========================================
-   * LOAD EVERYTHING
+   * LOAD PAGE
    * ==========================================
    */
 
@@ -181,19 +185,20 @@ export default function TutorStudentClassworkPage() {
             `
           )
           .eq("auth_id", user.id)
-          .single();
+          .limit(1)
+          .maybeSingle();
 
-        if (
-          tutorError ||
-          !tutorData
-        ) {
+        if (tutorError) {
+          throw new Error(tutorError.message);
+        }
+
+        if (!tutorData) {
           throw new Error(
-            tutorError?.message ||
-              "Tutor profile could not be found."
+            "Tutor profile could not be found."
           );
         }
 
-        setTutor(tutorData);
+        setTutor(tutorData as Tutor);
 
         /*
          * --------------------------------------
@@ -201,8 +206,7 @@ export default function TutorStudentClassworkPage() {
          * --------------------------------------
          */
 
-        const studentId =
-          getStudentId();
+        const studentId = getStudentId();
 
         if (!studentId) {
           throw new Error(
@@ -231,94 +235,106 @@ export default function TutorStudentClassworkPage() {
             `
           )
           .eq("id", studentId)
-          .single();
+          .limit(1)
+          .maybeSingle();
 
-        if (
-          studentError ||
-          !studentData
-        ) {
+        if (studentError) {
+          throw new Error(studentError.message);
+        }
+
+        if (!studentData) {
           throw new Error(
-            studentError?.message ||
-              "Student could not be found."
+            "Student could not be found."
           );
         }
 
-       /*
- * --------------------------------------
- * VERIFY STUDENT BELONGS TO LOGGED-IN TUTOR
- * --------------------------------------
- *
- * tutor_assignments is the source of truth.
- * This works for every tutor and every student.
- */
+        /*
+         * --------------------------------------
+         * CHECK TUTOR ASSIGNMENTS
+         * --------------------------------------
+         *
+         * tutor_assignments is the primary source
+         * of truth for subject-based tutor access.
+         */
 
-const {
-  data: tutorAssignments,
-  error: tutorAssignmentError,
-} = await supabase
-  .from("tutor_assignments")
-  .select("id, tutor_id, student_id, subject_id")
-  .eq("tutor_id", tutorData.id)
-  .eq("student_id", studentData.id)
-  .eq("active", true)
-  .eq("status", "Scheduled");
+        const {
+          data: assignmentsForTutor,
+          error: tutorAssignmentError,
+        } = await supabase
+          .from("tutor_assignments")
+          .select(
+            `
+              id,
+              tutor_id,
+              student_id,
+              subject_id
+            `
+          )
+          .eq("tutor_id", tutorData.id)
+          .eq("student_id", studentData.id)
+          .eq("active", true)
+          .eq("status", "Scheduled");
 
-if (tutorAssignmentError) {
-  throw new Error(tutorAssignmentError.message);
-}
+        if (tutorAssignmentError) {
+          throw new Error(
+            tutorAssignmentError.message
+          );
+        }
 
-const hasTutorAssignment =
-  (tutorAssignments || []).length > 0;
+        const validTutorAssignments =
+          (assignmentsForTutor ||
+            []) as TutorAssignment[];
 
-const directlyAssigned =
-  studentData.tutor_id === tutorData.id;
+        /*
+         * --------------------------------------
+         * DIRECT TUTOR FALLBACK
+         * --------------------------------------
+         */
 
-if (
-  !hasTutorAssignment &&
-  !directlyAssigned
-) {
-  throw new Error(
-    "You are not authorized to view this student."
-  );
-}
+        const directlyAssigned =
+          studentData.tutor_id === tutorData.id;
 
-setStudent(studentData);
+        /*
+         * --------------------------------------
+         * AUTHORIZATION
+         * --------------------------------------
+         *
+         * Tutor is allowed if:
+         *
+         * 1. There is at least one active scheduled
+         *    tutor assignment for this student.
+         *
+         * OR
+         *
+         * 2. students.tutor_id directly points to
+         *    this tutor.
+         */
 
-if (tutorAssignmentError) {
-  throw new Error(
-    tutorAssignmentError.message
-  );
-}
+        const hasTutorAssignment =
+          validTutorAssignments.length > 0;
 
-/*
- * Fallback for students whose tutor_id is already
- * correctly linked directly to the tutor.
- */
-const directlyAssigned =
-  studentData.tutor_id === tutorData.id;
+        if (
+          !hasTutorAssignment &&
+          !directlyAssigned
+        ) {
+          throw new Error(
+            "You are not authorized to view this student."
+          );
+        }
 
-/*
- * Student is accessible if either:
- *
- * 1. There is an active Scheduled tutor_assignment
- * OR
- * 2. students.tutor_id directly matches the tutor.
- */
-if (
-  !tutorAssignment &&
-  !directlyAssigned
-) {
-  throw new Error(
-    "You are not authorized to view this student."
-  );
-}
+        setTutorAssignments(
+          validTutorAssignments
+        );
 
-setStudent(studentData);
+        setStudent(studentData as Student);
 
         /*
          * --------------------------------------
          * GET CLASSWORK ASSIGNMENTS
          * --------------------------------------
+         *
+         * These are assignments specifically given
+         * to this student.
          */
 
         const {
@@ -343,23 +359,21 @@ setStudent(studentData);
           );
         }
 
-        const classworkIds =
-          (assignments || [])
-            .map(
-              (item) =>
-                item.classwork_id
-            )
-            .filter(Boolean);
+        const classworkIds = (
+          assignments || []
+        )
+          .map(
+            (item) => item.classwork_id
+          )
+          .filter(Boolean);
 
         /*
          * --------------------------------------
-         * NO ASSIGNMENTS
+         * NO CLASSWORK
          * --------------------------------------
          */
 
-        if (
-          classworkIds.length === 0
-        ) {
+        if (classworkIds.length === 0) {
           setClassworks([]);
           setSubmissions([]);
           return;
@@ -369,6 +383,13 @@ setStudent(studentData);
          * --------------------------------------
          * GET CLASSWORK
          * --------------------------------------
+         *
+         * IMPORTANT:
+         * We use tutor_id instead of a hardcoded
+         * tutor or subject.
+         *
+         * Therefore different tutors can load
+         * their own students' classwork.
          */
 
         const {
@@ -410,14 +431,17 @@ setStudent(studentData);
           );
         }
 
-        setClassworks(
+        const loadedClassworks =
           (classworkData ||
-            []) as Classwork[]
+            []) as Classwork[];
+
+        setClassworks(
+          loadedClassworks
         );
 
         /*
          * --------------------------------------
-         * GET STUDENT SUBMISSIONS
+         * GET SUBMISSIONS
          * --------------------------------------
          */
 
@@ -489,7 +513,64 @@ setStudent(studentData);
 
   /*
    * ==========================================
-   * FIND SUBMISSION FOR CLASSWORK
+   * AVAILABLE SUBJECTS
+   * ==========================================
+   *
+   * This automatically creates the subject list
+   * from the classwork loaded for this tutor/student.
+   *
+   * Example:
+   *
+   * Mathematics
+   * Physics
+   * Chemistry
+   * Biology
+   *
+   * No subject is hardcoded.
+   */
+
+  const availableSubjects = useMemo(() => {
+    const subjects = classworks
+      .map((work) =>
+        work.subject?.trim()
+      )
+      .filter(
+        (subject): subject is string =>
+          !!subject
+      );
+
+    return Array.from(
+      new Set(subjects)
+    ).sort();
+  }, [classworks]);
+
+  /*
+   * ==========================================
+   * FILTER CLASSWORK BY SUBJECT
+   * ==========================================
+   */
+
+  const filteredClassworks = useMemo(() => {
+    if (
+      selectedSubject ===
+      "All Subjects"
+    ) {
+      return classworks;
+    }
+
+    return classworks.filter(
+      (work) =>
+        work.subject?.trim() ===
+        selectedSubject
+    );
+  }, [
+    classworks,
+    selectedSubject,
+  ]);
+
+  /*
+   * ==========================================
+   * FIND SUBMISSION
    * ==========================================
    */
 
@@ -504,6 +585,24 @@ setStudent(studentData);
       ) || null
     );
   }
+
+  /*
+   * ==========================================
+   * SUMMARY COUNTS
+   * ==========================================
+   */
+
+  const submittedCount =
+    filteredClassworks.filter(
+      (work) =>
+        !!getSubmission(work.id)
+    ).length;
+
+  const awaitingCount =
+    filteredClassworks.filter(
+      (work) =>
+        !getSubmission(work.id)
+    ).length;
 
   /*
    * ==========================================
@@ -600,60 +699,111 @@ setStudent(studentData);
           </span>
         </p>
 
+        {/* ASSIGNED SUBJECT COUNT */}
+
+        {tutorAssignments.length > 0 && (
+          <p className="mt-2 text-sm text-slate-400">
+            Active subject assignment
+            {tutorAssignments.length !== 1
+              ? "s"
+              : ""}:{" "}
+            <span className="font-bold text-slate-200">
+              {tutorAssignments.length}
+            </span>
+          </p>
+        )}
+
       </div>
+
+      {/* SUBJECT FILTER */}
+
+      {availableSubjects.length > 0 && (
+        <div className="mt-8 rounded-3xl bg-white p-6 shadow-sm">
+
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+
+            <div>
+              <h2 className="text-xl font-extrabold text-slate-900">
+                Select Subject
+              </h2>
+
+              <p className="mt-1 text-sm text-slate-500">
+                View this student's classwork by
+                subject.
+              </p>
+            </div>
+
+            <div className="relative">
+
+              <select
+                value={selectedSubject}
+                onChange={(event) =>
+                  setSelectedSubject(
+                    event.target.value
+                  )
+                }
+                className="appearance-none rounded-xl border-2 border-slate-200 bg-white py-3 pl-4 pr-12 font-bold text-slate-900 outline-none transition focus:border-yellow-500"
+              >
+                <option value="All Subjects">
+                  All Subjects
+                </option>
+
+                {availableSubjects.map(
+                  (subject) => (
+                    <option
+                      key={subject}
+                      value={subject}
+                    >
+                      {subject}
+                    </option>
+                  )
+                )}
+              </select>
+
+              <ChevronDown
+                size={18}
+                className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-slate-500"
+              />
+
+            </div>
+
+          </div>
+
+        </div>
+      )}
 
       {/* SUMMARY */}
 
       <div className="mt-8 grid gap-5 md:grid-cols-3">
 
         <div className="rounded-2xl bg-white p-6 shadow-sm">
-
           <p className="text-sm font-bold text-slate-500">
             Total Classwork
           </p>
 
           <p className="mt-2 text-3xl font-extrabold text-slate-900">
-            {classworks.length}
+            {filteredClassworks.length}
           </p>
-
         </div>
 
         <div className="rounded-2xl bg-white p-6 shadow-sm">
-
           <p className="text-sm font-bold text-slate-500">
             Submitted
           </p>
 
           <p className="mt-2 text-3xl font-extrabold text-green-600">
-            {
-              classworks.filter(
-                (work) =>
-                  !!getSubmission(
-                    work.id
-                  )
-              ).length
-            }
+            {submittedCount}
           </p>
-
         </div>
 
         <div className="rounded-2xl bg-white p-6 shadow-sm">
-
           <p className="text-sm font-bold text-slate-500">
             Awaiting Submission
           </p>
 
           <p className="mt-2 text-3xl font-extrabold text-orange-500">
-            {
-              classworks.filter(
-                (work) =>
-                  !getSubmission(
-                    work.id
-                  )
-              ).length
-            }
+            {awaitingCount}
           </p>
-
         </div>
 
       </div>
@@ -676,15 +826,17 @@ setStudent(studentData);
             </h2>
 
             <p className="mt-1 text-sm text-slate-500">
-              View assignments and everything the
-              student has submitted.
+              {selectedSubject ===
+              "All Subjects"
+                ? "View assignments and everything the student has submitted."
+                : `Showing ${selectedSubject} classwork.`}
             </p>
 
           </div>
 
         </div>
 
-        {classworks.length === 0 ? (
+        {filteredClassworks.length === 0 ? (
 
           <div className="mt-8 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-10 text-center">
 
@@ -694,12 +846,14 @@ setStudent(studentData);
             />
 
             <h3 className="mt-4 text-xl font-bold text-slate-900">
-              No classwork assigned
+              No classwork found
             </h3>
 
             <p className="mt-2 text-slate-600">
-              No classwork has been assigned
-              to this student yet.
+              {selectedSubject ===
+              "All Subjects"
+                ? "No classwork has been assigned to this student yet."
+                : `No ${selectedSubject} classwork has been assigned to this student.`}
             </p>
 
           </div>
@@ -708,7 +862,7 @@ setStudent(studentData);
 
           <div className="mt-8 space-y-6">
 
-            {classworks.map(
+            {filteredClassworks.map(
               (classwork) => {
 
                 const submission =
@@ -722,9 +876,7 @@ setStudent(studentData);
 
                 return (
                   <div
-                    key={
-                      classwork.id
-                    }
+                    key={classwork.id}
                     className="rounded-3xl border border-slate-200 bg-slate-50 p-6"
                   >
 
@@ -735,16 +887,12 @@ setStudent(studentData);
                       <div>
 
                         <h3 className="text-2xl font-extrabold text-slate-900">
-                          {
-                            classwork.title
-                          }
+                          {classwork.title}
                         </h3>
 
                         {classwork.description && (
                           <p className="mt-3 whitespace-pre-wrap leading-7 text-slate-600">
-                            {
-                              classwork.description
-                            }
+                            {classwork.description}
                           </p>
                         )}
 
@@ -756,9 +904,7 @@ setStudent(studentData);
 
                           {classwork.due_date && (
                             <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-2 text-xs font-bold text-slate-600">
-                              <Clock3
-                                size={14}
-                              />
+                              <Clock3 size={14} />
                               Due:{" "}
                               {formatDate(
                                 classwork.due_date
@@ -767,23 +913,19 @@ setStudent(studentData);
                           )}
 
                           {submission ? (
-
                             <span className="inline-flex items-center gap-2 rounded-full bg-green-100 px-3 py-2 text-xs font-bold text-green-700">
                               <CheckCircle2
                                 size={15}
                               />
                               Student Submitted
                             </span>
-
                           ) : (
-
                             <span className="inline-flex items-center gap-2 rounded-full bg-orange-100 px-3 py-2 text-xs font-bold text-orange-700">
                               <AlertCircle
                                 size={15}
                               />
                               Not Submitted
                             </span>
-
                           )}
 
                         </div>
@@ -903,7 +1045,6 @@ setStudent(studentData);
                               {/* WRITTEN ANSWER */}
 
                               {submission.text_answer && (
-
                                 <div className="rounded-2xl border border-yellow-200 bg-yellow-50 p-5">
 
                                   <div className="flex items-center gap-3">
@@ -930,13 +1071,11 @@ setStudent(studentData);
                                   </div>
 
                                 </div>
-
                               )}
 
                               {/* UPLOADED FILE */}
 
                               {submission.image_url && (
-
                                 <div className="rounded-2xl border border-slate-200 bg-white p-5">
 
                                   <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -1000,7 +1139,6 @@ setStudent(studentData);
                                   {isImage(
                                     submission.image_url
                                   ) && (
-
                                     <div className="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-4">
 
                                       <img
@@ -1012,7 +1150,6 @@ setStudent(studentData);
                                       />
 
                                     </div>
-
                                   )}
 
                                   {/* PDF */}
@@ -1020,7 +1157,6 @@ setStudent(studentData);
                                   {isPdf(
                                     submission.image_url
                                   ) && (
-
                                     <div className="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-slate-100">
 
                                       <iframe
@@ -1032,7 +1168,6 @@ setStudent(studentData);
                                       />
 
                                     </div>
-
                                   )}
 
                                   {/* OTHER FILE */}
@@ -1043,7 +1178,6 @@ setStudent(studentData);
                                     !isPdf(
                                       submission.image_url
                                     ) && (
-
                                       <div className="mt-5 rounded-2xl bg-slate-50 p-6 text-center">
 
                                         <FileText
@@ -1056,35 +1190,32 @@ setStudent(studentData);
                                         </p>
 
                                       </div>
-
                                     )}
 
                                 </div>
-
                               )}
 
                               {/* EMPTY SUBMISSION */}
 
                               {!submission.text_answer &&
                                 !submission.image_url && (
-
                                   <div className="rounded-2xl bg-white p-6 text-center">
 
                                     <p className="text-slate-500">
-                                      This submission does not contain
-                                      a written answer or uploaded file.
+                                      This submission does not
+                                      contain a written answer
+                                      or uploaded file.
                                     </p>
 
                                   </div>
-
                                 )}
 
                               {/* RESULT */}
 
                               {(submission.score !== null ||
-                                submission.percentage !== null ||
+                                submission.percentage !==
+                                  null ||
                                 submission.grade) && (
-
                                 <div className="rounded-2xl border border-blue-200 bg-blue-50 p-6">
 
                                   <h5 className="text-xl font-bold text-slate-900">
@@ -1093,7 +1224,8 @@ setStudent(studentData);
 
                                   <div className="mt-4 flex flex-wrap gap-3">
 
-                                    {submission.score !== null && (
+                                    {submission.score !==
+                                      null && (
                                       <span className="rounded-xl bg-white px-4 py-3 font-bold text-blue-700">
                                         Score:{" "}
                                         {
@@ -1128,14 +1260,12 @@ setStudent(studentData);
                                   </div>
 
                                 </div>
-
                               )}
 
                               {/* FEEDBACK */}
 
                               {(submission.teacher_feedback ||
                                 submission.tutor_feedback) && (
-
                                 <div className="rounded-2xl border border-green-200 bg-green-50 p-6">
 
                                   <div className="flex items-center gap-3">
@@ -1157,13 +1287,11 @@ setStudent(studentData);
                                   </p>
 
                                 </div>
-
                               )}
 
                               {/* CORRECTION */}
 
                               {submission.correction_file_url && (
-
                                 <div className="rounded-2xl border border-yellow-200 bg-yellow-50 p-6">
 
                                   <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -1198,15 +1326,12 @@ setStudent(studentData);
                                   </div>
 
                                 </div>
-
                               )}
 
                             </div>
-
                           )}
 
                         </div>
-
                       )}
 
                     </div>
