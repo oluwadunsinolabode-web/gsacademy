@@ -687,12 +687,26 @@ export default function DashboardPage() {
 
           </div>
 
-          <p className="mt-5 text-lg font-semibold leading-8 text-slate-900">
-            Welcome to GS Academy.
-            Your lessons, classwork and
-            learning updates will appear
-            here.
-          </p>
+        <div className="mt-5 space-y-4">
+  <h3 className="text-xl font-extrabold text-slate-900">
+    Happy New Week! 🎉
+  </h3>
+
+  <p className="text-base font-semibold leading-7 text-slate-700">
+    Welcome to a new week at GS Academy. Stay focused, take your
+    studies seriously, and make every lesson count.
+  </p>
+
+  <p className="text-base font-semibold leading-7 text-slate-700">
+    📚 Our classwork system is now working. You can now access
+    your classwork and submit your work through the student
+    dashboard.
+  </p>
+
+  <p className="text-base font-bold leading-7 text-slate-900">
+    Keep learning, keep improving, and let&apos;s have a great week!
+  </p>
+</div>
 
         </div>
 
