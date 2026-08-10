@@ -243,23 +243,57 @@ export default function TutorStudentClassworkPage() {
           );
         }
 
-        /*
-         * --------------------------------------
-         * VERIFY STUDENT BELONGS TO TUTOR
-         * --------------------------------------
-         */
+       /*
+ * --------------------------------------
+ * VERIFY STUDENT BELONGS TO LOGGED-IN TUTOR
+ * --------------------------------------
+ *
+ * tutor_assignments is the source of truth.
+ * This works for every tutor and every student.
+ */
 
-        if (
-          studentData.tutor_id &&
-          studentData.tutor_id !==
-            tutorData.id
-        ) {
-          throw new Error(
-            "You are not authorized to view this student."
-          );
-        }
+const {
+  data: tutorAssignment,
+  error: tutorAssignmentError,
+} = await supabase
+  .from("tutor_assignments")
+  .select("id, tutor_id, student_id")
+  .eq("tutor_id", tutorData.id)
+  .eq("student_id", studentData.id)
+  .eq("active", true)
+  .eq("status", "Scheduled")
+  .maybeSingle();
 
-        setStudent(studentData);
+if (tutorAssignmentError) {
+  throw new Error(
+    tutorAssignmentError.message
+  );
+}
+
+/*
+ * Fallback for students whose tutor_id is already
+ * correctly linked directly to the tutor.
+ */
+const directlyAssigned =
+  studentData.tutor_id === tutorData.id;
+
+/*
+ * Student is accessible if either:
+ *
+ * 1. There is an active Scheduled tutor_assignment
+ * OR
+ * 2. students.tutor_id directly matches the tutor.
+ */
+if (
+  !tutorAssignment &&
+  !directlyAssigned
+) {
+  throw new Error(
+    "You are not authorized to view this student."
+  );
+}
+
+setStudent(studentData);
 
         /*
          * --------------------------------------
