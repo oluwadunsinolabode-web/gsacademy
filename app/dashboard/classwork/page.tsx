@@ -11,6 +11,11 @@ import {
   Loader2,
   ExternalLink,
   Download,
+  RefreshCw,
+  Clock,
+  Award,
+  MessageSquare,
+  History,
 } from "lucide-react";
 
 type Classwork = {
@@ -31,6 +36,7 @@ type Student = {
   full_name: string | null;
   email: string | null;
 };
+
 type Submission = {
   id: string;
   classwork_id: string | null;
@@ -50,29 +56,37 @@ type Submission = {
   teacher_feedback: string | null;
   correction_file_url: string | null;
 };
+
 export default function ClassworkPage() {
   const [files, setFiles] = useState<File[]>([]);
   const [textAnswer, setTextAnswer] = useState("");
+
   const [classwork, setClasswork] =
     useState<Classwork | null>(null);
+
   const [student, setStudent] =
     useState<Student | null>(null);
 
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
-  const [submissions, setSubmissions] =
-  useState<Submission[]>([]);
 
-const [loadingSubmissions, setLoadingSubmissions] =
-  useState(false);
+  const [submissions, setSubmissions] =
+    useState<Submission[]>([]);
+
+  const [loadingSubmissions, setLoadingSubmissions] =
+    useState(false);
 
   const [progress, setProgress] = useState(0);
+
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
   /*
+   * ============================================
    * LOAD CLASSWORK + STUDENT
+   * ============================================
    */
+
   useEffect(() => {
     async function loadClasswork() {
       try {
@@ -82,6 +96,7 @@ const [loadingSubmissions, setLoadingSubmissions] =
         /*
          * GET LOGGED-IN USER
          */
+
         const {
           data: { user },
           error: authError,
@@ -96,19 +111,18 @@ const [loadingSubmissions, setLoadingSubmissions] =
         /*
          * GET STUDENT PROFILE
          */
+
         const {
           data: studentData,
           error: studentError,
         } = await supabase
           .from("students")
-          .select(
-            `
-              id,
-              auth_id,
-              full_name,
-              email
-            `
-          )
+          .select(`
+            id,
+            auth_id,
+            full_name,
+            email
+          `)
           .eq("auth_id", user.id)
           .single();
 
@@ -124,6 +138,7 @@ const [loadingSubmissions, setLoadingSubmissions] =
         /*
          * GET CLASSWORK ID FROM URL
          */
+
         const params = new URLSearchParams(
           window.location.search
         );
@@ -138,27 +153,24 @@ const [loadingSubmissions, setLoadingSubmissions] =
 
         /*
          * GET CLASSWORK
-         *
-         * attachment_url is included here.
          */
+
         const {
           data: classworkData,
           error: classworkError,
         } = await supabase
           .from("classworks")
-          .select(
-            `
-              id,
-              tutor_id,
-              subject,
-              title,
-              description,
-              attachment_url,
-              due_date,
-              status,
-              created_at
-            `
-          )
+          .select(`
+            id,
+            tutor_id,
+            subject,
+            title,
+            description,
+            attachment_url,
+            due_date,
+            status,
+            created_at
+          `)
           .eq("id", classworkId)
           .single();
 
@@ -172,21 +184,16 @@ const [loadingSubmissions, setLoadingSubmissions] =
           );
         }
 
-        console.log(
-          "CLASSWORK:",
-          classworkData
-        );
-
-        console.log(
-          "TUTOR ATTACHMENT:",
-          classworkData.attachment_url
-        );
-
         setClasswork(classworkData);
+
+        /*
+         * LOAD SUBMISSION HISTORY
+         */
+
         await loadSubmissions(
-  studentData.id,
-  classworkData.id
-);
+          studentData.id,
+          classworkData.id
+        );
       } catch (err) {
         console.error(
           "Classwork loading error:",
@@ -207,8 +214,11 @@ const [loadingSubmissions, setLoadingSubmissions] =
   }, []);
 
   /*
+   * ============================================
    * FILE PREVIEWS
+   * ============================================
    */
+
   const previews = useMemo(
     () =>
       files.map((file) => ({
@@ -223,6 +233,7 @@ const [loadingSubmissions, setLoadingSubmissions] =
   /*
    * CLEAN PREVIEW URLS
    */
+
   useEffect(() => {
     return () => {
       previews.forEach((preview) => {
@@ -236,15 +247,17 @@ const [loadingSubmissions, setLoadingSubmissions] =
   }, [previews]);
 
   /*
+   * ============================================
    * ADD FILES
+   * ============================================
    */
+
   const addFiles = (
     list: FileList | null
   ) => {
     if (!list) return;
 
-    const selectedFiles =
-      Array.from(list);
+    const selectedFiles = Array.from(list);
 
     setFiles((previous) => [
       ...previous,
@@ -256,8 +269,11 @@ const [loadingSubmissions, setLoadingSubmissions] =
   };
 
   /*
+   * ============================================
    * REMOVE FILE
+   * ============================================
    */
+
   const removeFile = (index: number) => {
     setFiles((previous) =>
       previous.filter(
@@ -265,250 +281,323 @@ const [loadingSubmissions, setLoadingSubmissions] =
       )
     );
   };
-async function loadSubmissions(
-  studentId: string,
-  classworkId: string
-) {
-  try {
-    setLoadingSubmissions(true);
 
-    const {
-      data,
-      error: submissionError,
-    } = await supabase
-      .from("classwork_submissions")
-      .select(`
-        id,
-        classwork_id,
-        student_id,
-        student_email,
-        subject,
-        title,
-        image_url,
-        text_answer,
-        status,
-        tutor_feedback,
-        submitted_at,
-        score,
-        total_marks,
-        percentage,
-        grade,
-        teacher_feedback,
-        correction_file_url
-      `)
-      .eq("student_id", studentId)
-      .eq("classwork_id", classworkId)
-      .order("submitted_at", {
-        ascending: false,
-      });
-
-    if (submissionError) {
-      throw submissionError;
-    }
-
-    setSubmissions(data || []);
-  } catch (err) {
-    console.error(
-      "Submission loading error:",
-      err
-    );
-  } finally {
-    setLoadingSubmissions(false);
-  }
-}
   /*
-   * SUBMIT CLASSWORK
+   * ============================================
+   * LOAD SUBMISSION HISTORY
+   * ============================================
    */
-  async function upload() {
-  if (files.length === 0 && !textAnswer.trim()) {
-    setError(
-      "Please upload a file or write your answer before submitting."
-    );
-    return;
-  }
 
-  if (!classwork) {
-    setError(
-      "Classwork information is still loading. Please wait."
-    );
-    return;
-  }
-
-  if (!student) {
-    setError(
-      "Student profile could not be found."
-    );
-    return;
-  }
-
-  try {
-    setUploading(true);
-    setProgress(0);
-    setMessage("");
-    setError("");
-
-    /*
-     * GET AUTH USER
-     */
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      throw new Error(
-        "Your session has expired. Please log in again."
-      );
-    }
-
-    /*
-     * VERIFY STUDENT
-     */
-    if (student.auth_id !== user.id) {
-      throw new Error(
-        "Student account verification failed."
-      );
-    }
-
-    /*
-     * FILE URL
-     */
-    let uploadedFileUrl: string | null = null;
-
-    /*
-     * UPLOAD FILE IF PROVIDED
-     */
-    if (files.length > 0) {
-      const file = files[0];
-
-      const safeFileName = file.name
-        .replace(
-          /[^a-zA-Z0-9._-]/g,
-          "_"
-        )
-        .replace(/\s+/g, "_");
-
-      const filePath =
-        `students/${student.id}/classwork/${classwork.id}/${crypto.randomUUID()}-${safeFileName}`;
+  async function loadSubmissions(
+    studentId: string,
+    classworkId: string
+  ) {
+    try {
+      setLoadingSubmissions(true);
 
       const {
-        error: storageError,
-      } = await supabase.storage
-        .from("classwork-submissions")
-        .upload(
-          filePath,
-          file,
-          {
-            cacheControl: "3600",
-            upsert: false,
-            contentType:
-              file.type || undefined,
-          }
-        );
+        data,
+        error: submissionError,
+      } = await supabase
+        .from("classwork_submissions")
+        .select(`
+          id,
+          classwork_id,
+          student_id,
+          student_email,
+          subject,
+          title,
+          image_url,
+          text_answer,
+          status,
+          tutor_feedback,
+          submitted_at,
+          score,
+          total_marks,
+          percentage,
+          grade,
+          teacher_feedback,
+          correction_file_url
+        `)
+        .eq(
+          "student_id",
+          studentId
+        )
+        .eq(
+          "classwork_id",
+          classworkId
+        )
+        .order("submitted_at", {
+          ascending: false,
+        });
 
-      if (storageError) {
+      if (submissionError) {
+        throw submissionError;
+      }
+
+      setSubmissions(data || []);
+    } catch (err) {
+      console.error(
+        "Submission loading error:",
+        err
+      );
+    } finally {
+      setLoadingSubmissions(false);
+    }
+  }
+
+  /*
+   * ============================================
+   * LATEST SUBMISSION
+   * ============================================
+   */
+
+  const latestSubmission =
+    submissions.length > 0
+      ? submissions[0]
+      : null;
+
+  /*
+   * ============================================
+   * SUBMIT / RE-SUBMIT CLASSWORK
+   *
+   * RE-SUBMISSION IS ALWAYS ALLOWED
+   * ============================================
+   */
+
+  async function upload() {
+    if (
+      files.length === 0 &&
+      !textAnswer.trim()
+    ) {
+      setError(
+        "Please upload a file or write your answer before submitting."
+      );
+      return;
+    }
+
+    if (!classwork) {
+      setError(
+        "Classwork information is still loading. Please wait."
+      );
+      return;
+    }
+
+    if (!student) {
+      setError(
+        "Student profile could not be found."
+      );
+      return;
+    }
+
+    try {
+      setUploading(true);
+      setProgress(0);
+      setMessage("");
+      setError("");
+
+      /*
+       * GET AUTH USER
+       */
+
+      const {
+        data: { user },
+        error: authError,
+      } =
+        await supabase.auth.getUser();
+
+      if (authError || !user) {
         throw new Error(
-          `File upload failed: ${storageError.message}`
+          "Your session has expired. Please log in again."
         );
       }
 
       /*
-       * GET PUBLIC URL
+       * VERIFY STUDENT
        */
+
+      if (student.auth_id !== user.id) {
+        throw new Error(
+          "Student account verification failed."
+        );
+      }
+
+      /*
+       * FILE URL
+       */
+
+      let uploadedFileUrl:
+        | string
+        | null = null;
+
+      /*
+       * UPLOAD FILE
+       */
+
+      if (files.length > 0) {
+        const file = files[0];
+
+        const safeFileName =
+          file.name
+            .replace(
+              /[^a-zA-Z0-9._-]/g,
+              "_"
+            )
+            .replace(
+              /\s+/g,
+              "_"
+            );
+
+        const filePath =
+          `students/${student.id}/classwork/${classwork.id}/${crypto.randomUUID()}-${safeFileName}`;
+
+        const {
+          error: storageError,
+        } = await supabase.storage
+          .from(
+            "classwork-submissions"
+          )
+          .upload(
+            filePath,
+            file,
+            {
+              cacheControl: "3600",
+              upsert: false,
+              contentType:
+                file.type ||
+                undefined,
+            }
+          );
+
+        if (storageError) {
+          throw new Error(
+            `File upload failed: ${storageError.message}`
+          );
+        }
+
+        /*
+         * GET PUBLIC URL
+         */
+
+        const {
+          data: publicData,
+        } =
+          supabase.storage
+            .from(
+              "classwork-submissions"
+            )
+            .getPublicUrl(
+              filePath
+            );
+
+        uploadedFileUrl =
+          publicData.publicUrl;
+
+        setProgress(100);
+      }
+
+      /*
+       * SAVE NEW SUBMISSION
+       *
+       * IMPORTANT:
+       * We INSERT a NEW ROW.
+       *
+       * This means every re-submission
+       * remains in submission history.
+       */
+
       const {
-        data: publicData,
-      } = supabase.storage
-        .from("classwork-submissions")
-        .getPublicUrl(filePath);
+        error: dbError,
+      } = await supabase
+        .from(
+          "classwork_submissions"
+        )
+        .insert({
+          student_id:
+            student.id,
 
-      uploadedFileUrl =
-        publicData.publicUrl;
+          student_email:
+            student.email ||
+            user.email ||
+            null,
 
+          classwork_id:
+            classwork.id,
+
+          subject:
+            classwork.subject,
+
+          title:
+            classwork.title,
+
+          status:
+            "Submitted",
+
+          image_url:
+            uploadedFileUrl,
+
+          text_answer:
+            textAnswer.trim() ||
+            null,
+        });
+
+      if (dbError) {
+        throw new Error(
+          `Submission could not be saved: ${dbError.message}`
+        );
+      }
+
+      /*
+       * RESET FORM
+       */
+
+      setFiles([]);
+      setTextAnswer("");
       setProgress(100);
-    }
 
-    /*
-     * SAVE SUBMISSION
-     *
-     * This can now contain:
-     * - file only
-     * - text only
-     * - file + text
-     */
-    const {
-      error: dbError,
-    } = await supabase
-      .from("classwork_submissions")
-      .insert({
-        student_id: student.id,
-        student_email:
-          student.email ||
-          user.email ||
-          null,
-        classwork_id:
-          classwork.id,
-        title:
-          classwork.title,
-        status: "Submitted",
-        image_url:
-          uploadedFileUrl,
-        text_answer:
-          textAnswer.trim() ||
-          null,
-      });
+      /*
+       * RELOAD HISTORY
+       */
 
-    if (dbError) {
-      throw new Error(
-        `Submission could not be saved: ${dbError.message}`
+      await loadSubmissions(
+        student.id,
+        classwork.id
       );
+
+      setMessage(
+        "Your classwork has been submitted successfully."
+      );
+    } catch (err) {
+      console.error(
+        "Classwork submission error:",
+        err
+      );
+
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Unable to submit classwork."
+      );
+    } finally {
+      setUploading(false);
     }
-
-    /*
-     * RESET FORM
-     */
-    setFiles([]);
-    setTextAnswer("");
-    setProgress(100);
-
-    /*
-     * RELOAD SUBMISSION
-     */
-    await loadSubmissions(
-      student.id,
-      classwork.id
-    );
-
-    setMessage(
-      "Your classwork has been submitted successfully."
-    );
-  } catch (err) {
-    console.error(
-      "Classwork submission error:",
-      err
-    );
-
-    setError(
-      err instanceof Error
-        ? err.message
-        : "Unable to submit classwork."
-    );
-  } finally {
-    setUploading(false);
   }
-}
+
   /*
+   * ============================================
    * LOADING
+   * ============================================
    */
+
   if (loading) {
     return (
-      <div className="mx-auto max-w-6xl">
-        <div className="rounded-3xl bg-white p-10 text-center shadow-sm">
+      <div className="rounded-3xl bg-white p-8 shadow-sm">
+        <div className="flex items-center gap-3 text-slate-600">
           <Loader2
-            size={35}
-            className="mx-auto animate-spin text-yellow-500"
+            className="animate-spin"
+            size={22}
           />
-
-          <p className="mt-4 text-slate-600">
+          <p>
             Loading classwork...
           </p>
         </div>
@@ -517,65 +606,107 @@ async function loadSubmissions(
   }
 
   /*
+   * ============================================
    * CLASSWORK NOT FOUND
+   * ============================================
    */
+
   if (!classwork) {
     return (
-      <div className="mx-auto max-w-6xl">
-        <div className="rounded-3xl bg-white p-10 text-center shadow-sm">
-          <FileText
-            size={50}
-            className="mx-auto text-slate-300"
-          />
+      <div className="rounded-3xl bg-white p-8 shadow-sm">
+        <h1 className="text-2xl font-bold text-slate-900">
+          Classwork Not Found
+        </h1>
 
-          <h1 className="mt-5 text-2xl font-bold text-slate-900">
-            Classwork Not Found
-          </h1>
-
-          <p className="mt-3 text-red-600">
-            {error ||
-              "Unable to load this classwork."}
-          </p>
-        </div>
+        <p className="mt-3 text-red-600">
+          {error ||
+            "Unable to load this classwork."}
+        </p>
       </div>
     );
   }
 
   /*
-   * CHECK ATTACHMENT TYPE
+   * ============================================
+   * ATTACHMENT TYPE
+   * ============================================
    */
-  const attachmentUrl = classwork.attachment_url;
 
-const isImage =
-  !!attachmentUrl &&
-  /\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i.test(
-    attachmentUrl
-  );
+  const attachmentUrl =
+    classwork.attachment_url;
 
-const isPdf =
-  !!attachmentUrl &&
-  /\.pdf(\?.*)?$/i.test(
-    attachmentUrl
-  );
+  const isImage =
+    !!attachmentUrl &&
+    /\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i.test(
+      attachmentUrl
+    );
+
+  const isPdf =
+    !!attachmentUrl &&
+    /\.pdf(\?.*)?$/i.test(
+      attachmentUrl
+    );
+
+  /*
+   * ============================================
+   * FILE TYPE HELPER
+   * ============================================
+   */
+
+  function isSubmissionImage(
+    url: string | null
+  ) {
+    return (
+      !!url &&
+      /\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i.test(
+        url
+      )
+    );
+  }
+
+  /*
+   * ============================================
+   * STATUS COLOR
+   * ============================================
+   */
+
+  function getStatusClass(
+    status: string | null
+  ) {
+    switch (
+      status?.toLowerCase()
+    ) {
+      case "graded":
+      case "marked":
+      case "reviewed":
+        return "bg-green-100 text-green-700";
+
+      case "submitted":
+        return "bg-blue-100 text-blue-700";
+
+      case "returned":
+      case "correction":
+        return "bg-orange-100 text-orange-700";
+
+      default:
+        return "bg-slate-100 text-slate-700";
+    }
+  }
+
+  /*
+   * ============================================
+   * PAGE
+   * ============================================
+   */
 
   return (
-    <div className="mx-auto max-w-6xl pb-10">
+    <div className="space-y-8 pb-12">
 
-      {/* HEADER */}
+      {/* ========================================
+          PAGE HEADER
+      ======================================== */}
 
-      <h1 className="text-4xl font-extrabold text-slate-900">
-        Submit Classwork
-      </h1>
-
-      <p className="mt-3 text-slate-700">
-        Upload your handwritten answers by
-        taking a picture or selecting a file.
-      </p>
-
-      {/* CLASS INFORMATION */}
-
-      <div className="mt-8 rounded-3xl bg-white p-6 shadow-sm">
-
+      <div>
         <div className="flex flex-wrap items-center gap-3">
 
           <span className="rounded-full bg-yellow-100 px-4 py-2 text-sm font-bold text-yellow-700">
@@ -588,845 +719,1001 @@ const isPdf =
 
         </div>
 
-        <p className="mt-5 font-semibold text-yellow-600">
-          Today's Classwork
-        </p>
-
-        <h2 className="mt-2 text-3xl font-bold text-slate-900">
+        <h1 className="mt-4 text-4xl font-extrabold text-slate-900">
           {classwork.title}
-        </h2>
+        </h1>
+
+        <p className="mt-3 text-slate-600">
+          Classwork submission
+        </p>
+      </div>
+
+      {/* ========================================
+          CLASSWORK DETAILS
+      ======================================== */}
+
+      <section className="rounded-3xl bg-white p-6 shadow-sm">
+
+        <div className="flex items-center gap-3">
+
+          <FileText
+            size={30}
+            className="text-yellow-600"
+          />
+
+          <div>
+            <h2 className="text-2xl font-bold text-slate-900">
+              Classwork Details
+            </h2>
+
+            <p className="text-sm text-slate-500">
+              Instructions from your tutor
+            </p>
+          </div>
+
+        </div>
 
         {classwork.description && (
-          <p className="mt-3 whitespace-pre-wrap text-slate-700">
+          <p className="mt-6 whitespace-pre-wrap leading-7 text-slate-700">
             {classwork.description}
           </p>
         )}
 
         {classwork.due_date && (
-          <p className="mt-4 text-sm font-semibold text-slate-500">
+          <div className="mt-5 flex items-center gap-2 text-sm font-semibold text-slate-500">
+            <Clock size={17} />
+
             Due:{" "}
             {new Date(
               classwork.due_date
             ).toLocaleString()}
-          </p>
+          </div>
         )}
-      </div>
 
-     {/* =====================================
-    TUTOR ATTACHMENT
-====================================== */}
+      </section>
 
-{attachmentUrl ? (
-  <div className="mt-8 rounded-3xl bg-white p-6 shadow-sm">
+      {/* ========================================
+          TUTOR ATTACHMENT
+      ======================================== */}
 
-    {/* HEADER */}
+      <section className="rounded-3xl bg-white p-6 shadow-sm">
 
-    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 
-      <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3">
 
-        <FileText
-          size={30}
-          className="text-yellow-600"
-        />
+            <FileText
+              size={30}
+              className="text-yellow-600"
+            />
 
-        <div>
-          <h2 className="text-2xl font-bold text-slate-900">
-            Classwork File
-          </h2>
+            <div>
+              <h2 className="text-2xl font-bold text-slate-900">
+                Tutor's Classwork File
+              </h2>
 
-          <p className="mt-1 text-sm text-slate-500">
-            File uploaded by your tutor.
-          </p>
+              <p className="mt-1 text-sm text-slate-500">
+                Open the file below to see the work.
+              </p>
+            </div>
+
+          </div>
+
+          {attachmentUrl && (
+            <div className="flex flex-wrap gap-3">
+
+              <a
+                href={attachmentUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-3 font-bold text-white transition hover:bg-slate-800"
+              >
+                <ExternalLink size={18} />
+                View File
+              </a>
+
+              <a
+                href={attachmentUrl}
+                download
+                className="inline-flex items-center gap-2 rounded-xl bg-yellow-500 px-5 py-3 font-bold text-slate-900 transition hover:bg-yellow-400"
+              >
+                <Download size={18} />
+                Download
+              </a>
+
+            </div>
+          )}
+
         </div>
 
-      </div>
+        {attachmentUrl ? (
+          <div className="mt-6">
 
-      {/* ACTION BUTTONS */}
+            {/* IMAGE */}
 
-      <div className="flex flex-wrap gap-3">
+            {isImage && (
+              <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-4">
 
-        {/* VIEW */}
+                <img
+                  src={attachmentUrl}
+                  alt="Classwork uploaded by tutor"
+                  className="mx-auto max-h-[750px] w-auto max-w-full rounded-xl object-contain"
+                />
 
-        <a
-          href={attachmentUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-3 font-bold text-white transition hover:bg-slate-800"
-        >
-          <ExternalLink size={18} />
-          View File
-        </a>
+              </div>
+            )}
 
-        {/* DOWNLOAD */}
+            {/* PDF */}
 
-        <a
-          href={attachmentUrl}
-          download
-          className="inline-flex items-center gap-2 rounded-xl bg-yellow-500 px-5 py-3 font-bold text-slate-900 transition hover:bg-yellow-400"
-        >
-          <Download size={18} />
-          Download
-        </a>
+            {isPdf && (
+              <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-100">
 
-      </div>
+                <iframe
+                  src={attachmentUrl}
+                  title="Tutor's classwork PDF"
+                  className="h-[750px] w-full"
+                />
 
-    </div>
+              </div>
+            )}
 
-    {/* =====================================
-        IMAGE VIEWER
-    ====================================== */}
+            {/* UNKNOWN FILE */}
 
-    {isImage && (
-      <div className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            {!isImage &&
+              !isPdf && (
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-8 text-center">
 
-        <img
-          src={attachmentUrl}
-          alt="Classwork uploaded by tutor"
-          className="mx-auto max-h-[750px] w-auto max-w-full rounded-xl object-contain"
-        />
+                  <FileText
+                    size={60}
+                    className="mx-auto text-slate-400"
+                  />
 
-      </div>
-    )}
-
-    {/* =====================================
-        PDF VIEWER
-    ====================================== */}
-
-    {isPdf && (
-      <div className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-slate-100">
-
-        <iframe
-          src={attachmentUrl}
-          title="Tutor's classwork PDF"
-          className="h-[750px] w-full"
-        />
-
-      </div>
-    )}
-
-    {/* =====================================
-        UNKNOWN FILE TYPE
-    ====================================== */}
-
-    {!isImage && !isPdf && (
-      <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-8 text-center">
-
-        <FileText
-          size={60}
-          className="mx-auto text-slate-400"
-        />
-
-        <p className="mt-4 font-semibold text-slate-800">
-          Your tutor has uploaded a
-          classwork file.
-        </p>
-
-        <p className="mt-2 text-sm text-slate-500">
-          Use "View File" to open it or
-          "Download" to save it.
-        </p>
-
-      </div>
-    )}
-
-  </div>
-) : (
-  <div className="mt-8 rounded-3xl bg-slate-50 p-6 text-center">
-
-    <FileText
-      size={40}
-      className="mx-auto text-slate-300"
-    />
-
-    <p className="mt-3 font-semibold text-slate-600">
-      No file was attached to this
-      classwork.
-    </p>
-
-  </div>
-)}
-{/* =====================================
-    WRITE YOUR ANSWER
-====================================== */}
-
-<div className="mt-8 rounded-3xl bg-white p-8 shadow-sm">
-
-  <div className="flex items-center gap-3">
-
-    <FileText
-      size={32}
-      className="text-yellow-600"
-    />
-
-    <div>
-      <h2 className="text-2xl font-bold text-slate-900">
-        Write Your Answer
-      </h2>
-
-      <p className="mt-1 text-sm text-slate-500">
-        Type your answer below if this classwork
-        requires a written response.
-      </p>
-    </div>
-
-  </div>
-
-  <textarea
-    value={textAnswer}
-    onChange={(event) =>
-      setTextAnswer(event.target.value)
-    }
-    placeholder="Type your answer here..."
-    rows={10}
-    disabled={uploading}
-    className="mt-6 w-full rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 text-slate-900 outline-none transition focus:border-yellow-500 focus:ring-2 focus:ring-yellow-100 disabled:opacity-60"
-  />
-
-  <p className="mt-2 text-sm text-slate-400">
-    You may submit this answer without uploading a file.
-  </p>
-
-</div>
-      {/* =====================================
-          UPLOAD YOUR WORK
-      ====================================== */}
-
-      <div
-        onDragOver={(event) =>
-          event.preventDefault()
-        }
-        onDrop={(event) => {
-          event.preventDefault();
-
-          addFiles(
-            event.dataTransfer.files
-          );
-        }}
-        className="mt-8 rounded-3xl border-2 border-dashed border-yellow-500 bg-white p-10 text-center"
-      >
-
-        <Upload
-          size={45}
-          className="mx-auto text-yellow-600"
-        />
-
-        <h2 className="mt-5 text-2xl font-bold text-slate-900">
-          Upload Your Work
-        </h2>
-
-        <p className="mt-2 text-slate-700">
-          Take a photo of your work or
-          choose a file.
-        </p>
-
-        <label className="mt-6 inline-flex cursor-pointer items-center gap-2 rounded-xl bg-yellow-500 px-8 py-4 font-bold text-slate-900 hover:bg-yellow-400">
-
-          <Camera size={22} />
-
-          Take Photo / Choose File
-
-          <input
-            hidden
-            type="file"
-            multiple
-            accept="image/*,.pdf"
-            capture="environment"
-            onChange={(event) =>
-              addFiles(
-                event.target.files
-              )
-            }
-          />
-
-        </label>
-
-        <p className="mt-4 text-sm text-slate-700">
-          Supported files: JPG, PNG and PDF
-        </p>
-
-      </div>
-
-      {/* =====================================
-          SELECTED FILES
-      ====================================== */}
-
-      {files.length > 0 && (
-        <div className="mt-10">
-
-          <h2 className="text-2xl font-bold text-slate-900">
-            Selected Files
-          </h2>
-
-          <div className="mt-5 grid gap-6 md:grid-cols-3">
-
-            {previews.map(
-              (item, index) => (
-
-                <div
-                  key={index}
-                  className="rounded-2xl bg-white p-5 shadow"
-                >
-
-                  {item.url ? (
-                    <img
-                      src={item.url}
-                      className="h-40 w-full rounded-xl object-cover"
-                      alt="Selected classwork"
-                    />
-                  ) : (
-                    <div className="flex h-40 items-center justify-center rounded-xl bg-slate-100">
-                      <FileText
-                        size={45}
-                        className="text-slate-400"
-                      />
-                    </div>
-                  )}
-
-                  <p className="mt-3 truncate font-medium text-slate-800">
-                    {item.file.name}
+                  <p className="mt-4 font-semibold text-slate-800">
+                    Your tutor has uploaded a classwork file.
                   </p>
 
-                  <button
-                    type="button"
-                    onClick={() =>
-                      removeFile(index)
-                    }
-                    disabled={uploading}
-                    className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 py-2 font-semibold text-white hover:bg-red-700 disabled:opacity-50"
-                  >
-                    <X size={18} />
-                    Remove
-                  </button>
+                  <p className="mt-2 text-sm text-slate-500">
+                    Use "View File" to open it.
+                  </p>
+
+                </div>
+              )}
+
+          </div>
+        ) : (
+          <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-8 text-center">
+
+            <FileText
+              size={45}
+              className="mx-auto text-slate-300"
+            />
+
+            <p className="mt-3 font-semibold text-slate-600">
+              No file was attached to this classwork.
+            </p>
+
+          </div>
+        )}
+
+      </section>
+
+      {/* ========================================
+          LATEST SUBMISSION
+      ======================================== */}
+
+      <section className="rounded-3xl bg-white p-6 shadow-sm">
+
+        <div className="flex items-center gap-3">
+
+          <CheckCircle
+            size={30}
+            className="text-green-600"
+          />
+
+          <div>
+            <h2 className="text-2xl font-bold text-slate-900">
+              Latest Submission
+            </h2>
+
+            <p className="text-sm text-slate-500">
+              Your most recent attempt
+            </p>
+          </div>
+
+        </div>
+
+        {!latestSubmission ? (
+          <div className="mt-6 rounded-2xl bg-slate-50 p-6 text-center">
+
+            <Clock
+              size={40}
+              className="mx-auto text-slate-300"
+            />
+
+            <p className="mt-3 font-semibold text-slate-600">
+              You have not submitted this classwork yet.
+            </p>
+
+            <p className="mt-1 text-sm text-slate-500">
+              You can submit your answer below anytime.
+            </p>
+
+          </div>
+        ) : (
+          <div className="mt-6 space-y-5">
+
+            {/* STATUS */}
+
+            <div className="flex flex-wrap items-center gap-3">
+
+              <span
+                className={`rounded-full px-4 py-2 text-sm font-bold ${getStatusClass(
+                  latestSubmission.status
+                )}`}
+              >
+                {latestSubmission.status ||
+                  "Submitted"}
+              </span>
+
+              {latestSubmission.submitted_at && (
+                <span className="text-sm text-slate-500">
+                  Submitted{" "}
+                  {new Date(
+                    latestSubmission.submitted_at
+                  ).toLocaleString()}
+                </span>
+              )}
+
+            </div>
+
+            {/* SCORE */}
+
+            {(latestSubmission.score !== null ||
+              latestSubmission.percentage !== null ||
+              latestSubmission.grade) && (
+              <div className="grid gap-4 sm:grid-cols-3">
+
+                <div className="rounded-2xl bg-slate-50 p-5">
+
+                  <div className="flex items-center gap-2 text-slate-500">
+                    <Award size={18} />
+                    <span className="text-sm font-semibold">
+                      Score
+                    </span>
+                  </div>
+
+                  <p className="mt-2 text-2xl font-extrabold text-slate-900">
+
+                    {latestSubmission.score !==
+                    null
+                      ? `${latestSubmission.score}${
+                          latestSubmission.total_marks !==
+                          null
+                            ? ` / ${latestSubmission.total_marks}`
+                            : ""
+                        }`
+                      : "Not graded"}
+
+                  </p>
 
                 </div>
 
-              )
+                <div className="rounded-2xl bg-slate-50 p-5">
+
+                  <div className="flex items-center gap-2 text-slate-500">
+                    <Award size={18} />
+                    <span className="text-sm font-semibold">
+                      Percentage
+                    </span>
+                  </div>
+
+                  <p className="mt-2 text-2xl font-extrabold text-slate-900">
+                    {latestSubmission.percentage !==
+                    null
+                      ? `${latestSubmission.percentage}%`
+                      : "—"}
+                  </p>
+
+                </div>
+
+                <div className="rounded-2xl bg-slate-50 p-5">
+
+                  <div className="flex items-center gap-2 text-slate-500">
+                    <Award size={18} />
+                    <span className="text-sm font-semibold">
+                      Grade
+                    </span>
+                  </div>
+
+                  <p className="mt-2 text-2xl font-extrabold text-slate-900">
+                    {latestSubmission.grade ||
+                      "Not graded"}
+                  </p>
+
+                </div>
+
+              </div>
+            )}
+
+            {/* WRITTEN ANSWER */}
+
+            {latestSubmission.text_answer && (
+              <div className="rounded-2xl border border-slate-200 p-5">
+
+                <h3 className="font-bold text-slate-900">
+                  Written Answer
+                </h3>
+
+                <p className="mt-3 whitespace-pre-wrap leading-7 text-slate-700">
+                  {latestSubmission.text_answer}
+                </p>
+
+              </div>
+            )}
+
+            {/* SUBMITTED FILE */}
+
+            {latestSubmission.image_url && (
+              <div className="rounded-2xl border border-slate-200 p-5">
+
+                <h3 className="font-bold text-slate-900">
+                  Submitted File
+                </h3>
+
+                <div className="mt-4 flex flex-wrap gap-3">
+
+                  <a
+                    href={
+                      latestSubmission.image_url
+                    }
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-3 font-bold text-white"
+                  >
+                    <ExternalLink size={18} />
+                    View Submission
+                  </a>
+
+                  <a
+                    href={
+                      latestSubmission.image_url
+                    }
+                    download
+                    className="inline-flex items-center gap-2 rounded-xl bg-yellow-500 px-5 py-3 font-bold text-slate-900"
+                  >
+                    <Download size={18} />
+                    Download
+                  </a>
+
+                </div>
+
+                {isSubmissionImage(
+                  latestSubmission.image_url
+                ) && (
+                  <img
+                    src={
+                      latestSubmission.image_url
+                    }
+                    alt="Your submitted classwork"
+                    className="mt-5 max-h-[600px] w-auto max-w-full rounded-xl border object-contain"
+                  />
+                )}
+
+              </div>
+            )}
+
+            {/* TUTOR FEEDBACK */}
+
+            {(latestSubmission.tutor_feedback ||
+              latestSubmission.teacher_feedback) && (
+              <div className="rounded-2xl border border-blue-200 bg-blue-50 p-5">
+
+                <div className="flex items-center gap-2">
+
+                  <MessageSquare
+                    size={20}
+                    className="text-blue-600"
+                  />
+
+                  <h3 className="font-bold text-blue-900">
+                    Tutor Feedback
+                  </h3>
+
+                </div>
+
+                <p className="mt-3 whitespace-pre-wrap leading-7 text-blue-900">
+
+                  {latestSubmission.tutor_feedback ||
+                    latestSubmission.teacher_feedback}
+
+                </p>
+
+              </div>
+            )}
+
+            {/* CORRECTION FILE */}
+
+            {latestSubmission.correction_file_url && (
+              <div className="rounded-2xl border border-orange-200 bg-orange-50 p-5">
+
+                <div className="flex items-center gap-2">
+
+                  <FileText
+                    size={20}
+                    className="text-orange-600"
+                  />
+
+                  <h3 className="font-bold text-orange-900">
+                    Correction File
+                  </h3>
+
+                </div>
+
+                <p className="mt-2 text-sm text-orange-800">
+                  Your tutor has attached a correction file.
+                </p>
+
+                <div className="mt-4 flex flex-wrap gap-3">
+
+                  <a
+                    href={
+                      latestSubmission.correction_file_url
+                    }
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 rounded-xl bg-orange-600 px-5 py-3 font-bold text-white"
+                  >
+                    <ExternalLink size={18} />
+                    View Correction
+                  </a>
+
+                  <a
+                    href={
+                      latestSubmission.correction_file_url
+                    }
+                    download
+                    className="inline-flex items-center gap-2 rounded-xl bg-orange-100 px-5 py-3 font-bold text-orange-900"
+                  >
+                    <Download size={18} />
+                    Download
+                  </a>
+
+                </div>
+
+              </div>
             )}
 
           </div>
-
-        </div>
-      )}
-
-      {/* =====================================
-          PROGRESS
-      ====================================== */}
-
-      {uploading && (
-        <div className="mt-10">
-
-          <div className="h-4 overflow-hidden rounded-full bg-slate-200">
-
-            <div
-              className="h-4 rounded-full bg-yellow-500 transition-all"
-              style={{
-                width: `${progress}%`,
-              }}
-            />
-
-          </div>
-
-          <p className="mt-3 font-semibold text-slate-800">
-            Uploading {progress}%
-          </p>
-
-        </div>
-      )}
-
-      {/* =====================================
-          SUBMIT
-      ====================================== */}
-
-      <button
-        type="button"
-        onClick={upload}
-       disabled={
-  uploading ||
-  (files.length === 0 &&
-    !textAnswer.trim())
-}
-        className="mt-10 inline-flex items-center gap-3 rounded-xl bg-slate-900 px-10 py-4 font-bold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
-      >
-
-        {uploading && (
-          <Loader2
-            size={20}
-            className="animate-spin"
-          />
         )}
 
-        {uploading
-          ? "Submitting..."
-          : "Submit Classwork"}
+      </section>
 
-      </button>
-     {/* =====================================
-    MY SUBMITTED WORK
-====================================== */}
+      {/* ========================================
+          SUBMIT / RE-SUBMIT
+      ======================================== */}
 
-<div className="mt-12 rounded-3xl bg-white p-6 shadow-sm">
+      <section className="rounded-3xl bg-white p-6 shadow-sm">
 
-  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3">
 
-    <div>
-      <h2 className="text-2xl font-bold text-slate-900">
-        My Submitted Work
-      </h2>
+          <RefreshCw
+            size={30}
+            className="text-yellow-600"
+          />
 
-      <p className="mt-1 text-sm text-slate-500">
-        View your submitted answer, uploaded file,
-        tutor feedback and marked result here.
-      </p>
-    </div>
+          <div>
+            <h2 className="text-2xl font-bold text-slate-900">
+              {latestSubmission
+                ? "Re-submit Your Answer"
+                : "Submit Your Answer"}
+            </h2>
 
-    {submissions.length > 0 && (
-      <span className="w-fit rounded-full bg-green-100 px-4 py-2 text-sm font-bold text-green-700">
-        Submitted
-      </span>
-    )}
+            <p className="mt-1 text-sm text-slate-500">
+              You can submit or re-submit this classwork anytime.
+            </p>
+          </div>
 
-  </div>
+        </div>
 
-  {/* LOADING */}
+        {/* WRITTEN ANSWER */}
 
-  {loadingSubmissions && (
-    <div className="mt-6 flex items-center gap-3 text-slate-600">
+        <div className="mt-6">
 
-      <Loader2
-        size={20}
-        className="animate-spin"
-      />
+          <label className="block text-sm font-bold text-slate-800">
+            Written Answer
+          </label>
 
-      <span>
-        Loading your submitted work...
-      </span>
+          <textarea
+            value={textAnswer}
+            onChange={(e) => {
+              setTextAnswer(
+                e.target.value
+              );
+              setMessage("");
+              setError("");
+            }}
+            placeholder="Type your answer here..."
+            rows={7}
+            className="mt-2 w-full rounded-2xl border border-slate-200 p-4 outline-none transition focus:border-yellow-500 focus:ring-2 focus:ring-yellow-100"
+          />
 
-    </div>
-  )}
+        </div>
 
-  {/* NO SUBMISSION */}
+        {/* UPLOAD BUTTONS */}
 
-  {!loadingSubmissions &&
-    submissions.length === 0 && (
-      <div className="mt-6 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center">
+        <div className="mt-6 grid gap-4 sm:grid-cols-2">
 
-        <FileText
-          size={50}
-          className="mx-auto text-slate-300"
-        />
+          {/* FILE UPLOAD */}
 
-        <p className="mt-4 font-semibold text-slate-700">
-          You have not submitted this classwork yet.
-        </p>
+          <label className="flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 p-8 text-center transition hover:border-yellow-500 hover:bg-yellow-50">
 
-        <p className="mt-2 text-sm text-slate-500">
-          Your answer will appear here after you submit it.
-        </p>
+            <Upload
+              size={32}
+              className="text-yellow-600"
+            />
 
-      </div>
-    )}
+            <span className="mt-3 font-bold text-slate-800">
+              Choose Files
+            </span>
 
-  {/* SUBMISSIONS */}
+            <span className="mt-1 text-sm text-slate-500">
+              PDF, images or documents
+            </span>
 
-  {!loadingSubmissions &&
-    submissions.length > 0 && (
+            <input
+              type="file"
+              multiple
+              accept="image/*,.pdf,.doc,.docx"
+              onChange={(e) =>
+                addFiles(
+                  e.target.files
+                )
+              }
+              className="hidden"
+            />
 
-      <div className="mt-6 space-y-8">
+          </label>
 
-        {submissions.map((submission) => {
+          {/* CAMERA */}
 
-          const submissionUrl =
-            submission.image_url;
+          <label className="flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 p-8 text-center transition hover:border-yellow-500 hover:bg-yellow-50">
 
-          const correctionUrl =
-            submission.correction_file_url;
+            <Camera
+              size={32}
+              className="text-yellow-600"
+            />
 
-          const isImage =
-            !!submissionUrl &&
-            /\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i.test(
-              submissionUrl
-            );
+            <span className="mt-3 font-bold text-slate-800">
+              Take a Picture
+            </span>
 
-          const isPdf =
-            !!submissionUrl &&
-            /\.pdf(\?.*)?$/i.test(
-              submissionUrl
-            );
+            <span className="mt-1 text-sm text-slate-500">
+              Use your phone camera
+            </span>
 
-          const isCorrectionPdf =
-            !!correctionUrl &&
-            /\.pdf(\?.*)?$/i.test(
-              correctionUrl
-            );
+            <input
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={(e) =>
+                addFiles(
+                  e.target.files
+                )
+              }
+              className="hidden"
+            />
 
-          const isCorrectionImage =
-            !!correctionUrl &&
-            /\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i.test(
-              correctionUrl
-            );
+          </label>
 
-          return (
-            <div
-              key={submission.id}
-              className="rounded-3xl border border-slate-200 bg-slate-50 p-6"
-            >
+        </div>
 
-              {/* ===============================
-                  SUBMISSION HEADER
-              ================================ */}
+        {/* SELECTED FILES */}
 
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        {files.length > 0 && (
+          <div className="mt-6">
 
-                <div>
+            <h3 className="font-bold text-slate-900">
+              Selected Files
+            </h3>
 
-                  <div className="flex flex-wrap items-center gap-2">
+            <div className="mt-3 space-y-3">
 
-                    <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-bold text-green-700">
-                      {submission.status || "Submitted"}
-                    </span>
+              {previews.map(
+                (
+                  preview,
+                  index
+                ) => (
+                  <div
+                    key={`${preview.file.name}-${index}`}
+                    className="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-4"
+                  >
 
-                    {submission.score !== null && (
-                      <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-bold text-blue-700">
-                        Marked
+                    <div className="flex min-w-0 items-center gap-3">
+
+                      {preview.url ? (
+                        <img
+                          src={preview.url}
+                          alt={preview.file.name}
+                          className="h-16 w-16 rounded-xl object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-white">
+                          <FileText
+                            size={28}
+                            className="text-slate-400"
+                          />
+                        </div>
+                      )}
+
+                      <div className="min-w-0">
+
+                        <p className="truncate font-semibold text-slate-800">
+                          {preview.file.name}
+                        </p>
+
+                        <p className="text-sm text-slate-500">
+                          {(
+                            preview.file.size /
+                            1024 /
+                            1024
+                          ).toFixed(2)}{" "}
+                          MB
+                        </p>
+
+                      </div>
+
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        removeFile(
+                          index
+                        )
+                      }
+                      className="rounded-full p-2 text-red-500 transition hover:bg-red-50"
+                    >
+                      <X size={20} />
+                    </button>
+
+                  </div>
+                )
+              )}
+
+            </div>
+
+          </div>
+        )}
+
+        {/* PROGRESS */}
+
+        {uploading && (
+          <div className="mt-6">
+
+            <div className="mb-2 flex justify-between text-sm font-semibold text-slate-600">
+
+              <span>
+                Uploading...
+              </span>
+
+              <span>
+                {progress}%
+              </span>
+
+            </div>
+
+            <div className="h-3 overflow-hidden rounded-full bg-slate-200">
+
+              <div
+                className="h-full rounded-full bg-yellow-500 transition-all duration-300"
+                style={{
+                  width: `${progress}%`,
+                }}
+              />
+
+            </div>
+
+          </div>
+        )}
+
+        {/* SUCCESS MESSAGE */}
+
+        {message && (
+          <div className="mt-6 flex items-start gap-3 rounded-2xl border border-green-200 bg-green-50 p-4 text-green-800">
+
+            <CheckCircle
+              size={22}
+              className="mt-0.5 shrink-0"
+            />
+
+            <p className="font-semibold">
+              {message}
+            </p>
+
+          </div>
+        )}
+
+        {/* ERROR MESSAGE */}
+
+        {error && (
+          <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-red-700">
+
+            <p className="font-semibold">
+              {error}
+            </p>
+
+          </div>
+        )}
+
+        {/* SUBMIT BUTTON */}
+
+        <button
+          type="button"
+          onClick={upload}
+          disabled={uploading}
+          className="mt-6 inline-flex w-full items-center justify-center gap-3 rounded-2xl bg-yellow-500 px-6 py-4 text-lg font-extrabold text-slate-900 transition hover:bg-yellow-400 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {uploading ? (
+            <>
+              <Loader2
+                size={22}
+                className="animate-spin"
+              />
+
+              Submitting...
+            </>
+          ) : (
+            <>
+              {latestSubmission ? (
+                <RefreshCw size={22} />
+              ) : (
+                <Upload size={22} />
+              )}
+
+              {latestSubmission
+                ? "Re-submit Classwork"
+                : "Submit Classwork"}
+            </>
+          )}
+        </button>
+
+      </section>
+
+      {/* ========================================
+          SUBMISSION HISTORY
+      ======================================== */}
+
+      <section className="rounded-3xl bg-white p-6 shadow-sm">
+
+        <div className="flex items-center gap-3">
+
+          <History
+            size={30}
+            className="text-slate-700"
+          />
+
+          <div>
+            <h2 className="text-2xl font-bold text-slate-900">
+              Submission History
+            </h2>
+
+            <p className="mt-1 text-sm text-slate-500">
+              All your previous submissions for this classwork
+            </p>
+          </div>
+
+        </div>
+
+        {loadingSubmissions ? (
+          <div className="mt-6 flex items-center gap-3 text-slate-500">
+
+            <Loader2
+              size={20}
+              className="animate-spin"
+            />
+
+            Loading submission history...
+
+          </div>
+        ) : submissions.length ===
+          0 ? (
+          <div className="mt-6 rounded-2xl bg-slate-50 p-6 text-center">
+
+            <History
+              size={40}
+              className="mx-auto text-slate-300"
+            />
+
+            <p className="mt-3 font-semibold text-slate-600">
+              No previous submissions.
+            </p>
+
+          </div>
+        ) : (
+          <div className="mt-6 space-y-4">
+
+            {submissions.map(
+              (
+                submission,
+                index
+              ) => (
+                <div
+                  key={submission.id}
+                  className={`rounded-2xl border p-5 ${
+                    index === 0
+                      ? "border-yellow-300 bg-yellow-50"
+                      : "border-slate-200 bg-slate-50"
+                  }`}
+                >
+
+                  {/* HISTORY HEADER */}
+
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+
+                    <div className="flex flex-wrap items-center gap-3">
+
+                      <span className="font-bold text-slate-900">
+                        Submission{" "}
+                        {submissions.length -
+                          index}
+                      </span>
+
+                      {index === 0 && (
+                        <span className="rounded-full bg-yellow-500 px-3 py-1 text-xs font-extrabold text-slate-900">
+                          LATEST
+                        </span>
+                      )}
+
+                      <span
+                        className={`rounded-full px-3 py-1 text-xs font-bold ${getStatusClass(
+                          submission.status
+                        )}`}
+                      >
+                        {submission.status ||
+                          "Submitted"}
+                      </span>
+
+                    </div>
+
+                    {submission.submitted_at && (
+                      <span className="text-sm text-slate-500">
+                        {new Date(
+                          submission.submitted_at
+                        ).toLocaleString()}
                       </span>
                     )}
 
                   </div>
 
-                  <h3 className="mt-3 text-xl font-bold text-slate-900">
-                    {submission.title ||
-                      classwork.title}
-                  </h3>
+                  {/* SCORE */}
 
-                  {submission.submitted_at && (
-                    <p className="mt-2 text-sm text-slate-500">
-                      Submitted{" "}
-                      {new Date(
-                        submission.submitted_at
-                      ).toLocaleString()}
-                    </p>
-                  )}
+                  {(submission.score !==
+                    null ||
+                    submission.percentage !==
+                      null ||
+                    submission.grade) && (
+                    <div className="mt-4 flex flex-wrap gap-4 text-sm">
 
-                </div>
+                      {submission.score !==
+                        null && (
+                        <span className="font-semibold text-slate-700">
+                          Score:{" "}
+                          {submission.score}
+                          {submission.total_marks !==
+                            null &&
+                            ` / ${submission.total_marks}`}
+                        </span>
+                      )}
 
-              </div>
+                      {submission.percentage !==
+                        null && (
+                        <span className="font-semibold text-slate-700">
+                          Percentage:{" "}
+                          {
+                            submission.percentage
+                          }%
+                        </span>
+                      )}
 
-              {/* ===============================
-                  WRITTEN ANSWER
-              ================================ */}
-
-              {submission.text_answer && (
-                <div className="mt-6 rounded-2xl border border-yellow-200 bg-yellow-50 p-5">
-
-                  <div className="flex items-center gap-3">
-
-                    <FileText
-                      size={24}
-                      className="text-yellow-600"
-                    />
-
-                    <h4 className="text-lg font-bold text-slate-900">
-                      My Written Answer
-                    </h4>
-
-                  </div>
-
-                  <div className="mt-4 rounded-2xl bg-white p-5">
-
-                    <p className="whitespace-pre-wrap leading-8 text-slate-700">
-                      {submission.text_answer}
-                    </p>
-
-                  </div>
-
-                </div>
-              )}
-
-              {/* ===============================
-                  UPLOADED FILE
-              ================================ */}
-
-              {submissionUrl && (
-                <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-5">
-
-                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-
-                    <div className="flex items-center gap-3">
-
-                      <FileText
-                        size={25}
-                        className="text-yellow-600"
-                      />
-
-                      <div>
-                        <h4 className="text-lg font-bold text-slate-900">
-                          Uploaded Work
-                        </h4>
-
-                        <p className="text-sm text-slate-500">
-                          Your uploaded classwork file.
-                        </p>
-                      </div>
-
-                    </div>
-
-                    <div className="flex flex-wrap gap-2">
-
-                      <a
-                        href={submissionUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 font-bold text-white hover:bg-slate-800"
-                      >
-                        <ExternalLink size={17} />
-                        View File
-                      </a>
-
-                      <a
-                        href={submissionUrl}
-                        download
-                        className="inline-flex items-center gap-2 rounded-xl bg-yellow-500 px-4 py-2 font-bold text-slate-900 hover:bg-yellow-400"
-                      >
-                        <Download size={17} />
-                        Download
-                      </a>
-
-                    </div>
-
-                  </div>
-
-                  {/* IMAGE */}
-
-                  {isImage && (
-                    <div className="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-3">
-
-                      <img
-                        src={submissionUrl}
-                        alt="Your submitted classwork"
-                        className="mx-auto max-h-[700px] w-auto max-w-full rounded-xl object-contain"
-                      />
+                      {submission.grade && (
+                        <span className="font-semibold text-slate-700">
+                          Grade:{" "}
+                          {submission.grade}
+                        </span>
+                      )}
 
                     </div>
                   )}
 
-                  {/* PDF */}
+                  {/* TEXT ANSWER */}
 
-                  {isPdf && (
-                    <div className="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-slate-100">
+                  {submission.text_answer && (
+                    <div className="mt-4">
 
-                      <iframe
-                        src={submissionUrl}
-                        title="Your submitted classwork PDF"
-                        className="h-[700px] w-full"
-                      />
+                      <p className="text-sm font-bold text-slate-700">
+                        Written Answer
+                      </p>
 
-                    </div>
-                  )}
-
-                  {/* OTHER FILE */}
-
-                  {!isImage && !isPdf && (
-                    <div className="mt-5 rounded-2xl bg-slate-50 p-6 text-center">
-
-                      <FileText
-                        size={50}
-                        className="mx-auto text-slate-400"
-                      />
-
-                      <p className="mt-3 font-semibold text-slate-700">
-                        Your uploaded file is available.
+                      <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-600">
+                        {
+                          submission.text_answer
+                        }
                       </p>
 
                     </div>
                   )}
 
-                </div>
-              )}
+                  {/* FILE */}
 
-              {/* ===============================
-                  NO ANSWER
-              ================================ */}
-
-              {!submission.text_answer &&
-                !submissionUrl && (
-                  <div className="mt-6 rounded-2xl bg-white p-6 text-center">
-
-                    <p className="text-slate-500">
-                      No written answer or uploaded file
-                      was attached to this submission.
-                    </p>
-
-                  </div>
-                )}
-
-              {/* ===============================
-                  MARKED RESULT
-              ================================ */}
-
-              {(submission.score !== null ||
-                submission.percentage !== null ||
-                submission.grade) && (
-
-                <div className="mt-6 rounded-2xl border border-blue-200 bg-blue-50 p-6">
-
-                  <h4 className="text-xl font-bold text-slate-900">
-                    Your Result
-                  </h4>
-
-                  <div className="mt-5 flex flex-wrap gap-3">
-
-                    {submission.score !== null && (
-                      <span className="rounded-xl bg-white px-4 py-3 font-bold text-blue-700 shadow-sm">
-                        Score:{" "}
-                        {submission.score}
-                        {submission.total_marks !== null
-                          ? ` / ${submission.total_marks}`
-                          : ""}
-                      </span>
-                    )}
-
-                    {submission.percentage !== null && (
-                      <span className="rounded-xl bg-white px-4 py-3 font-bold text-purple-700 shadow-sm">
-                        {submission.percentage}%
-                      </span>
-                    )}
-
-                    {submission.grade && (
-                      <span className="rounded-xl bg-yellow-100 px-4 py-3 font-bold text-yellow-700">
-                        Grade:{" "}
-                        {submission.grade}
-                      </span>
-                    )}
-
-                  </div>
-
-                </div>
-              )}
-
-              {/* ===============================
-                  TUTOR FEEDBACK
-              ================================ */}
-
-              {(submission.teacher_feedback ||
-                submission.tutor_feedback) && (
-
-                <div className="mt-6 rounded-2xl border border-green-200 bg-green-50 p-6">
-
-                  <div className="flex items-center gap-3">
-
-                    <CheckCircle
-                      size={25}
-                      className="text-green-600"
-                    />
-
-                    <h4 className="text-xl font-bold text-slate-900">
-                      Tutor Feedback
-                    </h4>
-
-                  </div>
-
-                  <p className="mt-4 whitespace-pre-wrap leading-8 text-slate-700">
-                    {submission.teacher_feedback ||
-                      submission.tutor_feedback}
-                  </p>
-
-                </div>
-              )}
-
-              {/* ===============================
-                  CORRECTION FILE
-              ================================ */}
-
-              {correctionUrl && (
-                <div className="mt-6 rounded-2xl border border-yellow-200 bg-yellow-50 p-6">
-
-                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-
-                    <div className="flex items-center gap-3">
-
-                      <CheckCircle
-                        size={25}
-                        className="text-yellow-600"
-                      />
-
-                      <div>
-                        <h4 className="text-xl font-bold text-slate-900">
-                          Tutor Correction
-                        </h4>
-
-                        <p className="text-sm text-slate-600">
-                          Your tutor has uploaded a corrected
-                          version of your work.
-                        </p>
-                      </div>
-
-                    </div>
-
-                    <div className="flex flex-wrap gap-2">
+                  {submission.image_url && (
+                    <div className="mt-4">
 
                       <a
-                        href={correctionUrl}
+                        href={
+                          submission.image_url
+                        }
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 font-bold text-white hover:bg-slate-800"
+                        className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-bold text-white"
                       >
-                        <ExternalLink size={17} />
-                        View Correction
+                        <ExternalLink
+                          size={16}
+                        />
+                        View Submitted File
                       </a>
-
-                      <a
-                        href={correctionUrl}
-                        download
-                        className="inline-flex items-center gap-2 rounded-xl bg-yellow-500 px-4 py-2 font-bold text-slate-900 hover:bg-yellow-400"
-                      >
-                        <Download size={17} />
-                        Download
-                      </a>
-
-                    </div>
-
-                  </div>
-
-                  {/* CORRECTION IMAGE */}
-
-                  {isCorrectionImage && (
-                    <div className="mt-5 overflow-hidden rounded-2xl border border-yellow-200 bg-white p-3">
-
-                      <img
-                        src={correctionUrl}
-                        alt="Tutor correction"
-                        className="mx-auto max-h-[700px] w-auto max-w-full rounded-xl object-contain"
-                      />
 
                     </div>
                   )}
 
-                  {/* CORRECTION PDF */}
+                  {/* FEEDBACK */}
 
-                  {isCorrectionPdf && (
-                    <div className="mt-5 overflow-hidden rounded-2xl border border-yellow-200 bg-white">
+                  {(submission.tutor_feedback ||
+                    submission.teacher_feedback) && (
+                    <div className="mt-4 rounded-xl border border-blue-200 bg-blue-50 p-4">
 
-                      <iframe
-                        src={correctionUrl}
-                        title="Tutor correction PDF"
-                        className="h-[700px] w-full"
-                      />
+                      <p className="text-sm font-bold text-blue-900">
+                        Tutor Feedback
+                      </p>
+
+                      <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-blue-900">
+                        {submission.tutor_feedback ||
+                          submission.teacher_feedback}
+                      </p>
+
+                    </div>
+                  )}
+
+                  {/* CORRECTION */}
+
+                  {submission.correction_file_url && (
+                    <div className="mt-4">
+
+                      <a
+                        href={
+                          submission.correction_file_url
+                        }
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 rounded-xl bg-orange-600 px-4 py-2 text-sm font-bold text-white"
+                      >
+                        <FileText
+                          size={16}
+                        />
+                        View Correction File
+                      </a>
 
                     </div>
                   )}
 
                 </div>
-              )}
+              )
+            )}
 
-            </div>
-          );
-        })}
+          </div>
+        )}
 
-      </div>
-    )}
+      </section>
 
-</div>
     </div>
   );
 }

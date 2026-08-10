@@ -84,6 +84,10 @@ type Submission = {
   correction_file_url: string | null;
 };
 
+/* =========================================================
+   HELPERS
+========================================================= */
+
 function getSubjectName(schedule: Schedule): string {
   if (!schedule.subjects) {
     return "Subject";
@@ -102,29 +106,17 @@ function getTutorName(schedule: Schedule): string {
   }
 
   if (Array.isArray(schedule.tutors)) {
-    return (
-      schedule.tutors[0]?.full_name ||
-      "Tutor not assigned"
-    );
+    return schedule.tutors[0]?.full_name || "Tutor not assigned";
   }
 
-  return (
-    schedule.tutors.full_name ||
-    "Tutor not assigned"
-  );
+  return schedule.tutors.full_name || "Tutor not assigned";
 }
 
 function normalizeSubject(value: string): string {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, " ");
+  return value.trim().toLowerCase().replace(/\s+/g, " ");
 }
 
-function subjectsMatch(
-  first: string,
-  second: string
-): boolean {
+function subjectsMatch(first: string, second: string): boolean {
   const a = normalizeSubject(first);
   const b = normalizeSubject(second);
 
@@ -150,53 +142,52 @@ function formatDate(date: string | null): string {
   return new Date(date).toLocaleString();
 }
 
+function isImageFile(url: string | null): boolean {
+  if (!url) return false;
+
+  return /\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i.test(url);
+}
+
+function isPdfFile(url: string | null): boolean {
+  if (!url) return false;
+
+  return /\.pdf(\?.*)?$/i.test(url);
+}
+
+/* =========================================================
+   PAGE
+========================================================= */
+
 export default function ClassPage() {
-  const [student, setStudent] =
-    useState<Student | null>(null);
+  const [student, setStudent] = useState<Student | null>(null);
+  const [schedule, setSchedule] = useState<Schedule | null>(null);
 
-  const [schedule, setSchedule] =
-    useState<Schedule | null>(null);
+  const [classworks, setClassworks] = useState<Classwork[]>([]);
+  const [submissions, setSubmissions] = useState<Submission[]>([]);
 
-  const [classworks, setClassworks] =
-    useState<Classwork[]>([]);
-
-  const [submissions, setSubmissions] =
-    useState<Submission[]>([]);
-
-  const [loading, setLoading] =
-    useState(true);
-
-  const [error, setError] =
-    useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   const [uploadingId, setUploadingId] =
     useState<string | null>(null);
 
-  const [message, setMessage] =
-    useState("");
+  const [message, setMessage] = useState("");
 
-  /*
-   * ==========================================
-   * GET URL PARAMETERS
-   * ==========================================
-   */
+  /* =========================================================
+     GET SCHEDULE ID FROM URL
+  ========================================================= */
 
   const searchParams =
     typeof window !== "undefined"
       ? new URLSearchParams(window.location.search)
       : null;
 
-  const subject =
-    searchParams?.get("subject") || "";
-
   const scheduleId =
     searchParams?.get("schedule_id") || "";
 
-  /*
-   * ==========================================
-   * LOAD CLASSROOM
-   * ==========================================
-   */
+  /* =========================================================
+     LOAD CLASS
+  ========================================================= */
 
   useEffect(() => {
     async function loadClassroom() {
@@ -205,11 +196,9 @@ export default function ClassPage() {
         setError("");
         setMessage("");
 
-        /*
-         * --------------------------------------
-         * LOGGED-IN USER
-         * --------------------------------------
-         */
+        /* ---------------------------------------------------
+           LOGGED-IN USER
+        --------------------------------------------------- */
 
         const {
           data: { user },
@@ -222,32 +211,25 @@ export default function ClassPage() {
           );
         }
 
-        /*
-         * --------------------------------------
-         * STUDENT
-         * --------------------------------------
-         */
+        /* ---------------------------------------------------
+           STUDENT
+        --------------------------------------------------- */
 
         const {
           data: studentData,
           error: studentError,
         } = await supabase
           .from("students")
-          .select(
-            `
-              id,
-              auth_id,
-              full_name,
-              email
-            `
-          )
+          .select(`
+            id,
+            auth_id,
+            full_name,
+            email
+          `)
           .eq("auth_id", user.id)
           .single();
 
-        if (
-          studentError ||
-          !studentData
-        ) {
+        if (studentError || !studentData) {
           throw new Error(
             studentError?.message ||
               "Student profile not found."
@@ -256,46 +238,36 @@ export default function ClassPage() {
 
         setStudent(studentData);
 
-        /*
-         * --------------------------------------
-         * FIND SELECTED TIMETABLE ENTRY
-         * --------------------------------------
-         */
+        /* ---------------------------------------------------
+           SELECTED CLASS / SCHEDULE
+        --------------------------------------------------- */
 
         const {
           data: scheduleData,
           error: scheduleError,
         } = await supabase
           .from("student_schedules")
-          .select(
-            `
+          .select(`
+            id,
+            day,
+            time,
+            meet_link,
+
+            subjects (
               id,
-              day,
-              time,
-              meet_link,
+              name
+            ),
 
-              subjects (
-                id,
-                name
-              ),
-
-              tutors (
-                id,
-                full_name
-              )
-            `
-          )
+            tutors (
+              id,
+              full_name
+            )
+          `)
           .eq("id", scheduleId)
-          .eq(
-            "student_id",
-            studentData.id
-          )
+          .eq("student_id", studentData.id)
           .single();
 
-        if (
-          scheduleError ||
-          !scheduleData
-        ) {
+        if (scheduleError || !scheduleData) {
           throw new Error(
             scheduleError?.message ||
               "This class could not be found."
@@ -305,37 +277,26 @@ export default function ClassPage() {
         const selectedSchedule =
           scheduleData as Schedule;
 
-        setSchedule(
-          selectedSchedule
-        );
+        setSchedule(selectedSchedule);
 
         const actualSubject =
-          getSubjectName(
-            selectedSchedule
-          );
+          getSubjectName(selectedSchedule);
 
-        /*
-         * --------------------------------------
-         * GET CLASSWORK ASSIGNMENTS
-         * --------------------------------------
-         */
+        /* ---------------------------------------------------
+           GET CLASSWORK ASSIGNMENTS
+        --------------------------------------------------- */
 
         const {
           data: assignmentData,
           error: assignmentError,
         } = await supabase
           .from("classwork_assignments")
-          .select(
-            `
-              id,
-              classwork_id,
-              student_id
-            `
-          )
-          .eq(
-            "student_id",
-            studentData.id
-          );
+          .select(`
+            id,
+            classwork_id,
+            student_id
+          `)
+          .eq("student_id", studentData.id);
 
         if (assignmentError) {
           throw new Error(
@@ -343,62 +304,47 @@ export default function ClassPage() {
           );
         }
 
-        const classworkIds =
-          (assignmentData || [])
-            .map(
-              (assignment) =>
-                assignment.classwork_id
-            )
-            .filter(Boolean);
+        const classworkIds = (assignmentData || [])
+          .map(
+            (assignment) =>
+              assignment.classwork_id
+          )
+          .filter(Boolean);
 
-        /*
-         * --------------------------------------
-         * NO CLASSWORK
-         * --------------------------------------
-         */
+        /* ---------------------------------------------------
+           NO CLASSWORK
+        --------------------------------------------------- */
 
-        if (
-          classworkIds.length === 0
-        ) {
+        if (classworkIds.length === 0) {
           setClassworks([]);
           setSubmissions([]);
           return;
         }
 
-        /*
-         * --------------------------------------
-         * GET ACTUAL CLASSWORK
-         * --------------------------------------
-         */
+        /* ---------------------------------------------------
+           GET CLASSWORK
+        --------------------------------------------------- */
 
         const {
           data: classworkData,
           error: classworkError,
         } = await supabase
           .from("classworks")
-          .select(
-            `
-              id,
-              tutor_id,
-              subject,
-              title,
-              description,
-              attachment_url,
-              due_date,
-              status,
-              created_at
-            `
-          )
-          .in(
-            "id",
-            classworkIds
-          )
-          .order(
-            "created_at",
-            {
-              ascending: false,
-            }
-          );
+          .select(`
+            id,
+            tutor_id,
+            subject,
+            title,
+            description,
+            attachment_url,
+            due_date,
+            status,
+            created_at
+          `)
+          .in("id", classworkIds)
+          .order("created_at", {
+            ascending: false,
+          });
 
         if (classworkError) {
           throw new Error(
@@ -406,11 +352,9 @@ export default function ClassPage() {
           );
         }
 
-        /*
-         * --------------------------------------
-         * ONLY SHOW THIS SUBJECT
-         * --------------------------------------
-         */
+        /* ---------------------------------------------------
+           ONLY SHOW CLASSWORK FOR THIS SUBJECT
+        --------------------------------------------------- */
 
         const subjectClassworks =
           (classworkData || []).filter(
@@ -421,46 +365,37 @@ export default function ClassPage() {
               )
           ) as Classwork[];
 
-        setClassworks(
-          subjectClassworks
-        );
+        setClassworks(subjectClassworks);
 
-        /*
-         * --------------------------------------
-         * GET STUDENT SUBMISSIONS
-         * --------------------------------------
-         */
+        /* ---------------------------------------------------
+           GET STUDENT SUBMISSIONS
+        --------------------------------------------------- */
 
         const {
           data: submissionData,
           error: submissionError,
         } = await supabase
           .from("classwork_submissions")
-          .select(
-            `
-              id,
-              classwork_id,
-              student_id,
-              student_email,
-              subject,
-              title,
-              image_url,
-              text_answer,
-              status,
-              submitted_at,
-              score,
-              total_marks,
-              percentage,
-              grade,
-              tutor_feedback,
-              teacher_feedback,
-              correction_file_url
-            `
-          )
-          .eq(
-            "student_id",
-            studentData.id
-          );
+          .select(`
+            id,
+            classwork_id,
+            student_id,
+            student_email,
+            subject,
+            title,
+            image_url,
+            text_answer,
+            status,
+            submitted_at,
+            score,
+            total_marks,
+            percentage,
+            grade,
+            tutor_feedback,
+            teacher_feedback,
+            correction_file_url
+          `)
+          .eq("student_id", studentData.id);
 
         if (submissionError) {
           throw new Error(
@@ -480,31 +415,26 @@ export default function ClassPage() {
         setError(
           classError instanceof Error
             ? classError.message
-            : "Unable to load classroom."
+            : "Unable to load classwork."
         );
       } finally {
         setLoading(false);
       }
     }
 
-    if (
-      scheduleId &&
-      subject
-    ) {
+    if (scheduleId) {
       loadClassroom();
     } else {
       setError(
-        "Invalid classroom link."
+        "Invalid classroom link. No schedule was selected."
       );
       setLoading(false);
     }
-  }, [scheduleId, subject]);
+  }, [scheduleId]);
 
-  /*
-   * ==========================================
-   * SUBMISSION CHECK
-   * ==========================================
-   */
+  /* =========================================================
+     FIND SUBMISSION
+  ========================================================= */
 
   function getSubmission(
     classworkId: string
@@ -518,27 +448,22 @@ export default function ClassPage() {
     );
   }
 
-  /*
-   * ==========================================
-   * UPLOAD ANSWER
-   * ==========================================
-   */
+  /* =========================================================
+     UPLOAD / RE-SUBMIT ANSWER
+     ========================================================= */
 
   async function handleUpload(
     classwork: Classwork,
     file: File
   ) {
     try {
-      setUploadingId(
-        classwork.id
-      );
-
+      setUploadingId(classwork.id);
       setMessage("");
       setError("");
 
-      /*
-       * GET LOGGED-IN USER
-       */
+      /* ---------------------------------------------------
+         CHECK LOGIN
+      --------------------------------------------------- */
 
       const {
         data: { user },
@@ -557,12 +482,11 @@ export default function ClassPage() {
         );
       }
 
-      /*
-       * FILE SIZE LIMIT
-       */
+      /* ---------------------------------------------------
+         FILE SIZE
+      --------------------------------------------------- */
 
-      const maxSize =
-        10 * 1024 * 1024;
+      const maxSize = 10 * 1024 * 1024;
 
       if (file.size > maxSize) {
         throw new Error(
@@ -570,40 +494,42 @@ export default function ClassPage() {
         );
       }
 
-      /*
-       * FILE EXTENSION
-       */
+      /* ---------------------------------------------------
+         FILE EXTENSION
+      --------------------------------------------------- */
 
-      const extension =
-        file.name.includes(".")
-          ? file.name
-              .split(".")
-              .pop()
-              ?.toLowerCase()
-          : "file";
+      const extension = file.name.includes(".")
+        ? file.name
+            .split(".")
+            .pop()
+            ?.toLowerCase()
+        : "file";
 
-      /*
-       * FILE PATH
-       */
+      /* ---------------------------------------------------
+         UNIQUE STORAGE PATH
+
+         A new file is created every time.
+         This allows re-submission anytime.
+      --------------------------------------------------- */
 
       const filePath =
-        `${student.id}/${classwork.id}/${Date.now()}.${extension}`;
+        `${student.id}/` +
+        `${classwork.id}/` +
+        `${Date.now()}.${extension}`;
 
-      /*
-       * UPLOAD TO STORAGE
-       */
+      /* ---------------------------------------------------
+         UPLOAD TO SUPABASE STORAGE
+      --------------------------------------------------- */
 
       const {
         error: uploadError,
       } = await supabase.storage
-        .from(
-          "classwork-submissions"
-        )
+        .from("classwork-submissions")
         .upload(
           filePath,
           file,
           {
-            upsert: true,
+            upsert: false,
             contentType:
               file.type || undefined,
           }
@@ -615,86 +541,83 @@ export default function ClassPage() {
         );
       }
 
-      /*
-       * GET PUBLIC URL
-       */
+      /* ---------------------------------------------------
+         GET PUBLIC URL
+
+         This assumes the bucket is public.
+      --------------------------------------------------- */
 
       const {
         data: publicUrlData,
-      } =
-        supabase.storage
-          .from(
-            "classwork-submissions"
-          )
-          .getPublicUrl(
-            filePath
-          );
+      } = supabase.storage
+        .from("classwork-submissions")
+        .getPublicUrl(filePath);
 
-      const imageUrl =
+      const fileUrl =
         publicUrlData.publicUrl;
 
-      /*
-       * CHECK EXISTING SUBMISSION
-       */
+      /* ---------------------------------------------------
+         CHECK EXISTING SUBMISSION
+      --------------------------------------------------- */
 
       const existing =
-        getSubmission(
-          classwork.id
-        );
+        getSubmission(classwork.id);
 
-      /*
-       * ======================================
-       * UPDATE EXISTING SUBMISSION
-       * ======================================
-       */
+      /* ===================================================
+         UPDATE EXISTING SUBMISSION
+         RE-SUBMISSION IS ALLOWED ANYTIME
+      =================================================== */
 
       if (existing) {
         const {
           data: updatedSubmission,
           error: updateError,
         } = await supabase
-          .from(
-            "classwork_submissions"
-          )
+          .from("classwork_submissions")
           .update({
-            image_url:
-              imageUrl,
-            subject:
-              classwork.subject,
+            image_url: fileUrl,
+            subject: classwork.subject,
             student_email:
               student.email,
-            title:
-              classwork.title,
-            status:
-              "Submitted",
+            title: classwork.title,
+            status: "Submitted",
             submitted_at:
               new Date().toISOString(),
+
+            /*
+             * Clear old result when the student
+             * submits a new version.
+             *
+             * Tutor can mark the new submission again.
+             */
+            score: null,
+            total_marks: null,
+            percentage: null,
+            grade: null,
+            tutor_feedback: null,
+            teacher_feedback: null,
+            correction_file_url: null,
           })
-          .eq(
-            "id",
-            existing.id
-          )
-          .select(
-            `
-              id,
-              classwork_id,
-              student_id,
-              student_email,
-              subject,
-              title,
-              image_url,
-              text_answer,
-              status,
-              submitted_at,
-              score,
-              total_marks,
-              percentage,
-              grade,
-              tutor_feedback,
-              teacher_feedback,
-              correction_file_url
-            `
-          )
+          .eq("id", existing.id)
+          .select(`
+            id,
+            classwork_id,
+            student_id,
+            student_email,
+            subject,
+            title,
+            image_url,
+            text_answer,
+            status,
+            submitted_at,
+            score,
+            total_marks,
+            percentage,
+            grade,
+            tutor_feedback,
+            teacher_feedback,
+            correction_file_url
+          `)
           .single();
 
         if (updateError) {
@@ -706,31 +629,25 @@ export default function ClassPage() {
         if (updatedSubmission) {
           setSubmissions(
             (current) =>
-              current.map(
-                (item) =>
-                  item.id ===
-                  existing.id
-                    ? (updatedSubmission as Submission)
-                    : item
+              current.map((item) =>
+                item.id === existing.id
+                  ? (updatedSubmission as Submission)
+                  : item
               )
           );
         }
       }
 
-      /*
-       * ======================================
-       * CREATE NEW SUBMISSION
-       * ======================================
-       */
+      /* ===================================================
+         CREATE FIRST SUBMISSION
+      =================================================== */
 
       else {
         const {
           data: newSubmission,
           error: insertError,
         } = await supabase
-          .from(
-            "classwork_submissions"
-          )
+          .from("classwork_submissions")
           .insert({
             classwork_id:
               classwork.id,
@@ -748,7 +665,7 @@ export default function ClassPage() {
               classwork.title,
 
             image_url:
-              imageUrl,
+              fileUrl,
 
             status:
               "Submitted",
@@ -756,27 +673,25 @@ export default function ClassPage() {
             submitted_at:
               new Date().toISOString(),
           })
-          .select(
-            `
-              id,
-              classwork_id,
-              student_id,
-              student_email,
-              subject,
-              title,
-              image_url,
-              text_answer,
-              status,
-              submitted_at,
-              score,
-              total_marks,
-              percentage,
-              grade,
-              tutor_feedback,
-              teacher_feedback,
-              correction_file_url
-            `
-          )
+          .select(`
+            id,
+            classwork_id,
+            student_id,
+            student_email,
+            subject,
+            title,
+            image_url,
+            text_answer,
+            status,
+            submitted_at,
+            score,
+            total_marks,
+            percentage,
+            grade,
+            tutor_feedback,
+            teacher_feedback,
+            correction_file_url
+          `)
           .single();
 
         if (insertError) {
@@ -795,9 +710,9 @@ export default function ClassPage() {
         }
       }
 
-      /*
-       * SUCCESS
-       */
+      /* ---------------------------------------------------
+         SUCCESS
+      --------------------------------------------------- */
 
       setMessage(
         "Your answer has been submitted successfully."
@@ -808,7 +723,7 @@ export default function ClassPage() {
         uploadError
       );
 
-      setMessage(
+      setError(
         uploadError instanceof Error
           ? uploadError.message
           : "Unable to submit your answer."
@@ -818,224 +733,226 @@ export default function ClassPage() {
     }
   }
 
-  /*
-   * ==========================================
-   * LOADING
-   * ==========================================
-   */
+  /* =========================================================
+     LOADING
+  ========================================================= */
 
   if (loading) {
     return (
-      <div className="flex min-h-[500px] items-center justify-center">
-        <p className="text-lg font-semibold text-slate-600">
-          Loading classroom...
-        </p>
+      <div className="min-h-screen bg-slate-50 px-6 py-20">
+        <div className="mx-auto max-w-5xl text-center">
+          <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-slate-300 border-t-yellow-500" />
+
+          <p className="mt-5 font-semibold text-slate-600">
+            Loading classwork...
+          </p>
+        </div>
       </div>
     );
   }
 
-  /*
-   * ==========================================
-   * ERROR
-   * ==========================================
-   */
+  /* =========================================================
+     ERROR
+  ========================================================= */
 
   if (error) {
     return (
-      <div className="rounded-3xl bg-white p-8 shadow-sm">
+      <div className="min-h-screen bg-slate-50 px-6 py-10">
+        <div className="mx-auto max-w-5xl">
+          <Link
+            href="/dashboard"
+            className="inline-flex items-center gap-2 font-bold text-slate-600 transition hover:text-slate-900"
+          >
+            <ArrowLeft size={18} />
+            Back to Dashboard
+          </Link>
+
+          <div className="mt-8 rounded-3xl bg-white p-8 shadow-sm">
+            <div className="flex items-center gap-3">
+              <AlertCircle
+                size={28}
+                className="text-red-500"
+              />
+
+              <h1 className="text-2xl font-extrabold text-slate-900">
+                Unable to load classwork
+              </h1>
+            </div>
+
+            <p className="mt-4 text-red-600">
+              {error}
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  /* =========================================================
+     CLASS DETAILS
+  ========================================================= */
+
+  const subjectName = schedule
+    ? getSubjectName(schedule)
+    : "Subject";
+
+  const tutorName = schedule
+    ? getTutorName(schedule)
+    : "Tutor";
+
+  /* =========================================================
+     MAIN PAGE
+  ========================================================= */
+
+  return (
+    <div className="min-h-screen bg-slate-50 px-4 py-8 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-6xl">
+
+        {/* =================================================
+            BACK
+        ================================================= */}
 
         <Link
           href="/dashboard"
-          className="inline-flex items-center gap-2 font-bold text-slate-700 hover:text-slate-900"
+          className="inline-flex items-center gap-2 font-bold text-slate-600 transition hover:text-slate-900"
         >
           <ArrowLeft size={18} />
           Back to Dashboard
         </Link>
 
-        <h1 className="mt-8 text-2xl font-extrabold text-slate-900">
-          Unable to open class
-        </h1>
+        {/* =================================================
+            CLASS HEADER
+        ================================================= */}
 
-        <p className="mt-3 text-red-600">
-          {error}
-        </p>
+        <div className="mt-6 rounded-3xl bg-slate-900 p-8 text-white">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
 
-      </div>
-    );
-  }
+            <div>
+              <div className="flex items-center gap-3">
 
-  /*
-   * ==========================================
-   * MAIN CLASSROOM
-   * ==========================================
-   */
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-yellow-500">
+                  <BookOpen
+                    size={28}
+                    className="text-slate-900"
+                  />
+                </div>
 
-  const subjectName =
-    schedule
-      ? getSubjectName(schedule)
-      : subject;
+                <div>
+                  <p className="text-sm font-bold uppercase tracking-wide text-yellow-400">
+                    Classwork
+                  </p>
 
-  const tutorName =
-    schedule
-      ? getTutorName(schedule)
-      : "Tutor";
-
-  return (
-    <div className="pb-12">
-
-      {/* ======================================
-          BACK
-      ======================================= */}
-
-      <Link
-        href="/dashboard"
-        className="inline-flex items-center gap-2 font-bold text-slate-600 transition hover:text-slate-900"
-      >
-        <ArrowLeft size={18} />
-        Back to Dashboard
-      </Link>
-
-      {/* ======================================
-          CLASS HEADER
-      ======================================= */}
-
-      <div className="mt-6 rounded-3xl bg-slate-900 p-8 text-white">
-
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-
-          <div>
-
-            <div className="flex items-center gap-3">
-
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-yellow-500">
-
-                <BookOpen
-                  size={28}
-                  className="text-slate-900"
-                />
+                  <h1 className="mt-1 text-3xl font-extrabold">
+                    {subjectName}
+                  </h1>
+                </div>
 
               </div>
 
-              <div>
+              {schedule && (
+                <div className="mt-6 space-y-2 text-slate-300">
 
-                <p className="text-sm font-bold uppercase tracking-wide text-yellow-400">
-                  My Classroom
-                </p>
+                  <p>
+                    <span className="font-bold text-white">
+                      {schedule.day}
+                    </span>{" "}
+                    — {schedule.time}
+                  </p>
 
-                <h1 className="mt-1 text-3xl font-extrabold">
-                  {subjectName}
-                </h1>
+                  <p>
+                    Tutor:{" "}
+                    <span className="font-bold text-white">
+                      {tutorName}
+                    </span>
+                  </p>
 
-              </div>
-
+                </div>
+              )}
             </div>
 
-            {schedule && (
-              <div className="mt-6 space-y-2 text-slate-300">
+            {/* JOIN LIVE CLASS */}
 
-                <p>
-                  <span className="font-bold text-white">
-                    {schedule.day}
-                  </span>
-                  {" — "}
-                  {schedule.time}
-                </p>
-
-                <p>
-                  Tutor:{" "}
-                  <span className="font-bold text-white">
-                    {tutorName}
-                  </span>
-                </p>
-
-              </div>
+            {schedule?.meet_link && (
+              <a
+                href={schedule.meet_link}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-yellow-500 px-7 py-4 font-extrabold text-slate-900 transition hover:bg-yellow-400"
+              >
+                Join Live Class
+                <ExternalLink size={18} />
+              </a>
             )}
 
           </div>
-
-          {/* JOIN CLASS */}
-
-          {schedule?.meet_link && (
-            <a
-              href={
-                schedule.meet_link
-              }
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-yellow-500 px-7 py-4 font-extrabold text-slate-900 transition hover:bg-yellow-400"
-            >
-              Join Live Class
-              <ExternalLink size={18} />
-            </a>
-          )}
-
         </div>
 
-      </div>
+        {/* =================================================
+            MESSAGE
+        ================================================= */}
 
-      {/* ======================================
-          MESSAGE
-      ======================================= */}
-
-      {message && (
-        <div className="mt-6 rounded-2xl border border-yellow-200 bg-yellow-50 p-4 font-semibold text-slate-800">
-          {message}
-        </div>
-      )}
-
-      {/* ======================================
-          CLASSWORK
-      ======================================= */}
-
-      <div className="mt-8 rounded-3xl bg-white p-6 shadow-sm">
-
-        <div className="flex items-center gap-3">
-
-          <FileText
-            size={30}
-            className="text-yellow-600"
-          />
-
-          <div>
-
-            <h2 className="text-2xl font-bold text-slate-900">
-              Classwork
-            </h2>
-
-            <p className="mt-1 text-sm text-slate-500">
-              Assignments from your tutor.
-            </p>
-
+        {message && (
+          <div className="mt-6 rounded-2xl border border-green-200 bg-green-50 p-4 font-semibold text-green-800">
+            {message}
           </div>
+        )}
 
-        </div>
+        {/* =================================================
+            CLASSWORK SECTION
+        ================================================= */}
 
-        {classworks.length === 0 ? (
+        <div className="mt-8 rounded-3xl bg-white p-6 shadow-sm sm:p-8">
 
-          <div className="mt-8 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-10 text-center">
+          <div className="flex items-center gap-3">
 
             <FileText
-              size={45}
-              className="mx-auto text-slate-300"
+              size={30}
+              className="text-yellow-600"
             />
 
-            <h3 className="mt-4 text-xl font-bold text-slate-900">
-              No classwork yet
-            </h3>
+            <div>
+              <h2 className="text-2xl font-bold text-slate-900">
+                Classwork
+              </h2>
 
-            <p className="mt-2 text-slate-600">
-              Your tutor has not assigned
-              classwork for this subject yet.
-            </p>
+              <p className="mt-1 text-sm text-slate-500">
+                Assignments from your tutor for this class.
+              </p>
+            </div>
 
           </div>
 
-        ) : (
+          {/* =================================================
+              NO CLASSWORK
+          ================================================= */}
 
-          <div className="mt-8 space-y-5">
+          {classworks.length === 0 ? (
+            <div className="mt-8 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-10 text-center">
 
-            {classworks.map(
-              (classwork) => {
+              <FileText
+                size={45}
+                className="mx-auto text-slate-300"
+              />
+
+              <h3 className="mt-4 text-xl font-bold text-slate-900">
+                No classwork yet
+              </h3>
+
+              <p className="mt-2 text-slate-600">
+                Your tutor has not assigned
+                classwork for this subject yet.
+              </p>
+
+            </div>
+          ) : (
+
+            /* =================================================
+               CLASSWORK LIST
+            ================================================= */
+
+            <div className="mt-8 space-y-6">
+
+              {classworks.map((classwork) => {
 
                 const submission =
                   getSubmission(
@@ -1043,62 +960,54 @@ export default function ClassPage() {
                   );
 
                 const submittedFile =
-                  submission?.image_url;
+                  submission?.image_url ||
+                  null;
 
                 const correctionFile =
-                  submission?.correction_file_url;
+                  submission?.correction_file_url ||
+                  null;
 
                 const submittedFileIsImage =
-                  !!submittedFile &&
-                  /\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i.test(
+                  isImageFile(
                     submittedFile
                   );
 
                 const submittedFileIsPdf =
-                  !!submittedFile &&
-                  /\.pdf(\?.*)?$/i.test(
+                  isPdfFile(
                     submittedFile
                   );
 
                 const correctionIsImage =
-                  !!correctionFile &&
-                  /\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i.test(
+                  isImageFile(
                     correctionFile
                   );
 
                 const correctionIsPdf =
-                  !!correctionFile &&
-                  /\.pdf(\?.*)?$/i.test(
+                  isPdfFile(
                     correctionFile
                   );
 
                 return (
                   <div
-                    key={
-                      classwork.id
-                    }
+                    key={classwork.id}
                     className="rounded-2xl border border-slate-200 bg-slate-50 p-6"
                   >
 
-                    {/* =================================
+                    {/* =====================================
                         CLASSWORK INFORMATION
-                    ================================= */}
+                    ===================================== */}
 
                     <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
 
                       <div className="min-w-0">
 
                         <h3 className="text-xl font-extrabold text-slate-900">
-                          {
-                            classwork.title
-                          }
+                          {classwork.title}
                         </h3>
 
                         {classwork.description && (
                           <p className="mt-3 whitespace-pre-wrap leading-7 text-slate-600">
-                            {
-                              classwork.description
-                            }
+                            {classwork.description}
                           </p>
                         )}
 
@@ -1106,9 +1015,8 @@ export default function ClassPage() {
 
                           {classwork.due_date && (
                             <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-2 text-xs font-bold text-slate-600">
-                              <Clock3
-                                size={15}
-                              />
+                              <Clock3 size={15} />
+
                               Due:{" "}
                               {formatDate(
                                 classwork.due_date
@@ -1117,34 +1025,27 @@ export default function ClassPage() {
                           )}
 
                           {submission ? (
-
                             <span className="inline-flex items-center gap-2 rounded-full bg-green-100 px-3 py-2 text-xs font-bold text-green-700">
-
                               <CheckCircle2
                                 size={15}
                               />
 
                               Submitted
-
                             </span>
-
                           ) : (
-
                             <span className="inline-flex items-center gap-2 rounded-full bg-orange-100 px-3 py-2 text-xs font-bold text-orange-700">
-
                               <AlertCircle
                                 size={15}
                               />
 
                               Not submitted
-
                             </span>
-
                           )}
 
                         </div>
-
                       </div>
+
+                      {/* CLASSWORK ATTACHMENT */}
 
                       {classwork.attachment_url && (
                         <a
@@ -1156,19 +1057,17 @@ export default function ClassPage() {
                           className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border-2 border-slate-900 bg-white px-5 py-3 font-bold text-slate-900 transition hover:bg-slate-900 hover:text-white"
                         >
                           View Attachment
-
                           <ExternalLink
                             size={17}
                           />
-
                         </a>
                       )}
 
                     </div>
 
-                    {/* =================================
-                        YOUR SUBMISSION
-                    ================================= */}
+                    {/* =====================================
+                        SUBMISSION AREA
+                    ===================================== */}
 
                     <div className="mt-6 border-t border-slate-200 pt-6">
 
@@ -1176,11 +1075,15 @@ export default function ClassPage() {
                         Your Submission
                       </p>
 
+                      {/* ===================================
+                          ALREADY SUBMITTED
+                      =================================== */}
+
                       {submission ? (
 
                         <div className="mt-4 rounded-2xl border border-green-200 bg-green-50 p-5">
 
-                          {/* SUBMITTED STATUS */}
+                          {/* STATUS */}
 
                           <div className="flex items-start gap-3">
 
@@ -1208,9 +1111,7 @@ export default function ClassPage() {
 
                           </div>
 
-                          {/* =================================
-                              WRITTEN ANSWER
-                          ================================= */}
+                          {/* WRITTEN ANSWER */}
 
                           {submission.text_answer && (
                             <div className="mt-5 rounded-2xl border border-yellow-200 bg-yellow-50 p-5">
@@ -1233,7 +1134,7 @@ export default function ClassPage() {
                           )}
 
                           {/* =================================
-                              SUBMITTED FILE
+                              UPLOADED FILE
                           ================================= */}
 
                           {submittedFile && (
@@ -1248,7 +1149,7 @@ export default function ClassPage() {
                                   </h4>
 
                                   <p className="mt-1 text-sm text-slate-500">
-                                    This is the file you submitted to your tutor.
+                                    This is your latest submitted file.
                                   </p>
 
                                 </div>
@@ -1263,13 +1164,11 @@ export default function ClassPage() {
                                     rel="noopener noreferrer"
                                     className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 font-bold text-white hover:bg-slate-800"
                                   >
-
                                     <ExternalLink
                                       size={17}
                                     />
 
                                     View My Work
-
                                   </a>
 
                                   <a
@@ -1279,13 +1178,11 @@ export default function ClassPage() {
                                     download
                                     className="inline-flex items-center gap-2 rounded-xl bg-yellow-500 px-4 py-2 font-bold text-slate-900 hover:bg-yellow-400"
                                   >
-
                                     <Download
                                       size={17}
                                     />
 
                                     Download
-
                                   </a>
 
                                 </div>
@@ -1363,42 +1260,36 @@ export default function ClassPage() {
 
                                 {submission.score !== null && (
                                   <span className="rounded-xl bg-white px-4 py-3 font-bold text-blue-700 shadow-sm">
-
                                     Score:{" "}
-                                    {
-                                      submission.score
-                                    }
+                                    {submission.score}
 
-                                    {submission.total_marks !== null
+                                    {submission.total_marks !==
+                                    null
                                       ? ` / ${submission.total_marks}`
                                       : ""}
-
                                   </span>
                                 )}
 
-                                {submission.percentage !== null && (
+                                {submission.percentage !==
+                                  null && (
                                   <span className="rounded-xl bg-white px-4 py-3 font-bold text-purple-700 shadow-sm">
-
                                     {
                                       submission.percentage
-                                    }%
-
+                                    }
+                                    %
                                   </span>
                                 )}
 
                                 {submission.grade && (
                                   <span className="rounded-xl bg-yellow-100 px-4 py-3 font-bold text-yellow-700">
-
                                     Grade:{" "}
                                     {
                                       submission.grade
                                     }
-
                                   </span>
                                 )}
 
                               </div>
-
                             </div>
                           )}
 
@@ -1463,13 +1354,11 @@ export default function ClassPage() {
                                     rel="noopener noreferrer"
                                     className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-3 font-bold text-white hover:bg-slate-800"
                                   >
-
                                     <ExternalLink
                                       size={17}
                                     />
 
                                     View Correction
-
                                   </a>
 
                                   <a
@@ -1479,13 +1368,11 @@ export default function ClassPage() {
                                     download
                                     className="inline-flex items-center justify-center gap-2 rounded-xl bg-yellow-500 px-5 py-3 font-bold text-slate-900 hover:bg-yellow-400"
                                   >
-
                                     <Download
                                       size={17}
                                     />
 
                                     Download
-
                                   </a>
 
                                 </div>
@@ -1528,54 +1415,67 @@ export default function ClassPage() {
                           )}
 
                           {/* =================================
-                              SUBMIT NEW ANSWER
+                              RE-SUBMIT ANYTIME
                           ================================= */}
 
-                          <label className="mt-6 inline-flex cursor-pointer items-center gap-2 rounded-xl bg-white px-5 py-3 font-bold text-slate-900 shadow-sm transition hover:bg-slate-100">
+                          <div className="mt-6 rounded-2xl border border-yellow-200 bg-yellow-50 p-5">
 
-                            <Upload
-                              size={18}
-                            />
+                            <p className="font-bold text-slate-900">
+                              Need to submit a new version?
+                            </p>
 
-                            {uploadingId ===
-                            classwork.id
-                              ? "Uploading..."
-                              : "Submit New Answer"}
+                            <p className="mt-1 text-sm text-slate-600">
+                              You can re-submit your answer anytime.
+                              Your latest submission will replace the previous one.
+                            </p>
 
-                            <input
-                              type="file"
-                              accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                              className="hidden"
-                              disabled={
-                                uploadingId ===
-                                classwork.id
-                              }
-                              onChange={(
-                                event
-                              ) => {
+                            <label className="mt-4 inline-flex cursor-pointer items-center gap-2 rounded-xl bg-slate-900 px-5 py-3 font-bold text-white transition hover:bg-slate-800">
 
-                                const file =
-                                  event
-                                    .target
-                                    .files?.[0];
+                              <Upload size={18} />
 
-                                if (file) {
-                                  handleUpload(
-                                    classwork,
-                                    file
-                                  );
+                              {uploadingId ===
+                              classwork.id
+                                ? "Uploading..."
+                                : "Submit New Answer"}
+
+                              <input
+                                type="file"
+                                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                                className="hidden"
+                                disabled={
+                                  uploadingId ===
+                                  classwork.id
                                 }
+                                onChange={(
+                                  event
+                                ) => {
+                                  const file =
+                                    event.target
+                                      .files?.[0];
 
-                                event.target.value =
-                                  "";
-                              }}
-                            />
+                                  if (file) {
+                                    handleUpload(
+                                      classwork,
+                                      file
+                                    );
+                                  }
 
-                          </label>
+                                  event.target.value =
+                                    "";
+                                }}
+                              />
+
+                            </label>
+
+                          </div>
 
                         </div>
 
                       ) : (
+
+                        /* =================================
+                           NO SUBMISSION YET
+                        ================================= */
 
                         <div className="mt-4 rounded-2xl border border-orange-200 bg-orange-50 p-5">
 
@@ -1603,9 +1503,7 @@ export default function ClassPage() {
 
                           <label className="mt-5 inline-flex cursor-pointer items-center gap-2 rounded-xl bg-yellow-500 px-5 py-3 font-bold text-slate-900 transition hover:bg-yellow-400">
 
-                            <Upload
-                              size={18}
-                            />
+                            <Upload size={18} />
 
                             {uploadingId ===
                             classwork.id
@@ -1623,10 +1521,8 @@ export default function ClassPage() {
                               onChange={(
                                 event
                               ) => {
-
                                 const file =
-                                  event
-                                    .target
+                                  event.target
                                     .files?.[0];
 
                                 if (file) {
@@ -1644,49 +1540,25 @@ export default function ClassPage() {
                           </label>
 
                           <p className="mt-3 text-xs text-orange-700">
-                            Accepted: PDF, DOC,
-                            DOCX, JPG and PNG.
-                            Maximum 10MB.
+                            Accepted: PDF, DOC, DOCX,
+                            JPG and PNG. Maximum 10MB.
                           </p>
 
                         </div>
-
                       )}
 
                     </div>
 
                   </div>
                 );
-              }
-            )}
+              })}
 
-          </div>
+            </div>
+          )}
 
-        )}
-
-      </div>
-
-      {/* ======================================
-          CLASSROOM INFORMATION
-      ======================================= */}
-
-      <div className="mt-8 rounded-3xl bg-white p-6 shadow-sm">
-
-        <h2 className="text-xl font-bold text-slate-900">
-          About this classroom
-        </h2>
-
-        <p className="mt-3 leading-7 text-slate-600">
-          This classroom contains your
-          {` ${subjectName} `}
-          learning activities. You can join
-          your scheduled live lesson, view
-          classwork and submit your answers
-          here.
-        </p>
+        </div>
 
       </div>
-
     </div>
   );
 }
