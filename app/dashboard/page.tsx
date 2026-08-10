@@ -698,7 +698,7 @@ export default function DashboardPage() {
 
       </div>
 
-      {/* =====================================
+           {/* =====================================
           MY TIMETABLE
       ====================================== */}
 
@@ -712,7 +712,6 @@ export default function DashboardPage() {
           />
 
           <div>
-
             <h2 className="text-2xl font-bold text-slate-900">
               My Timetable
             </h2>
@@ -720,7 +719,6 @@ export default function DashboardPage() {
             <p className="mt-1 text-sm text-slate-500">
               Join your lesson or open your subject classroom.
             </p>
-
           </div>
 
         </div>
@@ -744,36 +742,106 @@ export default function DashboardPage() {
 
           <div className="mt-6 space-y-4">
 
-            {schedules.map(
-              (schedule) => {
+            {/*
+             * GROUP REAL DATABASE SCHEDULES BY SUBJECT
+             *
+             * We are NOT changing the database.
+             *
+             * Each schedule still comes from:
+             *
+             * student_schedules.student_id → students.id
+             * student_schedules.subject_id → subjects.id
+             * student_schedules.tutor_id   → tutors.id
+             *
+             * We are only combining multiple schedule
+             * rows visually when they belong to the
+             * same subject.
+             */}
 
-                const subjectName =
-                  getSubjectName(
-                    schedule
-                  );
+            {Array.from(
+              schedules.reduce(
+                (
+                  grouped,
+                  schedule
+                ) => {
+
+                  const subjectName =
+                    getSubjectName(
+                      schedule
+                    );
+
+                  const existing =
+                    grouped.get(
+                      subjectName
+                    );
+
+                  if (existing) {
+                    existing.push(
+                      schedule
+                    );
+                  } else {
+                    grouped.set(
+                      subjectName,
+                      [schedule]
+                    );
+                  }
+
+                  return grouped;
+
+                },
+                new Map<
+                  string,
+                  Schedule[]
+                >()
+              ).entries()
+            ).map(
+              ([
+                subjectName,
+                subjectSchedules,
+              ]) => {
+
+                /*
+                 * Use the first real schedule
+                 * for the shared Join Class button.
+                 *
+                 * Since you will use the same Google
+                 * Meet link for the subject's schedules,
+                 * this is safe.
+                 */
+
+                const joinSchedule =
+                  subjectSchedules.find(
+                    (schedule) =>
+                      Boolean(
+                        schedule.meet_link
+                      )
+                  ) ||
+                  subjectSchedules[0];
 
                 const tutorName =
                   getTutorName(
-                    schedule
+                    joinSchedule
                   );
 
                 return (
                   <div
                     key={
-                      schedule.id
+                      subjectName
                     }
                     className="rounded-2xl border border-slate-200 bg-slate-50 p-5"
                   >
 
                     <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
 
-                      {/* LESSON INFORMATION */}
+                      {/* =================================
+                          SUBJECT + SCHEDULES
+                      ================================= */}
 
                       <div className="min-w-0">
 
-                        <div className="flex flex-wrap items-center gap-3">
+                        <div className="flex items-start gap-3">
 
-                          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-yellow-100">
+                          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-yellow-100">
 
                             <BookOpen
                               size={24}
@@ -782,50 +850,65 @@ export default function DashboardPage() {
 
                           </div>
 
-                          <div>
+                          <div className="min-w-0">
 
                             <h3 className="text-xl font-extrabold text-slate-900">
-                              {
-                                subjectName
-                              }
+                              {subjectName}
                             </h3>
 
-                            <p className="mt-1 font-semibold text-slate-700">
-                              {
-                                schedule.day
-                              }
-                              {" — "}
-                              {
-                                schedule.time
-                              }
-                            </p>
+                            {/* ALL SCHEDULES FOR THIS SUBJECT */}
+
+                            <div className="mt-3 space-y-1">
+
+                              {subjectSchedules.map(
+                                (
+                                  schedule
+                                ) => (
+
+                                  <p
+                                    key={
+                                      schedule.id
+                                    }
+                                    className="font-semibold text-slate-700"
+                                  >
+                                    {schedule.day}
+                                    {" — "}
+                                    {schedule.time}
+                                  </p>
+
+                                )
+                              )}
+
+                            </div>
 
                           </div>
 
                         </div>
 
+                        {/* ONE TUTOR LINE */}
+
                         <p className="mt-4 text-sm text-slate-600">
                           Tutor:{" "}
                           <span className="font-semibold text-slate-900">
-                            {
-                              tutorName
-                            }
+                            {tutorName}
                           </span>
                         </p>
 
                       </div>
 
-                      {/* ACTIONS */}
+                      {/* =================================
+                          ACTIONS
+                      ================================= */}
 
-                      <div className="flex flex-col gap-3 sm:flex-row">
+                      <div className="flex shrink-0 flex-col gap-3 sm:flex-row">
 
                         {/* JOIN CLASS */}
 
-                        {schedule.meet_link ? (
+                        {joinSchedule.meet_link ? (
 
                           <a
                             href={
-                              schedule.meet_link
+                              joinSchedule.meet_link
                             }
                             target="_blank"
                             rel="noopener noreferrer"
@@ -851,7 +934,7 @@ export default function DashboardPage() {
                           href={`/dashboard/class?subject=${encodeURIComponent(
                             subjectName
                           )}&schedule_id=${encodeURIComponent(
-                            schedule.id
+                            joinSchedule.id
                           )}`}
                           className="inline-flex items-center justify-center gap-2 rounded-xl border-2 border-slate-900 bg-white px-6 py-3 font-bold text-slate-900 transition hover:bg-slate-900 hover:text-white"
                         >
@@ -877,7 +960,6 @@ export default function DashboardPage() {
         )}
 
       </div>
-
     </div>
   );
 }
