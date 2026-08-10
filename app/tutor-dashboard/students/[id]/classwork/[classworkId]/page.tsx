@@ -285,24 +285,16 @@ export default function TutorClassworkDetailsPage() {
          VERIFY CLASSWORK ASSIGNMENT
       ----------------------------------------------- */
 
-      const {
-        data: assignment,
-        error: assignmentError,
-      } = await supabase
-        .from("classwork_assignments")
-        .select(
-          "classwork_id, student_id"
-        )
-        .eq(
-          "classwork_id",
-          classworkId
-        )
-        .eq(
-          "student_id",
-          studentId
-        )
-        .maybeSingle();
-
+     const {
+  data: assignment,
+  error: assignmentError,
+} = await supabase
+  .from("classwork_assignments")
+  .select("classwork_id, student_id")
+  .eq("classwork_id", classworkId)
+  .eq("student_id", studentId)
+  .limit(1)
+  .maybeSingle();
       if (assignmentError) {
         throw new Error(
           assignmentError.message
