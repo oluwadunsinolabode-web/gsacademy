@@ -961,7 +961,7 @@ const isPdf =
           : "Submit Classwork"}
 
       </button>
-      {/* =====================================
+     {/* =====================================
     MY SUBMITTED WORK
 ====================================== */}
 
@@ -975,7 +975,8 @@ const isPdf =
       </h2>
 
       <p className="mt-1 text-sm text-slate-500">
-        Your handwritten solution for this classwork.
+        View your submitted answer, uploaded file,
+        tutor feedback and marked result here.
       </p>
     </div>
 
@@ -1020,23 +1021,26 @@ const isPdf =
         </p>
 
         <p className="mt-2 text-sm text-slate-500">
-          Your handwritten solution will appear here after you submit it.
+          Your answer will appear here after you submit it.
         </p>
 
       </div>
     )}
 
-  {/* SUBMITTED WORK */}
+  {/* SUBMISSIONS */}
 
   {!loadingSubmissions &&
     submissions.length > 0 && (
 
-      <div className="mt-6 space-y-6">
+      <div className="mt-6 space-y-8">
 
         {submissions.map((submission) => {
 
           const submissionUrl =
             submission.image_url;
+
+          const correctionUrl =
+            submission.correction_file_url;
 
           const isImage =
             !!submissionUrl &&
@@ -1050,21 +1054,50 @@ const isPdf =
               submissionUrl
             );
 
+          const isCorrectionPdf =
+            !!correctionUrl &&
+            /\.pdf(\?.*)?$/i.test(
+              correctionUrl
+            );
+
+          const isCorrectionImage =
+            !!correctionUrl &&
+            /\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i.test(
+              correctionUrl
+            );
+
           return (
             <div
               key={submission.id}
-              className="rounded-2xl border border-slate-200 bg-slate-50 p-5"
+              className="rounded-3xl border border-slate-200 bg-slate-50 p-6"
             >
 
-              {/* HEADER */}
+              {/* ===============================
+                  SUBMISSION HEADER
+              ================================ */}
 
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
 
                 <div>
 
-                  <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-bold text-green-700">
-                    {submission.status || "Submitted"}
-                  </span>
+                  <div className="flex flex-wrap items-center gap-2">
+
+                    <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-bold text-green-700">
+                      {submission.status || "Submitted"}
+                    </span>
+
+                    {submission.score !== null && (
+                      <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-bold text-blue-700">
+                        Marked
+                      </span>
+                    )}
+
+                  </div>
+
+                  <h3 className="mt-3 text-xl font-bold text-slate-900">
+                    {submission.title ||
+                      classwork.title}
+                  </h3>
 
                   {submission.submitted_at && (
                     <p className="mt-2 text-sm text-slate-500">
@@ -1075,89 +1108,178 @@ const isPdf =
                     </p>
                   )}
 
-                  <h3 className="mt-2 text-xl font-bold text-slate-900">
-                    {submission.title ||
-                      classwork.title}
-                  </h3>
-
                 </div>
 
-                {/* BUTTONS */}
+              </div>
 
-                {submissionUrl && (
-                  <div className="flex flex-wrap gap-2">
+              {/* ===============================
+                  WRITTEN ANSWER
+              ================================ */}
 
-                    <a
-                      href={submissionUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 font-bold text-white hover:bg-slate-800"
-                    >
-                      <ExternalLink size={17} />
-                      View Submission
-                    </a>
+              {submission.text_answer && (
+                <div className="mt-6 rounded-2xl border border-yellow-200 bg-yellow-50 p-5">
 
-                    <a
-                      href={submissionUrl}
-                      download
-                      className="inline-flex items-center gap-2 rounded-xl bg-yellow-500 px-4 py-2 font-bold text-slate-900 hover:bg-yellow-400"
-                    >
-                      <Download size={17} />
-                      Download
-                    </a>
+                  <div className="flex items-center gap-3">
+
+                    <FileText
+                      size={24}
+                      className="text-yellow-600"
+                    />
+
+                    <h4 className="text-lg font-bold text-slate-900">
+                      My Written Answer
+                    </h4>
+
+                  </div>
+
+                  <div className="mt-4 rounded-2xl bg-white p-5">
+
+                    <p className="whitespace-pre-wrap leading-8 text-slate-700">
+                      {submission.text_answer}
+                    </p>
+
+                  </div>
+
+                </div>
+              )}
+
+              {/* ===============================
+                  UPLOADED FILE
+              ================================ */}
+
+              {submissionUrl && (
+                <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-5">
+
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+
+                    <div className="flex items-center gap-3">
+
+                      <FileText
+                        size={25}
+                        className="text-yellow-600"
+                      />
+
+                      <div>
+                        <h4 className="text-lg font-bold text-slate-900">
+                          Uploaded Work
+                        </h4>
+
+                        <p className="text-sm text-slate-500">
+                          Your uploaded classwork file.
+                        </p>
+                      </div>
+
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+
+                      <a
+                        href={submissionUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 font-bold text-white hover:bg-slate-800"
+                      >
+                        <ExternalLink size={17} />
+                        View File
+                      </a>
+
+                      <a
+                        href={submissionUrl}
+                        download
+                        className="inline-flex items-center gap-2 rounded-xl bg-yellow-500 px-4 py-2 font-bold text-slate-900 hover:bg-yellow-400"
+                      >
+                        <Download size={17} />
+                        Download
+                      </a>
+
+                    </div>
+
+                  </div>
+
+                  {/* IMAGE */}
+
+                  {isImage && (
+                    <div className="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-3">
+
+                      <img
+                        src={submissionUrl}
+                        alt="Your submitted classwork"
+                        className="mx-auto max-h-[700px] w-auto max-w-full rounded-xl object-contain"
+                      />
+
+                    </div>
+                  )}
+
+                  {/* PDF */}
+
+                  {isPdf && (
+                    <div className="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-slate-100">
+
+                      <iframe
+                        src={submissionUrl}
+                        title="Your submitted classwork PDF"
+                        className="h-[700px] w-full"
+                      />
+
+                    </div>
+                  )}
+
+                  {/* OTHER FILE */}
+
+                  {!isImage && !isPdf && (
+                    <div className="mt-5 rounded-2xl bg-slate-50 p-6 text-center">
+
+                      <FileText
+                        size={50}
+                        className="mx-auto text-slate-400"
+                      />
+
+                      <p className="mt-3 font-semibold text-slate-700">
+                        Your uploaded file is available.
+                      </p>
+
+                    </div>
+                  )}
+
+                </div>
+              )}
+
+              {/* ===============================
+                  NO ANSWER
+              ================================ */}
+
+              {!submission.text_answer &&
+                !submissionUrl && (
+                  <div className="mt-6 rounded-2xl bg-white p-6 text-center">
+
+                    <p className="text-slate-500">
+                      No written answer or uploaded file
+                      was attached to this submission.
+                    </p>
 
                   </div>
                 )}
 
-              </div>
-
-              {/* IMAGE */}
-
-              {isImage && (
-                <div className="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-white p-3">
-
-                  <img
-                    src={submissionUrl}
-                    alt="Your handwritten classwork submission"
-                    className="mx-auto max-h-[700px] w-auto max-w-full rounded-xl object-contain"
-                  />
-
-                </div>
-              )}
-
-              {/* PDF */}
-
-              {isPdf && (
-                <div className="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-white">
-
-                  <iframe
-                    src={submissionUrl}
-                    title="Your submitted classwork"
-                    className="h-[700px] w-full"
-                  />
-
-                </div>
-              )}
-
-              {/* MARK / FEEDBACK */}
+              {/* ===============================
+                  MARKED RESULT
+              ================================ */}
 
               {(submission.score !== null ||
                 submission.percentage !== null ||
-                submission.grade ||
-                submission.teacher_feedback ||
-                submission.tutor_feedback) && (
+                submission.grade) && (
 
-                <div className="mt-5 rounded-2xl bg-white p-5">
+                <div className="mt-6 rounded-2xl border border-blue-200 bg-blue-50 p-6">
 
-                  <h4 className="font-bold text-slate-900">
-                    Tutor Feedback
+                  <h4 className="text-xl font-bold text-slate-900">
+                    Your Result
                   </h4>
 
-                  <div className="mt-4 flex flex-wrap gap-3">
+                  <div className="mt-5 flex flex-wrap gap-3">
 
                     {submission.score !== null && (
-                      <span className="rounded-xl bg-blue-100 px-4 py-2 font-bold text-blue-700">
-                        Score: {submission.score}
+                      <span className="rounded-xl bg-white px-4 py-3 font-bold text-blue-700 shadow-sm">
+                        Score:{" "}
+                        {submission.score}
                         {submission.total_marks !== null
                           ? ` / ${submission.total_marks}`
                           : ""}
@@ -1165,25 +1287,133 @@ const isPdf =
                     )}
 
                     {submission.percentage !== null && (
-                      <span className="rounded-xl bg-purple-100 px-4 py-2 font-bold text-purple-700">
+                      <span className="rounded-xl bg-white px-4 py-3 font-bold text-purple-700 shadow-sm">
                         {submission.percentage}%
                       </span>
                     )}
 
                     {submission.grade && (
-                      <span className="rounded-xl bg-yellow-100 px-4 py-2 font-bold text-yellow-700">
-                        Grade: {submission.grade}
+                      <span className="rounded-xl bg-yellow-100 px-4 py-3 font-bold text-yellow-700">
+                        Grade:{" "}
+                        {submission.grade}
                       </span>
                     )}
 
                   </div>
 
-                  {(submission.teacher_feedback ||
-                    submission.tutor_feedback) && (
-                    <p className="mt-4 whitespace-pre-wrap text-slate-700">
-                      {submission.teacher_feedback ||
-                        submission.tutor_feedback}
-                    </p>
+                </div>
+              )}
+
+              {/* ===============================
+                  TUTOR FEEDBACK
+              ================================ */}
+
+              {(submission.teacher_feedback ||
+                submission.tutor_feedback) && (
+
+                <div className="mt-6 rounded-2xl border border-green-200 bg-green-50 p-6">
+
+                  <div className="flex items-center gap-3">
+
+                    <CheckCircle
+                      size={25}
+                      className="text-green-600"
+                    />
+
+                    <h4 className="text-xl font-bold text-slate-900">
+                      Tutor Feedback
+                    </h4>
+
+                  </div>
+
+                  <p className="mt-4 whitespace-pre-wrap leading-8 text-slate-700">
+                    {submission.teacher_feedback ||
+                      submission.tutor_feedback}
+                  </p>
+
+                </div>
+              )}
+
+              {/* ===============================
+                  CORRECTION FILE
+              ================================ */}
+
+              {correctionUrl && (
+                <div className="mt-6 rounded-2xl border border-yellow-200 bg-yellow-50 p-6">
+
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+
+                    <div className="flex items-center gap-3">
+
+                      <CheckCircle
+                        size={25}
+                        className="text-yellow-600"
+                      />
+
+                      <div>
+                        <h4 className="text-xl font-bold text-slate-900">
+                          Tutor Correction
+                        </h4>
+
+                        <p className="text-sm text-slate-600">
+                          Your tutor has uploaded a corrected
+                          version of your work.
+                        </p>
+                      </div>
+
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+
+                      <a
+                        href={correctionUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 font-bold text-white hover:bg-slate-800"
+                      >
+                        <ExternalLink size={17} />
+                        View Correction
+                      </a>
+
+                      <a
+                        href={correctionUrl}
+                        download
+                        className="inline-flex items-center gap-2 rounded-xl bg-yellow-500 px-4 py-2 font-bold text-slate-900 hover:bg-yellow-400"
+                      >
+                        <Download size={17} />
+                        Download
+                      </a>
+
+                    </div>
+
+                  </div>
+
+                  {/* CORRECTION IMAGE */}
+
+                  {isCorrectionImage && (
+                    <div className="mt-5 overflow-hidden rounded-2xl border border-yellow-200 bg-white p-3">
+
+                      <img
+                        src={correctionUrl}
+                        alt="Tutor correction"
+                        className="mx-auto max-h-[700px] w-auto max-w-full rounded-xl object-contain"
+                      />
+
+                    </div>
+                  )}
+
+                  {/* CORRECTION PDF */}
+
+                  {isCorrectionPdf && (
+                    <div className="mt-5 overflow-hidden rounded-2xl border border-yellow-200 bg-white">
+
+                      <iframe
+                        src={correctionUrl}
+                        title="Tutor correction PDF"
+                        className="h-[700px] w-full"
+                      />
+
+                    </div>
                   )}
 
                 </div>
@@ -1197,7 +1427,6 @@ const isPdf =
     )}
 
 </div>
-
     </div>
   );
 }

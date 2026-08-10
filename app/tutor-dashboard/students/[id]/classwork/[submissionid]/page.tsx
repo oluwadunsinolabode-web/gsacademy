@@ -69,7 +69,9 @@ export default function MarkClassworkPage() {
   const [error, setError] = useState("");
 
   /*
+   * =====================================================
    * LOAD SUBMISSION
+   * =====================================================
    */
   useEffect(() => {
     if (!submissionId) return;
@@ -78,6 +80,58 @@ export default function MarkClassworkPage() {
       try {
         setLoading(true);
         setError("");
+
+        console.log(
+          "===================================="
+        );
+
+        console.log(
+          "TUTOR MARKING PAGE"
+        );
+
+        console.log(
+          "SUBMISSION ID:",
+          submissionId
+        );
+
+        console.log(
+          "===================================="
+        );
+
+        /*
+         * GET CURRENT AUTH USER
+         */
+        const {
+          data: { user },
+          error: authError,
+        } = await supabase.auth.getUser();
+
+        console.log(
+          "CURRENT TUTOR:",
+          user?.id
+        );
+
+        if (authError || !user) {
+          throw new Error(
+            "Tutor is not logged in."
+          );
+        }
+
+        /*
+         * =================================================
+         * FETCH THE ACTUAL SUBMISSION
+         *
+         * IMPORTANT:
+         *
+         * image_url = uploaded student file
+         *
+         * text_answer = student's written answer
+         *
+         * Both are fetched directly from:
+         *
+         * classwork_submissions
+         * =================================================
+         */
 
         const {
           data,
@@ -105,30 +159,76 @@ export default function MarkClassworkPage() {
             marked_at
           `)
           .eq("id", submissionId)
-          .single();
+          .maybeSingle();
 
-        if (submissionError || !data) {
+        /*
+         * DEBUG
+         */
+        console.log(
+          "===================================="
+        );
+
+        console.log(
+          "TUTOR SUBMISSION DATA:",
+          data
+        );
+
+        console.log(
+          "TUTOR SUBMISSION ERROR:",
+          submissionError
+        );
+
+        console.log(
+          "STUDENT TEXT ANSWER:",
+          data?.text_answer
+        );
+
+        console.log(
+          "STUDENT UPLOADED FILE:",
+          data?.image_url
+        );
+
+        console.log(
+          "===================================="
+        );
+
+        if (submissionError) {
           throw new Error(
-            submissionError?.message ||
-              "Submission could not be found."
+            `Unable to fetch submission: ${submissionError.message}`
           );
         }
 
+        if (!data) {
+          throw new Error(
+            "No submission was found for this submission ID."
+          );
+        }
+
+        /*
+         * SAVE SUBMISSION
+         */
         setSubmission(data);
 
         /*
-         * Load existing score.
+         * EXISTING SCORE
          */
         if (data.score !== null) {
-          setScore(String(data.score));
-        }
-
-        if (data.total_marks !== null) {
-          setTotalMark(String(data.total_marks));
+          setScore(
+            String(data.score)
+          );
         }
 
         /*
-         * Load existing tutor/teacher feedback.
+         * EXISTING TOTAL MARK
+         */
+        if (data.total_marks !== null) {
+          setTotalMark(
+            String(data.total_marks)
+          );
+        }
+
+        /*
+         * EXISTING FEEDBACK
          */
         setTeacherFeedback(
           data.teacher_feedback ||
@@ -137,8 +237,11 @@ export default function MarkClassworkPage() {
         );
 
         /*
-         * Load related classwork.
+         * =================================================
+         * LOAD RELATED CLASSWORK
+         * =================================================
          */
+
         if (data.classwork_id) {
           const {
             data: classworkData,
@@ -151,13 +254,31 @@ export default function MarkClassworkPage() {
               title,
               description
             `)
-            .eq("id", data.classwork_id)
-            .single();
+            .eq(
+              "id",
+              data.classwork_id
+            )
+            .maybeSingle();
 
-          if (!classworkError && classworkData) {
-            setClasswork(classworkData);
+          console.log(
+            "RELATED CLASSWORK:",
+            classworkData
+          );
+
+          if (classworkError) {
+            console.error(
+              "CLASSWORK FETCH ERROR:",
+              classworkError
+            );
+          }
+
+          if (classworkData) {
+            setClasswork(
+              classworkData
+            );
           }
         }
+
       } catch (err) {
         console.error(
           "Submission loading error:",
@@ -169,6 +290,7 @@ export default function MarkClassworkPage() {
             ? err.message
             : "Unable to load submission."
         );
+
       } finally {
         setLoading(false);
       }
@@ -178,7 +300,9 @@ export default function MarkClassworkPage() {
   }, [submissionId]);
 
   /*
+   * =====================================================
    * CALCULATE PERCENTAGE
+   * =====================================================
    */
   const percentage = useMemo(() => {
     const s = Number(score);
@@ -194,11 +318,15 @@ export default function MarkClassworkPage() {
       return 0;
     }
 
-    return Math.round((s / t) * 100);
+    return Math.round(
+      (s / t) * 100
+    );
   }, [score, totalMark]);
 
   /*
+   * =====================================================
    * CALCULATE GRADE
+   * =====================================================
    */
   const grade = useMemo(() => {
     if (percentage >= 75) {
@@ -229,7 +357,9 @@ export default function MarkClassworkPage() {
   }, [percentage]);
 
   /*
+   * =====================================================
    * AUTOMATIC FEEDBACK
+   * =====================================================
    */
   const automaticFeedback = useMemo(() => {
     if (percentage >= 90) {
@@ -260,7 +390,9 @@ export default function MarkClassworkPage() {
   }, [percentage]);
 
   /*
+   * =====================================================
    * PUBLISH RESULT
+   * =====================================================
    */
   async function publishResult() {
     if (!submission) return;
@@ -272,7 +404,7 @@ export default function MarkClassworkPage() {
     const t = Number(totalMark);
 
     /*
-     * VALIDATE SCORE
+     * VALIDATE
      */
     if (!score || !totalMark) {
       setError(
@@ -281,7 +413,10 @@ export default function MarkClassworkPage() {
       return;
     }
 
-    if (!Number.isFinite(s) || !Number.isFinite(t)) {
+    if (
+      !Number.isFinite(s) ||
+      !Number.isFinite(t)
+    ) {
       setError(
         "Please enter valid numbers for the score and total mark."
       );
@@ -313,13 +448,16 @@ export default function MarkClassworkPage() {
       setPublishing(true);
 
       /*
-       * EXISTING CORRECTION URL
+       * KEEP EXISTING CORRECTION
        */
       let correctionUrl =
-        submission.correction_file_url || null;
+        submission.correction_file_url ||
+        null;
 
       /*
-       * UPLOAD CORRECTION FILE
+       * =================================================
+       * UPLOAD CORRECTION
+       * =================================================
        */
       if (correctionFile) {
         const safeFileName =
@@ -328,7 +466,10 @@ export default function MarkClassworkPage() {
               /[^a-zA-Z0-9._-]/g,
               "_"
             )
-            .replace(/\s+/g, "_");
+            .replace(
+              /\s+/g,
+              "_"
+            );
 
         const filePath =
           `corrections/${submission.id}/${crypto.randomUUID()}-${safeFileName}`;
@@ -336,7 +477,9 @@ export default function MarkClassworkPage() {
         const {
           error: uploadError,
         } = await supabase.storage
-          .from("classwork-submissions")
+          .from(
+            "classwork-submissions"
+          )
           .upload(
             filePath,
             correctionFile,
@@ -358,18 +501,21 @@ export default function MarkClassworkPage() {
         const {
           data: publicUrlData,
         } = supabase.storage
-          .from("classwork-submissions")
-          .getPublicUrl(filePath);
+          .from(
+            "classwork-submissions"
+          )
+          .getPublicUrl(
+            filePath
+          );
 
         correctionUrl =
           publicUrlData.publicUrl;
       }
 
       /*
+       * =================================================
        * FINAL FEEDBACK
-       *
-       * If tutor typed feedback, use it.
-       * Otherwise use automatic feedback.
+       * =================================================
        */
       const finalFeedback =
         teacherFeedback.trim() ||
@@ -377,31 +523,44 @@ export default function MarkClassworkPage() {
         null;
 
       /*
+       * =================================================
        * UPDATE SUBMISSION
+       * =================================================
        */
       const {
         data: updatedSubmission,
         error: updateError,
       } = await supabase
-        .from("classwork_submissions")
+        .from(
+          "classwork_submissions"
+        )
         .update({
           score: s,
           total_marks: t,
           percentage,
           grade,
           status: "Marked",
+
           auto_feedback:
-            automaticFeedback || null,
+            automaticFeedback ||
+            null,
+
           teacher_feedback:
             finalFeedback,
+
           tutor_feedback:
             finalFeedback,
+
           correction_file_url:
             correctionUrl,
+
           marked_at:
             new Date().toISOString(),
         })
-        .eq("id", submission.id)
+        .eq(
+          "id",
+          submission.id
+        )
         .select(`
           id,
           student_id,
@@ -430,16 +589,16 @@ export default function MarkClassworkPage() {
         );
       }
 
-      setSubmission(updatedSubmission);
+      setSubmission(
+        updatedSubmission
+      );
 
       setMessage(
         "Result published successfully. The student can now see the result."
       );
 
-      /*
-       * Reset selected correction file.
-       */
       setCorrectionFile(null);
+
     } catch (err) {
       console.error(
         "Publish result error:",
@@ -451,18 +610,23 @@ export default function MarkClassworkPage() {
           ? err.message
           : "Unable to publish result."
       );
+
     } finally {
       setPublishing(false);
     }
   }
 
   /*
+   * =====================================================
    * LOADING
+   * =====================================================
    */
   if (loading) {
     return (
       <div className="rounded-3xl bg-white p-10 shadow-sm">
+
         <div className="flex items-center justify-center gap-3">
+
           <Loader2
             size={24}
             className="animate-spin text-yellow-500"
@@ -471,17 +635,22 @@ export default function MarkClassworkPage() {
           <p className="text-slate-500">
             Loading student submission...
           </p>
+
         </div>
+
       </div>
     );
   }
 
   /*
+   * =====================================================
    * SUBMISSION NOT FOUND
+   * =====================================================
    */
   if (!submission) {
     return (
       <div className="rounded-3xl bg-white p-10 text-center shadow-sm">
+
         <ImageIcon
           size={55}
           className="mx-auto text-slate-300"
@@ -495,12 +664,15 @@ export default function MarkClassworkPage() {
           {error ||
             "This classwork submission could not be found."}
         </p>
+
       </div>
     );
   }
 
   /*
-   * CHECK SUBMISSION FILE
+   * =====================================================
+   * STUDENT SUBMISSION FILE
+   * =====================================================
    */
   const submissionUrl =
     submission.image_url;
@@ -517,12 +689,20 @@ export default function MarkClassworkPage() {
       submissionUrl
     );
 
+  /*
+   * =====================================================
+   * DASHBOARD
+   * =====================================================
+   */
   return (
     <div className="pb-10">
 
-      {/* HEADER */}
+      {/* ===============================================
+          HEADER
+      =============================================== */}
 
       <div>
+
         <h1 className="text-4xl font-extrabold text-slate-900">
           Mark Classwork
         </h1>
@@ -531,9 +711,12 @@ export default function MarkClassworkPage() {
           Assess this student's submission and publish
           the result.
         </p>
+
       </div>
 
-      {/* MESSAGES */}
+      {/* ===============================================
+          MESSAGES
+      =============================================== */}
 
       {message && (
         <div className="mt-6 rounded-2xl bg-green-50 p-5 font-semibold text-green-700">
@@ -547,7 +730,9 @@ export default function MarkClassworkPage() {
         </div>
       )}
 
-      {/* CLASSWORK INFORMATION */}
+      {/* ===============================================
+          CLASSWORK INFORMATION
+      =============================================== */}
 
       {classwork && (
         <div className="mt-8 rounded-3xl bg-white p-6 shadow-sm">
@@ -594,13 +779,15 @@ export default function MarkClassworkPage() {
         </div>
       )}
 
-      {/* MAIN */}
+      {/* ===============================================
+          MAIN CONTENT
+      =============================================== */}
 
       <div className="mt-10 grid gap-10 xl:grid-cols-2">
 
-        {/* =====================================
-            LEFT: STUDENT WORK
-        ====================================== */}
+        {/* =============================================
+            LEFT — STUDENT WORK
+        ============================================= */}
 
         <div className="rounded-3xl bg-white p-8 shadow-sm">
 
@@ -608,9 +795,12 @@ export default function MarkClassworkPage() {
             Student Submission
           </h2>
 
-          {/* TEXT ANSWER */}
+          {/* ===========================================
+              WRITTEN ANSWER
+          =========================================== */}
 
-          {submission.text_answer && (
+          {submission.text_answer ? (
+
             <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-6">
 
               <div className="flex items-center gap-3">
@@ -626,7 +816,7 @@ export default function MarkClassworkPage() {
 
               </div>
 
-              <div className="mt-5 rounded-2xl bg-white p-5">
+              <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-6">
 
                 <p className="whitespace-pre-wrap leading-8 text-slate-700">
                   {submission.text_answer}
@@ -635,32 +825,49 @@ export default function MarkClassworkPage() {
               </div>
 
             </div>
-          )}
 
-          {/* FILE */}
+          ) : null}
+
+          {/* ===========================================
+              UPLOADED FILE
+          =========================================== */}
 
           {submissionUrl ? (
+
             <div className="mt-8">
 
-              <h3 className="text-xl font-bold text-slate-900">
-                Uploaded File
-              </h3>
+              <div className="flex items-center justify-between gap-4">
+
+                <h3 className="text-xl font-bold text-slate-900">
+                  Uploaded File
+                </h3>
+
+                <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-bold text-green-700">
+                  Student File
+                </span>
+
+              </div>
 
               <div className="mt-4 flex h-[520px] items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50">
 
                 {isPdf ? (
+
                   <iframe
                     src={submissionUrl}
                     title="Student submission PDF"
                     className="h-full w-full rounded-2xl"
                   />
+
                 ) : isImage ? (
+
                   <img
                     src={submissionUrl}
                     alt="Student classwork submission"
                     className="h-full w-full rounded-2xl object-contain"
                   />
+
                 ) : (
+
                   <div className="text-center">
 
                     <FileText
@@ -668,11 +875,16 @@ export default function MarkClassworkPage() {
                       className="mx-auto text-slate-400"
                     />
 
-                    <p className="mt-4 text-slate-500">
+                    <p className="mt-4 font-semibold text-slate-700">
                       Uploaded file
                     </p>
 
+                    <p className="mt-2 text-sm text-slate-500">
+                      This file type cannot be previewed here.
+                    </p>
+
                   </div>
+
                 )}
 
               </div>
@@ -683,31 +895,51 @@ export default function MarkClassworkPage() {
                 rel="noopener noreferrer"
                 className="mt-5 inline-flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-3 font-semibold text-white hover:bg-slate-800"
               >
-                <FileText size={18} />
+
+                <FileText
+                  size={18}
+                />
+
                 Open Submission
+
               </a>
 
             </div>
-          ) : !submission.text_answer ? (
-            <div className="mt-8 rounded-2xl bg-slate-50 p-8 text-center">
 
-              <ImageIcon
-                size={55}
-                className="mx-auto text-slate-300"
-              />
-
-              <p className="mt-4 text-slate-500">
-                No uploaded file or written answer was found.
-              </p>
-
-            </div>
           ) : null}
+
+          {/* ===========================================
+              NOTHING SUBMITTED
+          =========================================== */}
+
+          {!submission.text_answer &&
+            !submissionUrl && (
+
+              <div className="mt-8 rounded-2xl bg-slate-50 p-8 text-center">
+
+                <ImageIcon
+                  size={55}
+                  className="mx-auto text-slate-300"
+                />
+
+                <p className="mt-4 font-semibold text-slate-600">
+                  No uploaded file or written answer was found.
+                </p>
+
+                <p className="mt-2 text-sm text-slate-400">
+                  Check the browser console to see exactly
+                  what was returned from Supabase.
+                </p>
+
+              </div>
+
+            )}
 
         </div>
 
-        {/* =====================================
-            RIGHT: ASSESSMENT
-        ====================================== */}
+        {/* =============================================
+            RIGHT — ASSESSMENT
+        ============================================= */}
 
         <div className="rounded-3xl bg-white p-8 shadow-sm">
 
@@ -730,7 +962,9 @@ export default function MarkClassworkPage() {
                 min="0"
                 value={score}
                 onChange={(e) =>
-                  setScore(e.target.value)
+                  setScore(
+                    e.target.value
+                  )
                 }
                 className="mt-2 w-full rounded-xl border border-slate-300 px-5 py-4 focus:border-yellow-500 focus:outline-none"
                 placeholder="7"
@@ -749,7 +983,9 @@ export default function MarkClassworkPage() {
                 min="1"
                 value={totalMark}
                 onChange={(e) =>
-                  setTotalMark(e.target.value)
+                  setTotalMark(
+                    e.target.value
+                  )
                 }
                 className="mt-2 w-full rounded-xl border border-slate-300 px-5 py-4 focus:border-yellow-500 focus:outline-none"
                 placeholder="10"
@@ -837,15 +1073,20 @@ export default function MarkClassworkPage() {
 
           </div>
 
-          {/* CORRECTION UPLOAD */}
+          {/* ===========================================
+              CORRECTION UPLOAD
+          =========================================== */}
 
           <div className="mt-8 rounded-3xl border bg-white p-6 shadow-sm">
 
             <h3 className="text-2xl font-bold text-slate-900">
+
               Correction Upload
+
               <span className="ml-2 text-sm font-normal text-slate-400">
                 (Optional)
               </span>
+
             </h3>
 
             <p className="mt-3 text-slate-600">
@@ -875,7 +1116,7 @@ export default function MarkClassworkPage() {
                 accept="image/*,.pdf"
                 onChange={(e) =>
                   setCorrectionFile(
-                    e.target.files?.[0] ??
+                    e.target.files?.[0] ||
                       null
                   )
                 }
@@ -884,6 +1125,7 @@ export default function MarkClassworkPage() {
             </label>
 
             {correctionFile && (
+
               <div className="mt-5 rounded-xl bg-green-50 p-4">
 
                 <p className="font-semibold text-green-700">
@@ -895,9 +1137,11 @@ export default function MarkClassworkPage() {
                 </p>
 
               </div>
+
             )}
 
             {submission.correction_file_url && (
+
               <a
                 href={
                   submission.correction_file_url
@@ -906,23 +1150,36 @@ export default function MarkClassworkPage() {
                 rel="noopener noreferrer"
                 className="mt-4 inline-flex items-center gap-2 rounded-xl bg-slate-100 px-4 py-3 font-semibold text-slate-700 hover:bg-slate-200"
               >
-                <FileText size={18} />
+
+                <FileText
+                  size={18}
+                />
+
                 View Existing Correction
+
               </a>
+
             )}
 
           </div>
 
-          {/* PUBLISH */}
+          {/* ===========================================
+              PUBLISH RESULT
+          =========================================== */}
 
           <button
             type="button"
-            onClick={publishResult}
-            disabled={publishing}
+            onClick={
+              publishResult
+            }
+            disabled={
+              publishing
+            }
             className="mt-10 flex w-full items-center justify-center gap-3 rounded-xl bg-yellow-500 py-4 text-lg font-bold text-slate-900 transition hover:bg-yellow-400 disabled:cursor-not-allowed disabled:opacity-60"
           >
 
             {publishing ? (
+
               <>
                 <Loader2
                   size={22}
@@ -931,12 +1188,17 @@ export default function MarkClassworkPage() {
 
                 Publishing Result...
               </>
+
             ) : (
+
               <>
-                <CheckCircle size={22} />
+                <CheckCircle
+                  size={22}
+                />
 
                 Publish Result To Student
               </>
+
             )}
 
           </button>
