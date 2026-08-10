@@ -1,11 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   CalendarDays,
   BookOpen,
-  TrendingUp,
   Bell,
   UserRound,
   FileText,
@@ -49,6 +48,11 @@ type Schedule = {
         full_name: string;
       }[]
     | null;
+};
+
+type StudentSubject = {
+  id: string;
+  name: string;
 };
 
 type Classwork = {
@@ -228,12 +232,71 @@ function getTutorName(
   );
 }
 
+/*
+ * Normalize subject names only for matching.
+ *
+ * We do NOT change anything in the database.
+ * This simply prevents "Maths" and "Mathematics"
+ * from being treated as two completely different
+ * subjects on the dashboard.
+ */
+function normalizeSubject(
+  value: string
+): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ");
+}
+
+/*
+ * Match classwork subject to the student's
+ * canonical subject name.
+ */
+function subjectsMatch(
+  classworkSubject: string,
+  studentSubject: string
+): boolean {
+  const a =
+    normalizeSubject(
+      classworkSubject
+    );
+
+  const b =
+    normalizeSubject(
+      studentSubject
+    );
+
+  if (a === b) {
+    return true;
+  }
+
+  /*
+   * Existing database may contain "Maths"
+   * while the subjects table contains
+   * "Mathematics".
+   */
+  if (
+    (a === "maths" &&
+      b === "mathematics") ||
+    (a === "mathematics" &&
+      b === "maths")
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
 export default function DashboardPage() {
   const [student, setStudent] =
     useState<Student | null>(null);
 
   const [schedules, setSchedules] =
     useState<Schedule[]>([]);
+
+  const [studentSubjects, setStudentSubjects] =
+    useState<StudentSubject[]>([]);
 
   const [classworks, setClassworks] =
     useState<Classwork[]>([]);
@@ -259,12 +322,15 @@ export default function DashboardPage() {
           error: authError,
         } =
           await supabase.auth.getUser();
-          console.log("CURRENT AUTH ID:", user?.id);
-console.log("CURRENT AUTH EMAIL:", user?.email);
 
         console.log(
-          "AUTH USER:",
-          user
+          "CURRENT AUTH ID:",
+          user?.id
+        );
+
+        console.log(
+          "CURRENT AUTH EMAIL:",
+          user?.email
         );
 
         if (
@@ -319,8 +385,7 @@ console.log("CURRENT AUTH EMAIL:", user?.email);
         setStudent(
           studentData
         );
-console.log("STUDENT PROFILE ID:", studentData.id);
-console.log("STUDENT AUTH ID:", studentData.auth_id);
+
         // =====================================
         // GET STUDENT SCHEDULES
         // =====================================
@@ -354,20 +419,155 @@ console.log("STUDENT AUTH ID:", studentData.auth_id);
               studentData.id
             );
 
-        console.log(
-          "STUDENT SCHEDULE:",
-          scheduleData
-        );
-
         if (scheduleError) {
           throw new Error(
             scheduleError.message
           );
         }
 
-        setSchedules(
+        const schedulesList =
           (scheduleData ||
-            []) as Schedule[]
+            []) as Schedule[];
+
+        setSchedules(
+          schedulesList
+        );
+
+        // =====================================
+        // GET REAL STUDENT SUBJECTS
+        // =====================================
+        //
+        // Source 1:
+        // student_schedules → subjects
+        //
+        // Source 2:
+        // tutor_assignments → subjects
+        //
+        // We combine both so the dashboard
+        // reflects the actual subjects assigned
+        // to the student.
+        // =====================================
+
+        const subjectsMap =
+          new Map<
+            string,
+            StudentSubject
+          >();
+
+        // -------------------------------------
+        // SUBJECTS FROM STUDENT SCHEDULES
+        // -------------------------------------
+
+        schedulesList.forEach(
+          (schedule) => {
+            if (!schedule.subjects) {
+              return;
+            }
+
+            const subjectList =
+              Array.isArray(
+                schedule.subjects
+              )
+                ? schedule.subjects
+                : [
+                    schedule.subjects,
+                  ];
+
+            subjectList.forEach(
+              (subject) => {
+                if (
+                  subject?.id &&
+                  subject?.name
+                ) {
+                  subjectsMap.set(
+                    subject.id,
+                    {
+                      id: subject.id,
+                      name: subject.name,
+                    }
+                  );
+                }
+              }
+            );
+          }
+        );
+
+        // -------------------------------------
+        // SUBJECTS FROM TUTOR ASSIGNMENTS
+        // -------------------------------------
+
+        const {
+          data: tutorAssignments,
+          error:
+            tutorAssignmentError,
+        } =
+          await supabase
+            .from(
+              "tutor_assignments"
+            )
+            .select(
+              `
+                subject_id,
+                subjects (
+                  id,
+                  name
+                )
+              `
+            )
+            .eq(
+              "student_id",
+              studentData.id
+            );
+
+        if (
+          tutorAssignmentError
+        ) {
+          throw new Error(
+            tutorAssignmentError.message
+          );
+        }
+
+        (
+          tutorAssignments || []
+        ).forEach(
+          (
+            assignment: any
+          ) => {
+            const subject =
+              assignment.subjects;
+
+            if (
+              subject?.id &&
+              subject?.name
+            ) {
+              subjectsMap.set(
+                subject.id,
+                {
+                  id: subject.id,
+                  name: subject.name,
+                }
+              );
+            }
+          }
+        );
+
+        const subjectsList =
+          Array.from(
+            subjectsMap.values()
+          ).sort(
+            (a, b) =>
+              a.name.localeCompare(
+                b.name
+              )
+          );
+
+        console.log(
+          "REAL STUDENT SUBJECTS:",
+          subjectsList
+        );
+
+        setStudentSubjects(
+          subjectsList
         );
 
         // =====================================
@@ -401,10 +601,6 @@ console.log("STUDENT AUTH ID:", studentData.auth_id);
           );
         }
 
-        // =====================================
-        // NO CLASSWORK
-        // =====================================
-
         if (
           !assignments ||
           assignments.length === 0
@@ -424,11 +620,6 @@ console.log("STUDENT AUTH ID:", studentData.auth_id);
                 assignment.classwork_id
             )
             .filter(Boolean);
-
-        console.log(
-          "CLASSWORK IDS:",
-          classworkIds
-        );
 
         if (
           classworkIds.length === 0
@@ -470,11 +661,6 @@ console.log("STUDENT AUTH ID:", studentData.auth_id);
                 ascending: false,
               }
             );
-
-        console.log(
-          "CLASSWORK:",
-          classworkData
-        );
 
         if (classworkError) {
           throw new Error(
@@ -528,6 +714,64 @@ console.log("STUDENT AUTH ID:", studentData.auth_id);
     getNextLesson(
       schedules
     );
+
+  // =====================================
+  // GROUP CLASSWORK BY REAL SUBJECT
+  // =====================================
+
+  const classworkBySubject =
+    useMemo(() => {
+      return studentSubjects
+        .map((subject) => {
+          const works =
+            classworks.filter(
+              (work) =>
+                subjectsMatch(
+                  work.subject,
+                  subject.name
+                )
+            );
+
+          return {
+            subject,
+            works,
+          };
+        })
+        .filter(
+          (group) =>
+            group.works.length > 0
+        );
+    }, [
+      studentSubjects,
+      classworks,
+    ]);
+
+  // =====================================
+  // CLASSWORK NOT MATCHED TO A SUBJECT
+  // =====================================
+  //
+  // This protects us from hiding a classwork
+  // if a tutor entered a subject name that does
+  // not currently match the student's canonical
+  // subject.
+  // =====================================
+
+  const unmatchedClassworks =
+    useMemo(() => {
+      return classworks.filter(
+        (work) =>
+          !studentSubjects.some(
+            (subject) =>
+              subjectsMatch(
+                work.subject,
+                subject.name
+              )
+          )
+      );
+    }, [
+      classworks,
+      studentSubjects,
+    ]);
 
   // =====================================
   // LOADING
@@ -787,7 +1031,7 @@ console.log("STUDENT AUTH ID:", studentData.auth_id);
       </div>
 
       {/* =====================================
-          CLASSWORK
+          MY CLASSWORK
       ====================================== */}
 
       <div className="mt-10 rounded-3xl bg-white p-6 shadow-sm">
@@ -802,13 +1046,15 @@ console.log("STUDENT AUTH ID:", studentData.auth_id);
             />
 
             <div>
+
               <h2 className="text-2xl font-bold text-slate-900">
                 My Classwork
               </h2>
 
               <p className="mt-1 text-sm text-slate-500">
-                Classwork assigned by your tutor.
+                Classwork assigned by your tutors.
               </p>
+
             </div>
 
           </div>
@@ -821,6 +1067,10 @@ console.log("STUDENT AUTH ID:", studentData.auth_id);
           </span>
 
         </div>
+
+        {/* =====================================
+            NO CLASSWORK
+        ====================================== */}
 
         {classworks.length === 0 ? (
 
@@ -844,69 +1094,217 @@ console.log("STUDENT AUTH ID:", studentData.auth_id);
 
         ) : (
 
-          <div className="mt-8 space-y-5">
+          <div className="mt-8 space-y-6">
 
-            {classworks.map(
-              (work) => (
+            {/* =================================
+                REAL SUBJECT GROUPS
+            ================================= */}
 
-                <div
-                  key={work.id}
-                  className="rounded-2xl border border-slate-200 bg-slate-50 p-5"
-                >
+            {classworkBySubject.map(
+              (group) => {
 
-                  <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+                const latest =
+                  group.works[0];
 
-                    <div className="min-w-0">
+                return (
+                  <div
+                    key={group.subject.id}
+                    className="rounded-3xl border border-slate-200 bg-slate-50 p-6"
+                  >
 
-                      <div className="flex flex-wrap items-center gap-3">
+                    <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
 
-                        <span className="rounded-full bg-yellow-100 px-3 py-1 text-xs font-bold text-yellow-700">
-                          {work.subject}
-                        </span>
+                      <div>
 
-                        <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-bold text-green-700">
-                          {work.status}
-                        </span>
+                        <div className="flex items-center gap-3">
+
+                          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-yellow-100">
+
+                            <BookOpen
+                              size={24}
+                              className="text-yellow-600"
+                            />
+
+                          </div>
+
+                          <div>
+
+                            <h3 className="text-xl font-extrabold text-slate-900">
+                              {group.subject.name}
+                            </h3>
+
+                            <p className="mt-1 text-sm font-medium text-slate-500">
+                              {group.works.length}{" "}
+                              {group.works.length ===
+                              1
+                                ? "classwork"
+                                : "classworks"}
+                            </p>
+
+                          </div>
+
+                        </div>
+
+                        {latest && (
+                          <p className="mt-5 text-sm text-slate-600">
+                            Latest:{" "}
+                            <span className="font-bold text-slate-900">
+                              {latest.title}
+                            </span>
+                          </p>
+                        )}
 
                       </div>
 
-                      <h3 className="mt-3 text-xl font-bold text-slate-900">
-                        {work.title}
-                      </h3>
+                      <Link
+                        href={`/dashboard/classwork?subject=${encodeURIComponent(
+                          group.subject.name
+                        )}`}
+                        className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-slate-900 px-6 py-3 font-bold text-white transition hover:bg-slate-800"
+                      >
+                        View Classwork
 
-                      {work.description && (
-                        <p className="mt-2 line-clamp-2 text-sm text-slate-600">
-                          {work.description}
-                        </p>
-                      )}
-
-                      {work.due_date && (
-                        <p className="mt-3 text-sm font-semibold text-slate-500">
-                          Due:{" "}
-                          {new Date(
-                            work.due_date
-                          ).toLocaleString()}
-                        </p>
-                      )}
+                        <ArrowRight
+                          size={18}
+                        />
+                      </Link>
 
                     </div>
 
-                    <Link
-                      href={`/dashboard/classwork?id=${work.id}`}
-                      className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-slate-900 px-6 py-3 font-bold text-white transition hover:bg-slate-800"
-                    >
-                      Open Classwork
+                    {/* RECENT ASSIGNMENTS */}
 
-                      <ArrowRight
-                        size={18}
-                      />
-                    </Link>
+                    <div className="mt-6 border-t border-slate-200 pt-5">
+
+                      <p className="text-sm font-bold uppercase tracking-wide text-slate-500">
+                        Recent assignments
+                      </p>
+
+                      <div className="mt-4 space-y-3">
+
+                        {group.works
+                          .slice(0, 3)
+                          .map(
+                            (work) => (
+                              <div
+                                key={
+                                  work.id
+                                }
+                                className="flex flex-col gap-3 rounded-2xl bg-white p-4 sm:flex-row sm:items-center sm:justify-between"
+                              >
+
+                                <div className="min-w-0">
+
+                                  <p className="font-bold text-slate-900">
+                                    {work.title}
+                                  </p>
+
+                                  {work.due_date && (
+                                    <p className="mt-1 text-xs font-semibold text-slate-500">
+                                      Due:{" "}
+                                      {new Date(
+                                        work.due_date
+                                      ).toLocaleString()}
+                                    </p>
+                                  )}
+
+                                </div>
+
+                                <Link
+                                  href={`/dashboard/classwork?id=${work.id}`}
+                                  className="inline-flex shrink-0 items-center gap-2 text-sm font-bold text-yellow-700 hover:text-yellow-800"
+                                >
+                                  Open
+                                  <ArrowRight
+                                    size={
+                                      16
+                                    }
+                                  />
+                                </Link>
+
+                              </div>
+                            )
+                          )}
+
+                      </div>
+
+                    </div>
+
+                  </div>
+                );
+              }
+            )}
+
+            {/* =================================
+                UNMATCHED CLASSWORK SAFETY NET
+            ================================= */}
+
+            {unmatchedClassworks.length >
+              0 && (
+
+              <div className="rounded-3xl border border-orange-200 bg-orange-50 p-6">
+
+                <div className="flex items-center gap-3">
+
+                  <FileText
+                    size={24}
+                    className="text-orange-600"
+                  />
+
+                  <div>
+
+                    <h3 className="font-bold text-orange-900">
+                      Other Classwork
+                    </h3>
+
+                    <p className="mt-1 text-sm text-orange-700">
+                      These assignments could not
+                      currently be matched to one
+                      of your subjects.
+                    </p>
 
                   </div>
 
                 </div>
 
-              )
+                <div className="mt-4 space-y-3">
+
+                  {unmatchedClassworks
+                    .slice(0, 3)
+                    .map(
+                      (work) => (
+                        <Link
+                          key={
+                            work.id
+                          }
+                          href={`/dashboard/classwork?id=${work.id}`}
+                          className="flex items-center justify-between rounded-2xl bg-white p-4"
+                        >
+
+                          <div>
+
+                            <p className="font-bold text-slate-900">
+                              {work.title}
+                            </p>
+
+                            <p className="mt-1 text-xs font-semibold text-slate-500">
+                              {work.subject}
+                            </p>
+
+                          </div>
+
+                          <ArrowRight
+                            size={18}
+                            className="text-slate-500"
+                          />
+
+                        </Link>
+                      )
+                    )}
+
+                </div>
+
+              </div>
+
             )}
 
           </div>
