@@ -253,16 +253,36 @@ export default function TutorStudentClassworkPage() {
  */
 
 const {
-  data: tutorAssignment,
+  data: tutorAssignments,
   error: tutorAssignmentError,
 } = await supabase
   .from("tutor_assignments")
-  .select("id, tutor_id, student_id")
+  .select("id, tutor_id, student_id, subject_id")
   .eq("tutor_id", tutorData.id)
   .eq("student_id", studentData.id)
   .eq("active", true)
-  .eq("status", "Scheduled")
-  .maybeSingle();
+  .eq("status", "Scheduled");
+
+if (tutorAssignmentError) {
+  throw new Error(tutorAssignmentError.message);
+}
+
+const hasTutorAssignment =
+  (tutorAssignments || []).length > 0;
+
+const directlyAssigned =
+  studentData.tutor_id === tutorData.id;
+
+if (
+  !hasTutorAssignment &&
+  !directlyAssigned
+) {
+  throw new Error(
+    "You are not authorized to view this student."
+  );
+}
+
+setStudent(studentData);
 
 if (tutorAssignmentError) {
   throw new Error(
