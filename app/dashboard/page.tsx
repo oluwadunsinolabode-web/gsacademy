@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   CalendarDays,
   BookOpen,
+  TrendingUp,
   Bell,
   UserRound,
-  FileText,
   ArrowRight,
 } from "lucide-react";
 
@@ -48,23 +48,6 @@ type Schedule = {
         full_name: string;
       }[]
     | null;
-};
-
-type StudentSubject = {
-  id: string;
-  name: string;
-};
-
-type Classwork = {
-  id: string;
-  tutor_id: string;
-  subject: string;
-  title: string;
-  description: string | null;
-  attachment_url: string | null;
-  due_date: string | null;
-  status: string;
-  created_at: string;
 };
 
 const DAYS = [
@@ -232,74 +215,12 @@ function getTutorName(
   );
 }
 
-/*
- * Normalize subject names only for matching.
- *
- * We do NOT change anything in the database.
- * This simply prevents "Maths" and "Mathematics"
- * from being treated as two completely different
- * subjects on the dashboard.
- */
-function normalizeSubject(
-  value: string
-): string {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, " ");
-}
-
-/*
- * Match classwork subject to the student's
- * canonical subject name.
- */
-function subjectsMatch(
-  classworkSubject: string,
-  studentSubject: string
-): boolean {
-  const a =
-    normalizeSubject(
-      classworkSubject
-    );
-
-  const b =
-    normalizeSubject(
-      studentSubject
-    );
-
-  if (a === b) {
-    return true;
-  }
-
-  /*
-   * Existing database may contain "Maths"
-   * while the subjects table contains
-   * "Mathematics".
-   */
-  if (
-    (a === "maths" &&
-      b === "mathematics") ||
-    (a === "mathematics" &&
-      b === "maths")
-  ) {
-    return true;
-  }
-
-  return false;
-}
-
 export default function DashboardPage() {
   const [student, setStudent] =
     useState<Student | null>(null);
 
   const [schedules, setSchedules] =
     useState<Schedule[]>([]);
-
-  const [studentSubjects, setStudentSubjects] =
-    useState<StudentSubject[]>([]);
-
-  const [classworks, setClassworks] =
-    useState<Classwork[]>([]);
 
   const [loading, setLoading] =
     useState(true);
@@ -387,7 +308,25 @@ export default function DashboardPage() {
         );
 
         // =====================================
-        // GET STUDENT SCHEDULES
+        // GET STUDENT TIMETABLE
+        // =====================================
+        //
+        // IMPORTANT:
+        //
+        // student_schedules.student_id
+        //        ↓
+        // students.id
+        //
+        // student_schedules.subject_id
+        //        ↓
+        // subjects.id
+        //
+        // student_schedules.tutor_id
+        //        ↓
+        // tutors.id
+        //
+        // WE ARE NOT CHANGING THESE
+        // RELATIONSHIPS.
         // =====================================
 
         const {
@@ -419,258 +358,20 @@ export default function DashboardPage() {
               studentData.id
             );
 
+        console.log(
+          "STUDENT SCHEDULE:",
+          scheduleData
+        );
+
         if (scheduleError) {
           throw new Error(
             scheduleError.message
           );
         }
 
-        const schedulesList =
-          (scheduleData ||
-            []) as Schedule[];
-
         setSchedules(
-          schedulesList
-        );
-
-        // =====================================
-        // GET REAL STUDENT SUBJECTS
-        // =====================================
-        //
-        // Source 1:
-        // student_schedules → subjects
-        //
-        // Source 2:
-        // tutor_assignments → subjects
-        //
-        // We combine both so the dashboard
-        // reflects the actual subjects assigned
-        // to the student.
-        // =====================================
-
-        const subjectsMap =
-          new Map<
-            string,
-            StudentSubject
-          >();
-
-        // -------------------------------------
-        // SUBJECTS FROM STUDENT SCHEDULES
-        // -------------------------------------
-
-        schedulesList.forEach(
-          (schedule) => {
-            if (!schedule.subjects) {
-              return;
-            }
-
-            const subjectList =
-              Array.isArray(
-                schedule.subjects
-              )
-                ? schedule.subjects
-                : [
-                    schedule.subjects,
-                  ];
-
-            subjectList.forEach(
-              (subject) => {
-                if (
-                  subject?.id &&
-                  subject?.name
-                ) {
-                  subjectsMap.set(
-                    subject.id,
-                    {
-                      id: subject.id,
-                      name: subject.name,
-                    }
-                  );
-                }
-              }
-            );
-          }
-        );
-
-        // -------------------------------------
-        // SUBJECTS FROM TUTOR ASSIGNMENTS
-        // -------------------------------------
-
-        const {
-          data: tutorAssignments,
-          error:
-            tutorAssignmentError,
-        } =
-          await supabase
-            .from(
-              "tutor_assignments"
-            )
-            .select(
-              `
-                subject_id,
-                subjects (
-                  id,
-                  name
-                )
-              `
-            )
-            .eq(
-              "student_id",
-              studentData.id
-            );
-
-        if (
-          tutorAssignmentError
-        ) {
-          throw new Error(
-            tutorAssignmentError.message
-          );
-        }
-
-        (
-          tutorAssignments || []
-        ).forEach(
-          (
-            assignment: any
-          ) => {
-            const subject =
-              assignment.subjects;
-
-            if (
-              subject?.id &&
-              subject?.name
-            ) {
-              subjectsMap.set(
-                subject.id,
-                {
-                  id: subject.id,
-                  name: subject.name,
-                }
-              );
-            }
-          }
-        );
-
-        const subjectsList =
-          Array.from(
-            subjectsMap.values()
-          ).sort(
-            (a, b) =>
-              a.name.localeCompare(
-                b.name
-              )
-          );
-
-        console.log(
-          "REAL STUDENT SUBJECTS:",
-          subjectsList
-        );
-
-        setStudentSubjects(
-          subjectsList
-        );
-
-        // =====================================
-        // GET CLASSWORK ASSIGNMENTS
-        // =====================================
-
-        const {
-          data: assignments,
-          error: assignmentError,
-        } =
-          await supabase
-            .from(
-              "classwork_assignments"
-            )
-            .select(
-              "id, classwork_id, student_id"
-            )
-            .eq(
-              "student_id",
-              studentData.id
-            );
-
-        console.log(
-          "CLASSWORK ASSIGNMENTS:",
-          assignments
-        );
-
-        if (assignmentError) {
-          throw new Error(
-            assignmentError.message
-          );
-        }
-
-        if (
-          !assignments ||
-          assignments.length === 0
-        ) {
-          setClassworks([]);
-          return;
-        }
-
-        // =====================================
-        // GET CLASSWORK IDS
-        // =====================================
-
-        const classworkIds =
-          assignments
-            .map(
-              (assignment) =>
-                assignment.classwork_id
-            )
-            .filter(Boolean);
-
-        if (
-          classworkIds.length === 0
-        ) {
-          setClassworks([]);
-          return;
-        }
-
-        // =====================================
-        // GET ACTUAL CLASSWORK
-        // =====================================
-
-        const {
-          data: classworkData,
-          error: classworkError,
-        } =
-          await supabase
-            .from("classworks")
-            .select(
-              `
-                id,
-                tutor_id,
-                subject,
-                title,
-                description,
-                attachment_url,
-                due_date,
-                status,
-                created_at
-              `
-            )
-            .in(
-              "id",
-              classworkIds
-            )
-            .order(
-              "created_at",
-              {
-                ascending: false,
-              }
-            );
-
-        if (classworkError) {
-          throw new Error(
-            classworkError.message
-          );
-        }
-
-        setClassworks(
-          (classworkData ||
-            []) as Classwork[]
+          (scheduleData ||
+            []) as Schedule[]
         );
       } catch (dashboardError) {
         console.error(
@@ -716,64 +417,6 @@ export default function DashboardPage() {
     );
 
   // =====================================
-  // GROUP CLASSWORK BY REAL SUBJECT
-  // =====================================
-
-  const classworkBySubject =
-    useMemo(() => {
-      return studentSubjects
-        .map((subject) => {
-          const works =
-            classworks.filter(
-              (work) =>
-                subjectsMatch(
-                  work.subject,
-                  subject.name
-                )
-            );
-
-          return {
-            subject,
-            works,
-          };
-        })
-        .filter(
-          (group) =>
-            group.works.length > 0
-        );
-    }, [
-      studentSubjects,
-      classworks,
-    ]);
-
-  // =====================================
-  // CLASSWORK NOT MATCHED TO A SUBJECT
-  // =====================================
-  //
-  // This protects us from hiding a classwork
-  // if a tutor entered a subject name that does
-  // not currently match the student's canonical
-  // subject.
-  // =====================================
-
-  const unmatchedClassworks =
-    useMemo(() => {
-      return classworks.filter(
-        (work) =>
-          !studentSubjects.some(
-            (subject) =>
-              subjectsMatch(
-                work.subject,
-                subject.name
-              )
-          )
-      );
-    }, [
-      classworks,
-      studentSubjects,
-    ]);
-
-  // =====================================
   // LOADING
   // =====================================
 
@@ -804,6 +447,10 @@ export default function DashboardPage() {
       </div>
     );
   }
+
+  // =====================================
+  // DASHBOARD
+  // =====================================
 
   return (
     <div className="pb-10">
@@ -864,6 +511,7 @@ export default function DashboardPage() {
               No lesson scheduled
             </h3>
           )}
+
         </div>
 
         {/* PACKAGE */}
@@ -883,6 +531,7 @@ export default function DashboardPage() {
             {student?.package ||
               "Not assigned"}
           </h3>
+
         </div>
 
         {/* LESSONS */}
@@ -905,29 +554,42 @@ export default function DashboardPage() {
           <p className="mt-1 text-sm text-slate-500">
             Scheduled lessons
           </p>
+
         </div>
 
-        {/* CLASSWORK */}
+        {/* SUBJECTS */}
 
         <div className="rounded-3xl bg-white p-6 shadow-sm">
 
-          <FileText
+          <TrendingUp
             className="text-yellow-600"
             size={32}
           />
 
           <p className="mt-5 font-bold text-slate-700">
-            Classwork
+            Subjects
           </p>
 
           <h3 className="mt-3 text-xl font-extrabold text-slate-900">
-            {classworks.length}
+            {
+              new Set(
+                schedules
+                  .map(
+                    (schedule) =>
+                      getSubjectName(
+                        schedule
+                      )
+                  )
+              ).size
+            }
           </h3>
 
           <p className="mt-1 text-sm text-slate-500">
-            Assigned to you
+            Active subjects
           </p>
+
         </div>
+
       </div>
 
       {/* =====================================
@@ -950,6 +612,7 @@ export default function DashboardPage() {
             <h2 className="text-2xl font-bold text-slate-900">
               Upcoming Lesson
             </h2>
+
           </div>
 
           {nextLesson ? (
@@ -995,6 +658,7 @@ export default function DashboardPage() {
                   Class Link Not Available
                 </button>
               )}
+
             </div>
           ) : (
             <p className="mt-6 text-slate-600">
@@ -1003,6 +667,7 @@ export default function DashboardPage() {
               been scheduled.
             </p>
           )}
+
         </div>
 
         {/* LATEST UPDATES */}
@@ -1019,6 +684,7 @@ export default function DashboardPage() {
             <h2 className="text-2xl font-bold text-slate-900">
               Latest Updates
             </h2>
+
           </div>
 
           <p className="mt-5 text-lg font-semibold leading-8 text-slate-900">
@@ -1027,96 +693,85 @@ export default function DashboardPage() {
             learning updates will appear
             here.
           </p>
+
         </div>
+
       </div>
 
       {/* =====================================
-          MY CLASSWORK
+          MY TIMETABLE
       ====================================== */}
 
       <div className="mt-10 rounded-3xl bg-white p-6 shadow-sm">
 
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3">
 
-          <div className="flex items-center gap-3">
+          <CalendarDays
+            size={30}
+            className="text-yellow-600"
+          />
 
-            <FileText
-              size={30}
-              className="text-yellow-600"
-            />
+          <div>
 
-            <div>
+            <h2 className="text-2xl font-bold text-slate-900">
+              My Timetable
+            </h2>
 
-              <h2 className="text-2xl font-bold text-slate-900">
-                My Classwork
-              </h2>
-
-              <p className="mt-1 text-sm text-slate-500">
-                Classwork assigned by your tutors.
-              </p>
-
-            </div>
+            <p className="mt-1 text-sm text-slate-500">
+              Join your lesson or open your subject classroom.
+            </p>
 
           </div>
 
-          <span className="rounded-full bg-yellow-100 px-4 py-2 text-sm font-bold text-yellow-700">
-            {classworks.length}{" "}
-            {classworks.length === 1
-              ? "Assignment"
-              : "Assignments"}
-          </span>
-
         </div>
 
-        {/* =====================================
-            NO CLASSWORK
-        ====================================== */}
+        {schedules.length === 0 ? (
 
-        {classworks.length === 0 ? (
+          <div className="mt-6 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center">
 
-          <div className="mt-8 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-10 text-center">
-
-            <FileText
-              size={45}
+            <CalendarDays
+              size={40}
               className="mx-auto text-slate-300"
             />
 
-            <h3 className="mt-4 text-xl font-bold text-slate-900">
-              No classwork yet
-            </h3>
-
-            <p className="mt-2 text-slate-600">
-              Your tutor has not assigned
-              any classwork yet.
+            <p className="mt-4 font-semibold text-slate-600">
+              No lessons have been scheduled yet.
             </p>
 
           </div>
 
         ) : (
 
-          <div className="mt-8 space-y-6">
+          <div className="mt-6 space-y-4">
 
-            {/* =================================
-                REAL SUBJECT GROUPS
-            ================================= */}
+            {schedules.map(
+              (schedule) => {
 
-            {classworkBySubject.map(
-              (group) => {
+                const subjectName =
+                  getSubjectName(
+                    schedule
+                  );
 
-                const latest =
-                  group.works[0];
+                const tutorName =
+                  getTutorName(
+                    schedule
+                  );
 
                 return (
                   <div
-                    key={group.subject.id}
-                    className="rounded-3xl border border-slate-200 bg-slate-50 p-6"
+                    key={
+                      schedule.id
+                    }
+                    className="rounded-2xl border border-slate-200 bg-slate-50 p-5"
                   >
 
-                    <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
 
-                      <div>
+                      {/* LESSON INFORMATION */}
 
-                        <div className="flex items-center gap-3">
+                      <div className="min-w-0">
+
+                        <div className="flex flex-wrap items-center gap-3">
 
                           <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-yellow-100">
 
@@ -1130,100 +785,83 @@ export default function DashboardPage() {
                           <div>
 
                             <h3 className="text-xl font-extrabold text-slate-900">
-                              {group.subject.name}
+                              {
+                                subjectName
+                              }
                             </h3>
 
-                            <p className="mt-1 text-sm font-medium text-slate-500">
-                              {group.works.length}{" "}
-                              {group.works.length ===
-                              1
-                                ? "classwork"
-                                : "classworks"}
+                            <p className="mt-1 font-semibold text-slate-700">
+                              {
+                                schedule.day
+                              }
+                              {" — "}
+                              {
+                                schedule.time
+                              }
                             </p>
 
                           </div>
 
                         </div>
 
-                        {latest && (
-                          <p className="mt-5 text-sm text-slate-600">
-                            Latest:{" "}
-                            <span className="font-bold text-slate-900">
-                              {latest.title}
-                            </span>
-                          </p>
-                        )}
+                        <p className="mt-4 text-sm text-slate-600">
+                          Tutor:{" "}
+                          <span className="font-semibold text-slate-900">
+                            {
+                              tutorName
+                            }
+                          </span>
+                        </p>
 
                       </div>
 
-                      <Link
-                        href={`/dashboard/classwork?subject=${encodeURIComponent(
-                          group.subject.name
-                        )}`}
-                        className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-slate-900 px-6 py-3 font-bold text-white transition hover:bg-slate-800"
-                      >
-                        View Classwork
+                      {/* ACTIONS */}
 
-                        <ArrowRight
-                          size={18}
-                        />
-                      </Link>
+                      <div className="flex flex-col gap-3 sm:flex-row">
 
-                    </div>
+                        {/* JOIN CLASS */}
 
-                    {/* RECENT ASSIGNMENTS */}
+                        {schedule.meet_link ? (
 
-                    <div className="mt-6 border-t border-slate-200 pt-5">
+                          <a
+                            href={
+                              schedule.meet_link
+                            }
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center justify-center rounded-xl bg-yellow-500 px-6 py-3 font-bold text-slate-900 transition hover:bg-yellow-400"
+                          >
+                            Join Class
+                          </a>
 
-                      <p className="text-sm font-bold uppercase tracking-wide text-slate-500">
-                        Recent assignments
-                      </p>
+                        ) : (
 
-                      <div className="mt-4 space-y-3">
+                          <button
+                            disabled
+                            className="inline-flex cursor-not-allowed items-center justify-center rounded-xl bg-slate-300 px-6 py-3 font-bold text-slate-500"
+                          >
+                            Class Link Not Available
+                          </button>
 
-                        {group.works
-                          .slice(0, 3)
-                          .map(
-                            (work) => (
-                              <div
-                                key={
-                                  work.id
-                                }
-                                className="flex flex-col gap-3 rounded-2xl bg-white p-4 sm:flex-row sm:items-center sm:justify-between"
-                              >
+                        )}
 
-                                <div className="min-w-0">
+                        {/* OPEN CLASS */}
 
-                                  <p className="font-bold text-slate-900">
-                                    {work.title}
-                                  </p>
+                        <Link
+                          href={`/dashboard/class?subject=${encodeURIComponent(
+                            subjectName
+                          )}&schedule_id=${encodeURIComponent(
+                            schedule.id
+                          )}`}
+                          className="inline-flex items-center justify-center gap-2 rounded-xl border-2 border-slate-900 bg-white px-6 py-3 font-bold text-slate-900 transition hover:bg-slate-900 hover:text-white"
+                        >
+                          Open Class
 
-                                  {work.due_date && (
-                                    <p className="mt-1 text-xs font-semibold text-slate-500">
-                                      Due:{" "}
-                                      {new Date(
-                                        work.due_date
-                                      ).toLocaleString()}
-                                    </p>
-                                  )}
+                          <ArrowRight
+                            size={18}
+                          />
 
-                                </div>
-
-                                <Link
-                                  href={`/dashboard/classwork?id=${work.id}`}
-                                  className="inline-flex shrink-0 items-center gap-2 text-sm font-bold text-yellow-700 hover:text-yellow-800"
-                                >
-                                  Open
-                                  <ArrowRight
-                                    size={
-                                      16
-                                    }
-                                  />
-                                </Link>
-
-                              </div>
-                            )
-                          )}
+                        </Link>
 
                       </div>
 
@@ -1232,170 +870,6 @@ export default function DashboardPage() {
                   </div>
                 );
               }
-            )}
-
-            {/* =================================
-                UNMATCHED CLASSWORK SAFETY NET
-            ================================= */}
-
-            {unmatchedClassworks.length >
-              0 && (
-
-              <div className="rounded-3xl border border-orange-200 bg-orange-50 p-6">
-
-                <div className="flex items-center gap-3">
-
-                  <FileText
-                    size={24}
-                    className="text-orange-600"
-                  />
-
-                  <div>
-
-                    <h3 className="font-bold text-orange-900">
-                      Other Classwork
-                    </h3>
-
-                    <p className="mt-1 text-sm text-orange-700">
-                      These assignments could not
-                      currently be matched to one
-                      of your subjects.
-                    </p>
-
-                  </div>
-
-                </div>
-
-                <div className="mt-4 space-y-3">
-
-                  {unmatchedClassworks
-                    .slice(0, 3)
-                    .map(
-                      (work) => (
-                        <Link
-                          key={
-                            work.id
-                          }
-                          href={`/dashboard/classwork?id=${work.id}`}
-                          className="flex items-center justify-between rounded-2xl bg-white p-4"
-                        >
-
-                          <div>
-
-                            <p className="font-bold text-slate-900">
-                              {work.title}
-                            </p>
-
-                            <p className="mt-1 text-xs font-semibold text-slate-500">
-                              {work.subject}
-                            </p>
-
-                          </div>
-
-                          <ArrowRight
-                            size={18}
-                            className="text-slate-500"
-                          />
-
-                        </Link>
-                      )
-                    )}
-
-                </div>
-
-              </div>
-
-            )}
-
-          </div>
-
-        )}
-
-      </div>
-
-      {/* =====================================
-          FULL TIMETABLE
-      ====================================== */}
-
-      <div className="mt-10 rounded-3xl bg-white p-6 shadow-sm">
-
-        <div className="flex items-center gap-3">
-
-          <CalendarDays
-            size={30}
-            className="text-yellow-600"
-          />
-
-          <h2 className="text-2xl font-bold text-slate-900">
-            My Timetable
-          </h2>
-
-        </div>
-
-        {schedules.length === 0 ? (
-
-          <p className="mt-6 text-slate-600">
-            No lessons have been scheduled
-            yet.
-          </p>
-
-        ) : (
-
-          <div className="mt-6 space-y-4">
-
-            {schedules.map(
-              (schedule) => (
-
-                <div
-                  key={schedule.id}
-                  className="rounded-2xl border border-slate-200 bg-slate-50 p-5"
-                >
-
-                  <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-
-                    <div>
-
-                      <h3 className="text-lg font-bold text-slate-900">
-                        {getSubjectName(
-                          schedule
-                        )}
-                      </h3>
-
-                      <p className="mt-1 font-semibold text-slate-700">
-                        {schedule.day}
-                        {" — "}
-                        {schedule.time}
-                      </p>
-
-                      <p className="mt-1 text-sm text-slate-600">
-                        Tutor:{" "}
-                        <span className="font-semibold text-slate-800">
-                          {getTutorName(
-                            schedule
-                          )}
-                        </span>
-                      </p>
-
-                    </div>
-
-                    {schedule.meet_link && (
-                      <a
-                        href={
-                          schedule.meet_link
-                        }
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-block rounded-xl bg-yellow-500 px-5 py-3 text-center font-bold text-slate-900 transition hover:bg-yellow-400"
-                      >
-                        Join Class
-                      </a>
-                    )}
-
-                  </div>
-
-                </div>
-
-              )
             )}
 
           </div>
