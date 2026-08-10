@@ -45,8 +45,8 @@ type Classwork = {
 
 type Submission = {
   id: string;
-  classwork_id: string;
-  student_id: string;
+  classwork_id: string | null;
+  student_id: string | null;
   student_email: string | null;
   subject: string | null;
   title: string | null;
@@ -66,41 +66,39 @@ type Submission = {
 function formatDate(value: string | null) {
   if (!value) return "No date";
 
-  return new Date(value).toLocaleString();
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return date.toLocaleString();
 }
 
 function isImage(url: string | null) {
-  return (
-    !!url &&
-    /\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i.test(url)
-  );
+  if (!url) return false;
+
+  return /\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i.test(url);
 }
 
 function isPdf(url: string | null) {
-  return (
-    !!url &&
-    /\.pdf(\?.*)?$/i.test(url)
-  );
+  if (!url) return false;
+
+  return /\.pdf(\?.*)?$/i.test(url);
 }
 
 export default function TutorStudentClassworkPage() {
-  const [tutor, setTutor] =
-    useState<Tutor | null>(null);
+  const [tutor, setTutor] = useState<Tutor | null>(null);
 
-  const [student, setStudent] =
-    useState<Student | null>(null);
+  const [student, setStudent] = useState<Student | null>(null);
 
-  const [classworks, setClassworks] =
-    useState<Classwork[]>([]);
+  const [classworks, setClassworks] = useState<Classwork[]>([]);
 
-  const [submissions, setSubmissions] =
-    useState<Submission[]>([]);
+  const [submissions, setSubmissions] = useState<Submission[]>([]);
 
-  const [loading, setLoading] =
-    useState(true);
+  const [loading, setLoading] = useState(true);
 
-  const [error, setError] =
-    useState("");
+  const [error, setError] = useState("");
 
   const [expandedSubmission, setExpandedSubmission] =
     useState<string | null>(null);
@@ -111,16 +109,14 @@ export default function TutorStudentClassworkPage() {
    * ==========================================
    */
 
-  const getStudentId = () => {
+  function getStudentId() {
     if (typeof window === "undefined") {
       return "";
     }
 
-    const parts =
-      window.location.pathname.split("/");
+    const parts = window.location.pathname.split("/");
 
-    const studentsIndex =
-      parts.indexOf("students");
+    const studentsIndex = parts.indexOf("students");
 
     if (
       studentsIndex === -1 ||
@@ -130,11 +126,11 @@ export default function TutorStudentClassworkPage() {
     }
 
     return parts[studentsIndex + 1];
-  };
+  }
 
   /*
    * ==========================================
-   * LOAD EVERYTHING
+   * LOAD PAGE
    * ==========================================
    */
 
@@ -183,17 +179,14 @@ export default function TutorStudentClassworkPage() {
           .eq("auth_id", user.id)
           .single();
 
-        if (
-          tutorError ||
-          !tutorData
-        ) {
+        if (tutorError || !tutorData) {
           throw new Error(
             tutorError?.message ||
               "Tutor profile could not be found."
           );
         }
 
-        setTutor(tutorData);
+        setTutor(tutorData as Tutor);
 
         /*
          * --------------------------------------
@@ -201,8 +194,7 @@ export default function TutorStudentClassworkPage() {
          * --------------------------------------
          */
 
-        const studentId =
-          getStudentId();
+        const studentId = getStudentId();
 
         if (!studentId) {
           throw new Error(
@@ -233,10 +225,7 @@ export default function TutorStudentClassworkPage() {
           .eq("id", studentId)
           .single();
 
-        if (
-          studentError ||
-          !studentData
-        ) {
+        if (studentError || !studentData) {
           throw new Error(
             studentError?.message ||
               "Student could not be found."
@@ -245,21 +234,26 @@ export default function TutorStudentClassworkPage() {
 
         /*
          * --------------------------------------
-         * VERIFY STUDENT BELONGS TO TUTOR
+         * VERIFY STUDENT
          * --------------------------------------
+         *
+         * Some students may be connected through
+         * tutor_assignments instead of students.tutor_id.
+         *
+         * Therefore we do NOT reject the student
+         * simply because tutor_id is null.
          */
 
         if (
           studentData.tutor_id &&
-          studentData.tutor_id !==
-            tutorData.id
+          studentData.tutor_id !== tutorData.id
         ) {
           throw new Error(
             "You are not authorized to view this student."
           );
         }
 
-        setStudent(studentData);
+        setStudent(studentData as Student);
 
         /*
          * --------------------------------------
@@ -278,10 +272,7 @@ export default function TutorStudentClassworkPage() {
               student_id
             `
           )
-          .eq(
-            "student_id",
-            studentData.id
-          );
+          .eq("student_id", studentData.id);
 
         if (assignmentError) {
           throw new Error(
@@ -292,24 +283,9 @@ export default function TutorStudentClassworkPage() {
         const classworkIds =
           (assignments || [])
             .map(
-              (item) =>
-                item.classwork_id
+              (item) => item.classwork_id
             )
             .filter(Boolean);
-
-        /*
-         * --------------------------------------
-         * NO ASSIGNMENTS
-         * --------------------------------------
-         */
-
-        if (
-          classworkIds.length === 0
-        ) {
-          setClassworks([]);
-          setSubmissions([]);
-          return;
-        }
 
         /*
          * --------------------------------------
@@ -317,54 +293,56 @@ export default function TutorStudentClassworkPage() {
          * --------------------------------------
          */
 
-        const {
-          data: classworkData,
-          error: classworkError,
-        } = await supabase
-          .from("classworks")
-          .select(
-            `
-              id,
-              tutor_id,
-              subject,
-              title,
-              description,
-              attachment_url,
-              due_date,
-              status,
-              created_at
-            `
-          )
-          .in(
-            "id",
-            classworkIds
-          )
-          .eq(
-            "tutor_id",
-            tutorData.id
-          )
-          .order(
-            "created_at",
-            {
+        if (classworkIds.length > 0) {
+          const {
+            data: classworkData,
+            error: classworkError,
+          } = await supabase
+            .from("classworks")
+            .select(
+              `
+                id,
+                tutor_id,
+                subject,
+                title,
+                description,
+                attachment_url,
+                due_date,
+                status,
+                created_at
+              `
+            )
+            .in("id", classworkIds)
+            .eq("tutor_id", tutorData.id)
+            .order("created_at", {
               ascending: false,
-            }
-          );
+            });
 
-        if (classworkError) {
-          throw new Error(
-            classworkError.message
+          if (classworkError) {
+            throw new Error(
+              classworkError.message
+            );
+          }
+
+          setClassworks(
+            (classworkData || []) as Classwork[]
           );
+        } else {
+          setClassworks([]);
         }
-
-        setClassworks(
-          (classworkData ||
-            []) as Classwork[]
-        );
 
         /*
          * --------------------------------------
          * GET STUDENT SUBMISSIONS
          * --------------------------------------
+         *
+         * IMPORTANT:
+         * We retrieve ALL submissions belonging
+         * to this student.
+         *
+         * We do not filter by classwork_id here
+         * because we want to diagnose and display
+         * every submission connected to the student.
          */
 
         const {
@@ -393,16 +371,10 @@ export default function TutorStudentClassworkPage() {
               correction_file_url
             `
           )
-          .eq(
-            "student_id",
-            studentData.id
-          )
-          .order(
-            "submitted_at",
-            {
-              ascending: false,
-            }
-          );
+          .eq("student_id", studentData.id)
+          .order("submitted_at", {
+            ascending: false,
+          });
 
         if (submissionError) {
           throw new Error(
@@ -410,9 +382,40 @@ export default function TutorStudentClassworkPage() {
           );
         }
 
+        const cleanedSubmissions =
+          (submissionData || []).map(
+            (submission) => ({
+              ...submission,
+              classwork_id:
+                submission.classwork_id
+                  ? String(
+                      submission.classwork_id
+                    ).trim()
+                  : null,
+              student_id:
+                submission.student_id
+                  ? String(
+                      submission.student_id
+                    ).trim()
+                  : null,
+            })
+          ) as Submission[];
+
+        console.log(
+          "TUTOR CLASSWORKS:",
+          classworkDataForDebug(
+            classworkIds,
+            classworks
+          )
+        );
+
+        console.log(
+          "TUTOR STUDENT SUBMISSIONS:",
+          cleanedSubmissions
+        );
+
         setSubmissions(
-          (submissionData ||
-            []) as Submission[]
+          cleanedSubmissions
         );
       } catch (err) {
         console.error(
@@ -435,20 +438,104 @@ export default function TutorStudentClassworkPage() {
 
   /*
    * ==========================================
-   * FIND SUBMISSION FOR CLASSWORK
+   * DEBUG HELPER
    * ==========================================
    */
 
-  function getSubmission(
-    classworkId: string
+  function classworkDataForDebug(
+    ids: string[],
+    currentClassworks: Classwork[]
   ) {
-    return (
+    return {
+      assignmentIds: ids,
+      loadedClassworkIds:
+        currentClassworks.map(
+          (work) => work.id
+        ),
+    };
+  }
+
+  /*
+   * ==========================================
+   * FIND SUBMISSION
+   * ==========================================
+   *
+   * Primary match:
+   * submission.classwork_id === classwork.id
+   *
+   * Fallback:
+   * If classwork_id is missing in an old
+   * submission, try matching subject + title.
+   *
+   * This helps display submissions created
+   * before classwork_id was properly saved.
+   */
+
+  function getSubmission(
+    classwork: Classwork
+  ) {
+    /*
+     * FIRST:
+     * Exact classwork ID match.
+     */
+
+    const exactMatch =
       submissions.find(
         (submission) =>
-          submission.classwork_id ===
-          classworkId
-      ) || null
-    );
+          submission.classwork_id &&
+          String(
+            submission.classwork_id
+          ).trim() ===
+            String(
+              classwork.id
+            ).trim()
+      );
+
+    if (exactMatch) {
+      return exactMatch;
+    }
+
+    /*
+     * SECOND:
+     * Fallback for older submissions.
+     *
+     * Only use this when classwork_id is
+     * missing.
+     */
+
+    const fallbackMatch =
+      submissions.find(
+        (submission) => {
+          if (
+            submission.classwork_id
+          ) {
+            return false;
+          }
+
+          const sameSubject =
+            submission.subject
+              ?.trim()
+              .toLowerCase() ===
+            classwork.subject
+              ?.trim()
+              .toLowerCase();
+
+          const sameTitle =
+            submission.title
+              ?.trim()
+              .toLowerCase() ===
+            classwork.title
+              ?.trim()
+              .toLowerCase();
+
+          return (
+            sameSubject &&
+            sameTitle
+          );
+        }
+      );
+
+    return fallbackMatch || null;
   }
 
   /*
@@ -459,14 +546,14 @@ export default function TutorStudentClassworkPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-[500px] items-center justify-center">
-        <div className="text-center">
+      <div className="min-h-[60vh] rounded-3xl bg-white p-10 shadow-sm">
+        <div className="flex items-center gap-3 text-slate-500">
           <Loader2
-            size={35}
-            className="mx-auto animate-spin text-yellow-500"
+            size={24}
+            className="animate-spin"
           />
 
-          <p className="mt-4 font-semibold text-slate-600">
+          <p className="font-semibold">
             Loading student classwork...
           </p>
         </div>
@@ -482,7 +569,7 @@ export default function TutorStudentClassworkPage() {
 
   if (error) {
     return (
-      <div className="rounded-3xl bg-white p-8 shadow-sm">
+      <div className="rounded-3xl bg-white p-10 shadow-sm">
         <Link
           href="/tutor-dashboard"
           className="inline-flex items-center gap-2 font-bold text-slate-600 hover:text-slate-900"
@@ -495,7 +582,7 @@ export default function TutorStudentClassworkPage() {
           Unable to load classwork
         </h1>
 
-        <p className="mt-3 text-red-600">
+        <p className="mt-3 rounded-xl bg-red-50 p-4 text-red-600">
           {error}
         </p>
       </div>
@@ -510,7 +597,6 @@ export default function TutorStudentClassworkPage() {
 
   return (
     <div className="pb-12">
-
       {/* BACK */}
 
       <Link
@@ -524,7 +610,6 @@ export default function TutorStudentClassworkPage() {
       {/* STUDENT HEADER */}
 
       <div className="mt-6 rounded-3xl bg-slate-900 p-8 text-white">
-
         <p className="text-sm font-bold uppercase tracking-wide text-yellow-400">
           Student Classwork
         </p>
@@ -545,15 +630,12 @@ export default function TutorStudentClassworkPage() {
             {tutor?.full_name}
           </span>
         </p>
-
       </div>
 
       {/* SUMMARY */}
 
       <div className="mt-8 grid gap-5 md:grid-cols-3">
-
         <div className="rounded-2xl bg-white p-6 shadow-sm">
-
           <p className="text-sm font-bold text-slate-500">
             Total Classwork
           </p>
@@ -561,11 +643,9 @@ export default function TutorStudentClassworkPage() {
           <p className="mt-2 text-3xl font-extrabold text-slate-900">
             {classworks.length}
           </p>
-
         </div>
 
         <div className="rounded-2xl bg-white p-6 shadow-sm">
-
           <p className="text-sm font-bold text-slate-500">
             Submitted
           </p>
@@ -574,17 +654,13 @@ export default function TutorStudentClassworkPage() {
             {
               classworks.filter(
                 (work) =>
-                  !!getSubmission(
-                    work.id
-                  )
+                  !!getSubmission(work)
               ).length
             }
           </p>
-
         </div>
 
         <div className="rounded-2xl bg-white p-6 shadow-sm">
-
           <p className="text-sm font-bold text-slate-500">
             Awaiting Submission
           </p>
@@ -593,47 +669,36 @@ export default function TutorStudentClassworkPage() {
             {
               classworks.filter(
                 (work) =>
-                  !getSubmission(
-                    work.id
-                  )
+                  !getSubmission(work)
               ).length
             }
           </p>
-
         </div>
-
       </div>
 
       {/* CLASSWORK */}
 
       <div className="mt-8 rounded-3xl bg-white p-6 shadow-sm">
-
         <div className="flex items-center gap-3">
-
           <FileText
             size={30}
             className="text-yellow-600"
           />
 
           <div>
-
             <h2 className="text-2xl font-bold text-slate-900">
               Student Classwork
             </h2>
 
             <p className="mt-1 text-sm text-slate-500">
-              View assignments and everything the
-              student has submitted.
+              View assignments and everything
+              the student has submitted.
             </p>
-
           </div>
-
         </div>
 
         {classworks.length === 0 ? (
-
           <div className="mt-8 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-10 text-center">
-
             <FileText
               size={45}
               className="mx-auto text-slate-300"
@@ -647,19 +712,14 @@ export default function TutorStudentClassworkPage() {
               No classwork has been assigned
               to this student yet.
             </p>
-
           </div>
-
         ) : (
-
           <div className="mt-8 space-y-6">
-
             {classworks.map(
               (classwork) => {
-
                 const submission =
                   getSubmission(
-                    classwork.id
+                    classwork
                   );
 
                 const expanded =
@@ -668,22 +728,15 @@ export default function TutorStudentClassworkPage() {
 
                 return (
                   <div
-                    key={
-                      classwork.id
-                    }
+                    key={classwork.id}
                     className="rounded-3xl border border-slate-200 bg-slate-50 p-6"
                   >
-
                     {/* CLASSWORK HEADER */}
 
                     <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-
-                      <div>
-
+                      <div className="min-w-0">
                         <h3 className="text-2xl font-extrabold text-slate-900">
-                          {
-                            classwork.title
-                          }
+                          {classwork.title}
                         </h3>
 
                         {classwork.description && (
@@ -695,7 +748,6 @@ export default function TutorStudentClassworkPage() {
                         )}
 
                         <div className="mt-4 flex flex-wrap gap-3">
-
                           <span className="rounded-full bg-white px-3 py-2 text-xs font-bold text-slate-600">
                             {classwork.subject}
                           </span>
@@ -705,6 +757,7 @@ export default function TutorStudentClassworkPage() {
                               <Clock3
                                 size={14}
                               />
+
                               Due:{" "}
                               {formatDate(
                                 classwork.due_date
@@ -713,27 +766,23 @@ export default function TutorStudentClassworkPage() {
                           )}
 
                           {submission ? (
-
                             <span className="inline-flex items-center gap-2 rounded-full bg-green-100 px-3 py-2 text-xs font-bold text-green-700">
                               <CheckCircle2
                                 size={15}
                               />
+
                               Student Submitted
                             </span>
-
                           ) : (
-
                             <span className="inline-flex items-center gap-2 rounded-full bg-orange-100 px-3 py-2 text-xs font-bold text-orange-700">
                               <AlertCircle
                                 size={15}
                               />
+
                               Not Submitted
                             </span>
-
                           )}
-
                         </div>
-
                       </div>
 
                       {classwork.attachment_url && (
@@ -748,54 +797,43 @@ export default function TutorStudentClassworkPage() {
                           <ExternalLink
                             size={17}
                           />
+
                           View Assignment
                         </a>
                       )}
-
                     </div>
 
                     {/* SUBMISSION */}
 
                     <div className="mt-6 border-t border-slate-200 pt-6">
-
                       {!submission ? (
-
                         <div className="rounded-2xl border border-orange-200 bg-orange-50 p-6">
-
                           <div className="flex items-center gap-3">
-
                             <AlertCircle
                               size={25}
                               className="text-orange-600"
                             />
 
                             <div>
-
                               <h4 className="font-bold text-orange-900">
                                 No submission yet
                               </h4>
 
                               <p className="mt-1 text-sm text-orange-700">
                                 The student has not
-                                submitted this classwork.
+                                submitted this
+                                classwork.
                               </p>
-
                             </div>
-
                           </div>
-
                         </div>
-
                       ) : (
-
                         <div className="rounded-2xl border border-green-200 bg-green-50 p-6">
+                          {/* SUBMISSION HEADER */}
 
                           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-
                             <div>
-
                               <div className="flex flex-wrap items-center gap-2">
-
                                 <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-bold text-green-700">
                                   {submission.status ||
                                     "Submitted"}
@@ -809,13 +847,11 @@ export default function TutorStudentClassworkPage() {
                                     )}
                                   </span>
                                 )}
-
                               </div>
 
                               <h4 className="mt-3 text-xl font-extrabold text-slate-900">
                                 Student Submission
                               </h4>
-
                             </div>
 
                             <button
@@ -837,79 +873,64 @@ export default function TutorStudentClassworkPage() {
                                 ? "Hide Submission"
                                 : "View Submission"}
                             </button>
-
                           </div>
 
                           {/* FULL SUBMISSION */}
 
                           {expanded && (
-
                             <div className="mt-6 space-y-6">
-
                               {/* WRITTEN ANSWER */}
 
-                              {submission.text_answer && (
+                              {submission.text_answer &&
+                                submission.text_answer.trim() !==
+                                  "" && (
+                                  <div className="rounded-2xl border border-yellow-200 bg-yellow-50 p-5">
+                                    <div className="flex items-center gap-3">
+                                      <MessageSquare
+                                        size={23}
+                                        className="text-yellow-600"
+                                      />
 
-                                <div className="rounded-2xl border border-yellow-200 bg-yellow-50 p-5">
+                                      <h5 className="text-lg font-bold text-slate-900">
+                                        Student's Written Answer
+                                      </h5>
+                                    </div>
 
-                                  <div className="flex items-center gap-3">
-
-                                    <MessageSquare
-                                      size={23}
-                                      className="text-yellow-600"
-                                    />
-
-                                    <h5 className="text-lg font-bold text-slate-900">
-                                      Student's Written Answer
-                                    </h5>
-
+                                    <div className="mt-4 rounded-2xl bg-white p-5">
+                                      <p className="whitespace-pre-wrap break-words leading-8 text-slate-700">
+                                        {
+                                          submission.text_answer
+                                        }
+                                      </p>
+                                    </div>
                                   </div>
-
-                                  <div className="mt-4 rounded-2xl bg-white p-5">
-
-                                    <p className="whitespace-pre-wrap leading-8 text-slate-700">
-                                      {
-                                        submission.text_answer
-                                      }
-                                    </p>
-
-                                  </div>
-
-                                </div>
-
-                              )}
+                                )}
 
                               {/* UPLOADED FILE */}
 
                               {submission.image_url && (
-
                                 <div className="rounded-2xl border border-slate-200 bg-white p-5">
-
                                   <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-
                                     <div className="flex items-center gap-3">
-
                                       <FileText
                                         size={25}
                                         className="text-yellow-600"
                                       />
 
                                       <div>
-
                                         <h5 className="text-lg font-bold text-slate-900">
                                           Uploaded Work
                                         </h5>
 
                                         <p className="text-sm text-slate-500">
-                                          File submitted by the student.
+                                          File submitted
+                                          by the
+                                          student.
                                         </p>
-
                                       </div>
-
                                     </div>
 
                                     <div className="flex flex-wrap gap-2">
-
                                       <a
                                         href={
                                           submission.image_url
@@ -921,6 +942,7 @@ export default function TutorStudentClassworkPage() {
                                         <ExternalLink
                                           size={17}
                                         />
+
                                         View File
                                       </a>
 
@@ -934,21 +956,18 @@ export default function TutorStudentClassworkPage() {
                                         <Download
                                           size={17}
                                         />
+
                                         Download
                                       </a>
-
                                     </div>
-
                                   </div>
 
-                                  {/* IMAGE */}
+                                  {/* IMAGE PREVIEW */}
 
                                   {isImage(
                                     submission.image_url
                                   ) && (
-
                                     <div className="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-4">
-
                                       <img
                                         src={
                                           submission.image_url
@@ -956,19 +975,15 @@ export default function TutorStudentClassworkPage() {
                                         alt="Student submitted work"
                                         className="mx-auto max-h-[750px] w-auto max-w-full rounded-xl object-contain"
                                       />
-
                                     </div>
-
                                   )}
 
-                                  {/* PDF */}
+                                  {/* PDF PREVIEW */}
 
                                   {isPdf(
                                     submission.image_url
                                   ) && (
-
                                     <div className="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-slate-100">
-
                                       <iframe
                                         src={
                                           submission.image_url
@@ -976,9 +991,7 @@ export default function TutorStudentClassworkPage() {
                                         title="Student submitted PDF"
                                         className="h-[750px] w-full"
                                       />
-
                                     </div>
-
                                   )}
 
                                   {/* OTHER FILE */}
@@ -989,66 +1002,60 @@ export default function TutorStudentClassworkPage() {
                                     !isPdf(
                                       submission.image_url
                                     ) && (
-
                                       <div className="mt-5 rounded-2xl bg-slate-50 p-6 text-center">
-
                                         <FileText
                                           size={50}
                                           className="mx-auto text-slate-400"
                                         />
 
                                         <p className="mt-3 font-semibold text-slate-700">
-                                          The student's file is available above.
+                                          The student's
+                                          file is
+                                          available
+                                          above.
                                         </p>
-
                                       </div>
-
                                     )}
-
                                 </div>
-
                               )}
 
                               {/* EMPTY SUBMISSION */}
 
                               {!submission.text_answer &&
                                 !submission.image_url && (
-
                                   <div className="rounded-2xl bg-white p-6 text-center">
-
                                     <p className="text-slate-500">
-                                      This submission does not contain
-                                      a written answer or uploaded file.
+                                      This submission
+                                      does not contain
+                                      a written answer
+                                      or uploaded file.
                                     </p>
-
                                   </div>
-
                                 )}
 
                               {/* RESULT */}
 
                               {(submission.score !== null ||
-                                submission.percentage !== null ||
+                                submission.percentage !==
+                                  null ||
                                 submission.grade) && (
-
                                 <div className="rounded-2xl border border-blue-200 bg-blue-50 p-6">
-
                                   <h5 className="text-xl font-bold text-slate-900">
                                     Marked Result
                                   </h5>
 
                                   <div className="mt-4 flex flex-wrap gap-3">
-
-                                    {submission.score !== null && (
+                                    {submission.score !==
+                                      null && (
                                       <span className="rounded-xl bg-white px-4 py-3 font-bold text-blue-700">
                                         Score:{" "}
                                         {
                                           submission.score
                                         }
+
                                         {submission.total_marks !==
-                                        null
-                                          ? ` / ${submission.total_marks}`
-                                          : ""}
+                                          null &&
+                                          ` / ${submission.total_marks}`}
                                       </span>
                                     )}
 
@@ -1070,22 +1077,16 @@ export default function TutorStudentClassworkPage() {
                                         }
                                       </span>
                                     )}
-
                                   </div>
-
                                 </div>
-
                               )}
 
                               {/* FEEDBACK */}
 
                               {(submission.teacher_feedback ||
                                 submission.tutor_feedback) && (
-
                                 <div className="rounded-2xl border border-green-200 bg-green-50 p-6">
-
                                   <div className="flex items-center gap-3">
-
                                     <CheckCircle2
                                       size={24}
                                       className="text-green-600"
@@ -1094,37 +1095,30 @@ export default function TutorStudentClassworkPage() {
                                     <h5 className="text-xl font-bold text-slate-900">
                                       Tutor Feedback
                                     </h5>
-
                                   </div>
 
-                                  <p className="mt-4 whitespace-pre-wrap leading-8 text-slate-700">
+                                  <p className="mt-4 whitespace-pre-wrap break-words leading-8 text-slate-700">
                                     {submission.teacher_feedback ||
                                       submission.tutor_feedback}
                                   </p>
-
                                 </div>
-
                               )}
 
                               {/* CORRECTION */}
 
                               {submission.correction_file_url && (
-
                                 <div className="rounded-2xl border border-yellow-200 bg-yellow-50 p-6">
-
                                   <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-
                                     <div>
-
                                       <h5 className="text-xl font-bold text-slate-900">
                                         Correction File
                                       </h5>
 
                                       <p className="mt-1 text-sm text-slate-600">
-                                        Correction already attached
-                                        to this submission.
+                                        Correction already
+                                        attached to this
+                                        submission.
                                       </p>
-
                                     </div>
 
                                     <a
@@ -1138,35 +1132,24 @@ export default function TutorStudentClassworkPage() {
                                       <ExternalLink
                                         size={17}
                                       />
+
                                       View Correction
                                     </a>
-
                                   </div>
-
                                 </div>
-
                               )}
-
                             </div>
-
                           )}
-
                         </div>
-
                       )}
-
                     </div>
-
                   </div>
                 );
               }
             )}
-
           </div>
         )}
-
       </div>
-
     </div>
   );
 }
