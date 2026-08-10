@@ -71,105 +71,137 @@ type Submission = {
   correction_file_url: string | null;
 };
 
+/* =========================================================
+   HELPERS
+========================================================= */
+
 function formatDate(value: string | null) {
   if (!value) return "No date";
 
-  return new Date(value).toLocaleString();
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return date.toLocaleString();
 }
 
 function isImage(url: string | null) {
-  return (
-    !!url &&
-    /\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i.test(url)
+  if (!url) return false;
+
+  return /\.(jpg|jpeg|png|gif|webp|bmp|svg)(\?.*)?$/i.test(
+    url
   );
 }
 
 function isPdf(url: string | null) {
-  return !!url && /\.pdf(\?.*)?$/i.test(url);
+  if (!url) return false;
+
+  return /\.pdf(\?.*)?$/i.test(url);
 }
 
+function isOfficeFile(url: string | null) {
+  if (!url) return false;
+
+  return /\.(doc|docx|xls|xlsx|ppt|pptx|txt|csv)(\?.*)?$/i.test(
+    url
+  );
+}
+
+/*
+ * This extracts the student ID from:
+ *
+ * /tutor-dashboard/students/123/classwork
+ */
+function getStudentIdFromUrl() {
+  if (typeof window === "undefined") {
+    return "";
+  }
+
+  const parts = window.location.pathname
+    .split("/")
+    .filter(Boolean);
+
+  const studentsIndex =
+    parts.indexOf("students");
+
+  if (
+    studentsIndex === -1 ||
+    !parts[studentsIndex + 1]
+  ) {
+    return "";
+  }
+
+  return parts[studentsIndex + 1];
+}
+
+/* =========================================================
+   PAGE
+========================================================= */
+
 export default function TutorStudentClassworkPage() {
-  const [tutor, setTutor] = useState<Tutor | null>(null);
+  const [tutor, setTutor] =
+    useState<Tutor | null>(null);
 
-  const [student, setStudent] = useState<Student | null>(null);
+  const [student, setStudent] =
+    useState<Student | null>(null);
 
-  const [classworks, setClassworks] = useState<Classwork[]>([]);
+  const [classworks, setClassworks] =
+    useState<Classwork[]>([]);
 
-  const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [submissions, setSubmissions] =
+    useState<Submission[]>([]);
 
-  const [tutorAssignments, setTutorAssignments] = useState<
-    TutorAssignment[]
-  >([]);
+  const [tutorAssignments, setTutorAssignments] =
+    useState<TutorAssignment[]>([]);
 
   const [selectedSubject, setSelectedSubject] =
-    useState<string>("All Subjects");
+    useState("All Subjects");
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] =
+    useState(true);
 
-  const [error, setError] = useState("");
+  const [error, setError] =
+    useState("");
 
   const [expandedSubmission, setExpandedSubmission] =
     useState<string | null>(null);
 
-  /*
-   * ==========================================
-   * GET STUDENT ID FROM URL
-   * ==========================================
-   */
-
-  const getStudentId = () => {
-    if (typeof window === "undefined") {
-      return "";
-    }
-
-    const parts = window.location.pathname.split("/");
-
-    const studentsIndex = parts.indexOf("students");
-
-    if (
-      studentsIndex === -1 ||
-      !parts[studentsIndex + 1]
-    ) {
-      return "";
-    }
-
-    return parts[studentsIndex + 1];
-  };
-
-  /*
-   * ==========================================
-   * LOAD PAGE
-   * ==========================================
-   */
+  /* =======================================================
+     LOAD EVERYTHING
+  ======================================================= */
 
   useEffect(() => {
+    let cancelled = false;
+
     async function loadPage() {
       try {
         setLoading(true);
         setError("");
 
-        /*
-         * --------------------------------------
-         * LOGGED-IN USER
-         * --------------------------------------
-         */
+        /* -----------------------------------------------
+           1. GET LOGGED-IN USER
+        ------------------------------------------------ */
 
         const {
           data: { user },
           error: authError,
         } = await supabase.auth.getUser();
 
-        if (authError || !user) {
+        if (authError) {
+          throw new Error(authError.message);
+        }
+
+        if (!user) {
           throw new Error(
             "You must be logged in as a tutor."
           );
         }
 
-        /*
-         * --------------------------------------
-         * GET TUTOR
-         * --------------------------------------
-         */
+        /* -----------------------------------------------
+           2. GET TUTOR
+        ------------------------------------------------ */
 
         const {
           data: tutorData,
@@ -198,15 +230,16 @@ export default function TutorStudentClassworkPage() {
           );
         }
 
+        if (cancelled) return;
+
         setTutor(tutorData as Tutor);
 
-        /*
-         * --------------------------------------
-         * GET STUDENT ID
-         * --------------------------------------
-         */
+        /* -----------------------------------------------
+           3. GET STUDENT ID
+        ------------------------------------------------ */
 
-        const studentId = getStudentId();
+        const studentId =
+          getStudentIdFromUrl();
 
         if (!studentId) {
           throw new Error(
@@ -214,11 +247,9 @@ export default function TutorStudentClassworkPage() {
           );
         }
 
-        /*
-         * --------------------------------------
-         * GET STUDENT
-         * --------------------------------------
-         */
+        /* -----------------------------------------------
+           4. GET STUDENT
+        ------------------------------------------------ */
 
         const {
           data: studentData,
@@ -248,18 +279,13 @@ export default function TutorStudentClassworkPage() {
           );
         }
 
-        /*
-         * --------------------------------------
-         * CHECK TUTOR ASSIGNMENTS
-         * --------------------------------------
-         *
-         * tutor_assignments is the primary source
-         * of truth for subject-based tutor access.
-         */
+        /* -----------------------------------------------
+           5. CHECK TUTOR ASSIGNMENTS
+        ------------------------------------------------ */
 
         const {
-          data: assignmentsForTutor,
-          error: tutorAssignmentError,
+          data: assignmentRows,
+          error: assignmentRowsError,
         } = await supabase
           .from("tutor_assignments")
           .select(
@@ -275,46 +301,35 @@ export default function TutorStudentClassworkPage() {
           .eq("active", true)
           .eq("status", "Scheduled");
 
-        if (tutorAssignmentError) {
+        if (assignmentRowsError) {
           throw new Error(
-            tutorAssignmentError.message
+            assignmentRowsError.message
           );
         }
 
-        const validTutorAssignments =
-          (assignmentsForTutor ||
+        const validAssignments =
+          (assignmentRows ||
             []) as TutorAssignment[];
 
         /*
-         * --------------------------------------
-         * DIRECT TUTOR FALLBACK
-         * --------------------------------------
-         */
-
-        const directlyAssigned =
-          studentData.tutor_id === tutorData.id;
-
-        /*
-         * --------------------------------------
-         * AUTHORIZATION
-         * --------------------------------------
+         * A tutor can access the student if:
          *
-         * Tutor is allowed if:
-         *
-         * 1. There is at least one active scheduled
-         *    tutor assignment for this student.
+         * A. They have an active scheduled assignment
          *
          * OR
          *
-         * 2. students.tutor_id directly points to
-         *    this tutor.
+         * B. students.tutor_id points directly to them.
          */
 
-        const hasTutorAssignment =
-          validTutorAssignments.length > 0;
+        const hasAssignment =
+          validAssignments.length > 0;
+
+        const directlyAssigned =
+          studentData.tutor_id ===
+          tutorData.id;
 
         if (
-          !hasTutorAssignment &&
+          !hasAssignment &&
           !directlyAssigned
         ) {
           throw new Error(
@@ -322,24 +337,21 @@ export default function TutorStudentClassworkPage() {
           );
         }
 
-        setTutorAssignments(
-          validTutorAssignments
-        );
+        if (cancelled) return;
 
         setStudent(studentData as Student);
 
-        /*
-         * --------------------------------------
-         * GET CLASSWORK ASSIGNMENTS
-         * --------------------------------------
-         *
-         * These are assignments specifically given
-         * to this student.
-         */
+        setTutorAssignments(
+          validAssignments
+        );
+
+        /* -----------------------------------------------
+           6. GET CLASSWORK ASSIGNMENTS FOR STUDENT
+        ------------------------------------------------ */
 
         const {
-          data: assignments,
-          error: assignmentError,
+          data: assignmentLinks,
+          error: assignmentLinksError,
         } = await supabase
           .from("classwork_assignments")
           .select(
@@ -348,53 +360,51 @@ export default function TutorStudentClassworkPage() {
               student_id
             `
           )
-          .eq(
-            "student_id",
-            studentData.id
-          );
+          .eq("student_id", studentData.id);
 
-        if (assignmentError) {
+        if (assignmentLinksError) {
           throw new Error(
-            assignmentError.message
+            assignmentLinksError.message
           );
         }
 
-        const classworkIds = (
-          assignments || []
-        )
-          .map(
-            (item) => item.classwork_id
+        const classworkIds = Array.from(
+          new Set(
+            (assignmentLinks || [])
+              .map(
+                (row) =>
+                  row.classwork_id
+              )
+              .filter(
+                (
+                  id
+                ): id is string =>
+                  !!id
+              )
           )
-          .filter(Boolean);
+        );
 
-        /*
-         * --------------------------------------
-         * NO CLASSWORK
-         * --------------------------------------
-         */
+        /* -----------------------------------------------
+           7. NO CLASSWORK
+        ------------------------------------------------ */
 
         if (classworkIds.length === 0) {
+          if (cancelled) return;
+
           setClassworks([]);
           setSubmissions([]);
+          setLoading(false);
+
           return;
         }
 
-        /*
-         * --------------------------------------
-         * GET CLASSWORK
-         * --------------------------------------
-         *
-         * IMPORTANT:
-         * We use tutor_id instead of a hardcoded
-         * tutor or subject.
-         *
-         * Therefore different tutors can load
-         * their own students' classwork.
-         */
+        /* -----------------------------------------------
+           8. GET CLASSWORK
+        ------------------------------------------------ */
 
         const {
-          data: classworkData,
-          error: classworkError,
+          data: classworkRows,
+          error: classworkRowsError,
         } = await supabase
           .from("classworks")
           .select(
@@ -410,14 +420,8 @@ export default function TutorStudentClassworkPage() {
               created_at
             `
           )
-          .in(
-            "id",
-            classworkIds
-          )
-          .eq(
-            "tutor_id",
-            tutorData.id
-          )
+          .in("id", classworkIds)
+          .eq("tutor_id", tutorData.id)
           .order(
             "created_at",
             {
@@ -425,29 +429,36 @@ export default function TutorStudentClassworkPage() {
             }
           );
 
-        if (classworkError) {
+        if (classworkRowsError) {
           throw new Error(
-            classworkError.message
+            classworkRowsError.message
           );
         }
 
         const loadedClassworks =
-          (classworkData ||
+          (classworkRows ||
             []) as Classwork[];
+
+        if (cancelled) return;
 
         setClassworks(
           loadedClassworks
         );
 
-        /*
-         * --------------------------------------
-         * GET SUBMISSIONS
-         * --------------------------------------
-         */
+        /* -----------------------------------------------
+           9. GET SUBMISSIONS
+        ------------------------------------------------
+           
+           IMPORTANT FIX:
+           
+           We fetch submissions belonging to THIS
+           student AND the classwork currently being
+           displayed.
+        ------------------------------------------------ */
 
         const {
-          data: submissionData,
-          error: submissionError,
+          data: submissionRows,
+          error: submissionRowsError,
         } = await supabase
           .from("classwork_submissions")
           .select(
@@ -475,6 +486,10 @@ export default function TutorStudentClassworkPage() {
             "student_id",
             studentData.id
           )
+          .in(
+            "classwork_id",
+            classworkIds
+          )
           .order(
             "submitted_at",
             {
@@ -482,14 +497,16 @@ export default function TutorStudentClassworkPage() {
             }
           );
 
-        if (submissionError) {
+        if (submissionRowsError) {
           throw new Error(
-            submissionError.message
+            submissionRowsError.message
           );
         }
 
+        if (cancelled) return;
+
         setSubmissions(
-          (submissionData ||
+          (submissionRows ||
             []) as Submission[]
         );
       } catch (err) {
@@ -498,99 +515,126 @@ export default function TutorStudentClassworkPage() {
           err
         );
 
-        setError(
-          err instanceof Error
-            ? err.message
-            : "Unable to load student classwork."
-        );
+        if (!cancelled) {
+          setError(
+            err instanceof Error
+              ? err.message
+              : "Unable to load student classwork."
+          );
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     }
 
     loadPage();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  /*
-   * ==========================================
-   * AVAILABLE SUBJECTS
-   * ==========================================
-   *
-   * This automatically creates the subject list
-   * from the classwork loaded for this tutor/student.
-   *
-   * Example:
-   *
-   * Mathematics
-   * Physics
-   * Chemistry
-   * Biology
-   *
-   * No subject is hardcoded.
-   */
+  /* =======================================================
+     AVAILABLE SUBJECTS
+  ======================================================= */
 
   const availableSubjects = useMemo(() => {
-    const subjects = classworks
-      .map((work) =>
-        work.subject?.trim()
-      )
-      .filter(
-        (subject): subject is string =>
-          !!subject
-      );
+    /*
+     * Subjects are taken from actual classwork loaded
+     * for this student.
+     *
+     * This means:
+     *
+     * Mathematics
+     * Physics
+     * Chemistry
+     *
+     * etc. appear automatically.
+     */
+
+    const subjectNames =
+      classworks
+        .map((work) =>
+          work.subject?.trim()
+        )
+        .filter(
+          (
+            subject
+          ): subject is string =>
+            !!subject
+        );
 
     return Array.from(
-      new Set(subjects)
+      new Set(subjectNames)
     ).sort();
   }, [classworks]);
 
-  /*
-   * ==========================================
-   * FILTER CLASSWORK BY SUBJECT
-   * ==========================================
-   */
+  /* =======================================================
+     FILTERED CLASSWORK
+  ======================================================= */
 
-  const filteredClassworks = useMemo(() => {
-    if (
-      selectedSubject ===
-      "All Subjects"
-    ) {
-      return classworks;
-    }
+  const filteredClassworks =
+    useMemo(() => {
+      if (
+        selectedSubject ===
+        "All Subjects"
+      ) {
+        return classworks;
+      }
 
-    return classworks.filter(
-      (work) =>
-        work.subject?.trim() ===
-        selectedSubject
-    );
-  }, [
-    classworks,
-    selectedSubject,
-  ]);
+      return classworks.filter(
+        (work) =>
+          work.subject?.trim() ===
+          selectedSubject
+      );
+    }, [
+      classworks,
+      selectedSubject,
+    ]);
 
-  /*
-   * ==========================================
-   * FIND SUBMISSION
-   * ==========================================
-   */
+  /* =======================================================
+     FIND SUBMISSION
+  ======================================================= */
 
   function getSubmission(
     classworkId: string
   ) {
-    return (
-      submissions.find(
-        (submission) =>
-          submission.classwork_id ===
-          classworkId
-      ) || null
-    );
+    /*
+     * If there are multiple submission records,
+     * use the latest one.
+     */
+
+    const matching =
+      submissions
+        .filter(
+          (submission) =>
+            submission.classwork_id ===
+            classworkId
+        )
+        .sort((a, b) => {
+          const aTime = a.submitted_at
+            ? new Date(
+                a.submitted_at
+              ).getTime()
+            : 0;
+
+          const bTime = b.submitted_at
+            ? new Date(
+                b.submitted_at
+              ).getTime()
+            : 0;
+
+          return bTime - aTime;
+        });
+
+    return matching[0] || null;
   }
 
-  /*
-   * ==========================================
-   * SUMMARY COUNTS
-   * ==========================================
-   */
+  /* =======================================================
+     COUNTS
+  ======================================================= */
 
   const submittedCount =
     filteredClassworks.filter(
@@ -604,11 +648,9 @@ export default function TutorStudentClassworkPage() {
         !getSubmission(work.id)
     ).length;
 
-  /*
-   * ==========================================
-   * LOADING
-   * ==========================================
-   */
+  /* =======================================================
+     LOADING
+  ======================================================= */
 
   if (loading) {
     return (
@@ -627,11 +669,9 @@ export default function TutorStudentClassworkPage() {
     );
   }
 
-  /*
-   * ==========================================
-   * ERROR
-   * ==========================================
-   */
+  /* =======================================================
+     ERROR
+  ======================================================= */
 
   if (error) {
     return (
@@ -648,18 +688,16 @@ export default function TutorStudentClassworkPage() {
           Unable to load classwork
         </h1>
 
-        <p className="mt-3 text-red-600">
+        <p className="mt-3 whitespace-pre-wrap text-red-600">
           {error}
         </p>
       </div>
     );
   }
 
-  /*
-   * ==========================================
-   * MAIN PAGE
-   * ==========================================
-   */
+  /* =======================================================
+     MAIN PAGE
+  ======================================================= */
 
   return (
     <div className="pb-12">
@@ -699,14 +737,14 @@ export default function TutorStudentClassworkPage() {
           </span>
         </p>
 
-        {/* ASSIGNED SUBJECT COUNT */}
-
         {tutorAssignments.length > 0 && (
           <p className="mt-2 text-sm text-slate-400">
             Active subject assignment
-            {tutorAssignments.length !== 1
+            {tutorAssignments.length !==
+            1
               ? "s"
-              : ""}:{" "}
+              : ""}
+            :{" "}
             <span className="font-bold text-slate-200">
               {tutorAssignments.length}
             </span>
@@ -728,8 +766,8 @@ export default function TutorStudentClassworkPage() {
               </h2>
 
               <p className="mt-1 text-sm text-slate-500">
-                View this student's classwork by
-                subject.
+                View this student's
+                classwork by subject.
               </p>
             </div>
 
@@ -744,6 +782,7 @@ export default function TutorStudentClassworkPage() {
                 }
                 className="appearance-none rounded-xl border-2 border-slate-200 bg-white py-3 pl-4 pr-12 font-bold text-slate-900 outline-none transition focus:border-yellow-500"
               >
+
                 <option value="All Subjects">
                   All Subjects
                 </option>
@@ -758,6 +797,7 @@ export default function TutorStudentClassworkPage() {
                     </option>
                   )
                 )}
+
               </select>
 
               <ChevronDown
@@ -777,6 +817,7 @@ export default function TutorStudentClassworkPage() {
       <div className="mt-8 grid gap-5 md:grid-cols-3">
 
         <div className="rounded-2xl bg-white p-6 shadow-sm">
+
           <p className="text-sm font-bold text-slate-500">
             Total Classwork
           </p>
@@ -784,9 +825,11 @@ export default function TutorStudentClassworkPage() {
           <p className="mt-2 text-3xl font-extrabold text-slate-900">
             {filteredClassworks.length}
           </p>
+
         </div>
 
         <div className="rounded-2xl bg-white p-6 shadow-sm">
+
           <p className="text-sm font-bold text-slate-500">
             Submitted
           </p>
@@ -794,9 +837,11 @@ export default function TutorStudentClassworkPage() {
           <p className="mt-2 text-3xl font-extrabold text-green-600">
             {submittedCount}
           </p>
+
         </div>
 
         <div className="rounded-2xl bg-white p-6 shadow-sm">
+
           <p className="text-sm font-bold text-slate-500">
             Awaiting Submission
           </p>
@@ -804,11 +849,12 @@ export default function TutorStudentClassworkPage() {
           <p className="mt-2 text-3xl font-extrabold text-orange-500">
             {awaitingCount}
           </p>
+
         </div>
 
       </div>
 
-      {/* CLASSWORK */}
+      {/* CLASSWORK SECTION */}
 
       <div className="mt-8 rounded-3xl bg-white p-6 shadow-sm">
 
@@ -836,7 +882,10 @@ export default function TutorStudentClassworkPage() {
 
         </div>
 
-        {filteredClassworks.length === 0 ? (
+        {/* NO CLASSWORK */}
+
+        {filteredClassworks.length ===
+        0 ? (
 
           <div className="mt-8 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-10 text-center">
 
@@ -884,7 +933,7 @@ export default function TutorStudentClassworkPage() {
 
                     <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
 
-                      <div>
+                      <div className="min-w-0">
 
                         <h3 className="text-2xl font-extrabold text-slate-900">
                           {classwork.title}
@@ -892,7 +941,9 @@ export default function TutorStudentClassworkPage() {
 
                         {classwork.description && (
                           <p className="mt-3 whitespace-pre-wrap leading-7 text-slate-600">
-                            {classwork.description}
+                            {
+                              classwork.description
+                            }
                           </p>
                         )}
 
@@ -913,19 +964,23 @@ export default function TutorStudentClassworkPage() {
                           )}
 
                           {submission ? (
+
                             <span className="inline-flex items-center gap-2 rounded-full bg-green-100 px-3 py-2 text-xs font-bold text-green-700">
                               <CheckCircle2
                                 size={15}
                               />
                               Student Submitted
                             </span>
+
                           ) : (
+
                             <span className="inline-flex items-center gap-2 rounded-full bg-orange-100 px-3 py-2 text-xs font-bold text-orange-700">
                               <AlertCircle
                                 size={15}
                               />
                               Not Submitted
                             </span>
+
                           )}
 
                         </div>
@@ -954,6 +1009,8 @@ export default function TutorStudentClassworkPage() {
 
                     <div className="mt-6 border-t border-slate-200 pt-6">
 
+                      {/* NO SUBMISSION */}
+
                       {!submission ? (
 
                         <div className="rounded-2xl border border-orange-200 bg-orange-50 p-6">
@@ -972,8 +1029,7 @@ export default function TutorStudentClassworkPage() {
                               </h4>
 
                               <p className="mt-1 text-sm text-orange-700">
-                                The student has not
-                                submitted this classwork.
+                                The student has not submitted this classwork.
                               </p>
 
                             </div>
@@ -985,6 +1041,8 @@ export default function TutorStudentClassworkPage() {
                       ) : (
 
                         <div className="rounded-2xl border border-green-200 bg-green-50 p-6">
+
+                          {/* SUBMISSION HEADER */}
 
                           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 
@@ -1025,6 +1083,7 @@ export default function TutorStudentClassworkPage() {
                               }
                               className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-3 font-bold text-white hover:bg-slate-800"
                             >
+
                               <FileText
                                 size={18}
                               />
@@ -1032,6 +1091,7 @@ export default function TutorStudentClassworkPage() {
                               {expanded
                                 ? "Hide Submission"
                                 : "View Submission"}
+
                             </button>
 
                           </div>
@@ -1042,9 +1102,12 @@ export default function TutorStudentClassworkPage() {
 
                             <div className="mt-6 space-y-6">
 
-                              {/* WRITTEN ANSWER */}
+                              {/* =================================
+                                  WRITTEN TEXT
+                              ================================= */}
 
                               {submission.text_answer && (
+
                                 <div className="rounded-2xl border border-yellow-200 bg-yellow-50 p-5">
 
                                   <div className="flex items-center gap-3">
@@ -1060,9 +1123,9 @@ export default function TutorStudentClassworkPage() {
 
                                   </div>
 
-                                  <div className="mt-4 rounded-2xl bg-white p-5">
+                                  <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-6">
 
-                                    <p className="whitespace-pre-wrap leading-8 text-slate-700">
+                                    <p className="whitespace-pre-wrap break-words leading-8 text-slate-700">
                                       {
                                         submission.text_answer
                                       }
@@ -1071,11 +1134,15 @@ export default function TutorStudentClassworkPage() {
                                   </div>
 
                                 </div>
+
                               )}
 
-                              {/* UPLOADED FILE */}
+                              {/* =================================
+                                  FILE SUBMISSION
+                              ================================= */}
 
                               {submission.image_url && (
+
                                 <div className="rounded-2xl border border-slate-200 bg-white p-5">
 
                                   <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -1134,11 +1201,12 @@ export default function TutorStudentClassworkPage() {
 
                                   </div>
 
-                                  {/* IMAGE */}
+                                  {/* IMAGE PREVIEW */}
 
                                   {isImage(
                                     submission.image_url
                                   ) && (
+
                                     <div className="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-4">
 
                                       <img
@@ -1146,17 +1214,19 @@ export default function TutorStudentClassworkPage() {
                                           submission.image_url
                                         }
                                         alt="Student submitted work"
-                                        className="mx-auto max-h-[750px] w-auto max-w-full rounded-xl object-contain"
+                                        className="mx-auto max-h-[800px] w-auto max-w-full rounded-xl object-contain"
                                       />
 
                                     </div>
+
                                   )}
 
-                                  {/* PDF */}
+                                  {/* PDF PREVIEW */}
 
                                   {isPdf(
                                     submission.image_url
                                   ) && (
+
                                     <div className="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-slate-100">
 
                                       <iframe
@@ -1164,13 +1234,14 @@ export default function TutorStudentClassworkPage() {
                                           submission.image_url
                                         }
                                         title="Student submitted PDF"
-                                        className="h-[750px] w-full"
+                                        className="h-[800px] w-full"
                                       />
 
                                     </div>
+
                                   )}
 
-                                  {/* OTHER FILE */}
+                                  {/* OFFICE / OTHER FILE */}
 
                                   {!isImage(
                                     submission.image_url
@@ -1178,44 +1249,70 @@ export default function TutorStudentClassworkPage() {
                                     !isPdf(
                                       submission.image_url
                                     ) && (
-                                      <div className="mt-5 rounded-2xl bg-slate-50 p-6 text-center">
+
+                                      <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-8 text-center">
 
                                         <FileText
-                                          size={50}
+                                          size={55}
                                           className="mx-auto text-slate-400"
                                         />
 
-                                        <p className="mt-3 font-semibold text-slate-700">
-                                          The student's file is available above.
+                                        <p className="mt-4 font-bold text-slate-800">
+                                          Student uploaded a file
                                         </p>
 
+                                        <p className="mt-1 text-sm text-slate-500">
+                                          Use the View File or Download button above to open it.
+                                        </p>
+
+                                        {isOfficeFile(
+                                          submission.image_url
+                                        ) && (
+                                          <p className="mt-3 text-xs font-semibold text-slate-400">
+                                            Office/document file
+                                          </p>
+                                        )}
+
                                       </div>
+
                                     )}
 
                                 </div>
+
                               )}
 
-                              {/* EMPTY SUBMISSION */}
+                              {/* =================================
+                                  NOTHING SUBMITTED
+                              ================================= */}
 
                               {!submission.text_answer &&
                                 !submission.image_url && (
-                                  <div className="rounded-2xl bg-white p-6 text-center">
 
-                                    <p className="text-slate-500">
-                                      This submission does not
-                                      contain a written answer
-                                      or uploaded file.
+                                  <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center">
+
+                                    <AlertCircle
+                                      size={45}
+                                      className="mx-auto text-slate-300"
+                                    />
+
+                                    <p className="mt-4 font-semibold text-slate-600">
+                                      This submission does not contain a written answer or uploaded file.
                                     </p>
 
                                   </div>
+
                                 )}
 
-                              {/* RESULT */}
+                              {/* =================================
+                                  MARKED RESULT
+                              ================================= */}
 
-                              {(submission.score !== null ||
+                              {(submission.score !==
+                                null ||
                                 submission.percentage !==
                                   null ||
                                 submission.grade) && (
+
                                 <div className="rounded-2xl border border-blue-200 bg-blue-50 p-6">
 
                                   <h5 className="text-xl font-bold text-slate-900">
@@ -1226,46 +1323,57 @@ export default function TutorStudentClassworkPage() {
 
                                     {submission.score !==
                                       null && (
+
                                       <span className="rounded-xl bg-white px-4 py-3 font-bold text-blue-700">
                                         Score:{" "}
                                         {
                                           submission.score
                                         }
+
                                         {submission.total_marks !==
                                         null
                                           ? ` / ${submission.total_marks}`
                                           : ""}
                                       </span>
+
                                     )}
 
                                     {submission.percentage !==
                                       null && (
+
                                       <span className="rounded-xl bg-white px-4 py-3 font-bold text-purple-700">
                                         {
                                           submission.percentage
                                         }
                                         %
                                       </span>
+
                                     )}
 
                                     {submission.grade && (
+
                                       <span className="rounded-xl bg-yellow-100 px-4 py-3 font-bold text-yellow-700">
                                         Grade:{" "}
                                         {
                                           submission.grade
                                         }
                                       </span>
+
                                     )}
 
                                   </div>
 
                                 </div>
+
                               )}
 
-                              {/* FEEDBACK */}
+                              {/* =================================
+                                  FEEDBACK
+                              ================================= */}
 
                               {(submission.teacher_feedback ||
                                 submission.tutor_feedback) && (
+
                                 <div className="rounded-2xl border border-green-200 bg-green-50 p-6">
 
                                   <div className="flex items-center gap-3">
@@ -1281,17 +1389,21 @@ export default function TutorStudentClassworkPage() {
 
                                   </div>
 
-                                  <p className="mt-4 whitespace-pre-wrap leading-8 text-slate-700">
+                                  <p className="mt-4 whitespace-pre-wrap break-words leading-8 text-slate-700">
                                     {submission.teacher_feedback ||
                                       submission.tutor_feedback}
                                   </p>
 
                                 </div>
+
                               )}
 
-                              {/* CORRECTION */}
+                              {/* =================================
+                                  CORRECTION FILE
+                              ================================= */}
 
                               {submission.correction_file_url && (
+
                                 <div className="rounded-2xl border border-yellow-200 bg-yellow-50 p-6">
 
                                   <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -1303,35 +1415,54 @@ export default function TutorStudentClassworkPage() {
                                       </h5>
 
                                       <p className="mt-1 text-sm text-slate-600">
-                                        Correction already attached
-                                        to this submission.
+                                        Correction attached to this submission.
                                       </p>
 
                                     </div>
 
-                                    <a
-                                      href={
-                                        submission.correction_file_url
-                                      }
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-3 font-bold text-white hover:bg-slate-800"
-                                    >
-                                      <ExternalLink
-                                        size={17}
-                                      />
-                                      View Correction
-                                    </a>
+                                    <div className="flex flex-wrap gap-2">
+
+                                      <a
+                                        href={
+                                          submission.correction_file_url
+                                        }
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-3 font-bold text-white hover:bg-slate-800"
+                                      >
+                                        <ExternalLink
+                                          size={17}
+                                        />
+                                        View Correction
+                                      </a>
+
+                                      <a
+                                        href={
+                                          submission.correction_file_url
+                                        }
+                                        download
+                                        className="inline-flex items-center gap-2 rounded-xl bg-yellow-500 px-5 py-3 font-bold text-slate-900 hover:bg-yellow-400"
+                                      >
+                                        <Download
+                                          size={17}
+                                        />
+                                        Download
+                                      </a>
+
+                                    </div>
 
                                   </div>
 
                                 </div>
+
                               )}
 
                             </div>
+
                           )}
 
                         </div>
+
                       )}
 
                     </div>
@@ -1342,6 +1473,7 @@ export default function TutorStudentClassworkPage() {
             )}
 
           </div>
+
         )}
 
       </div>
