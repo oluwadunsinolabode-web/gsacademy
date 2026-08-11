@@ -14,6 +14,7 @@ import {
   Loader2,
   Send,
   X,
+  User,
 } from "lucide-react";
 import { useParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
@@ -67,7 +68,13 @@ HELPERS
 function formatDate(value: string | null) {
   if (!value) return "Not provided";
 
-  return new Date(value).toLocaleString(undefined, {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "Not provided";
+  }
+
+  return date.toLocaleString(undefined, {
     day: "numeric",
     month: "short",
     year: "numeric",
@@ -79,23 +86,57 @@ function formatDate(value: string | null) {
 function formatShortDate(value: string | null) {
   if (!value) return "Not provided";
 
-  return new Date(value).toLocaleDateString(undefined, {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "Not provided";
+  }
+
+  return date.toLocaleDateString(undefined, {
     day: "numeric",
     month: "short",
     year: "numeric",
   });
 }
 
-function isImage(url: string | null) {
-  if (!url) return false;
+function getFileExtension(url: string | null) {
+  if (!url) return "";
 
-  return /\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i.test(url);
+  const cleanUrl = url.split("?")[0].split("#")[0];
+
+  const parts = cleanUrl.split(".");
+
+  if (parts.length < 2) return "";
+
+  return parts[parts.length - 1].toLowerCase();
+}
+
+function isImage(url: string | null) {
+  const extension = getFileExtension(url);
+
+  return ["jpg", "jpeg", "png", "gif", "webp"].includes(
+    extension
+  );
 }
 
 function isPdf(url: string | null) {
-  if (!url) return false;
+  return getFileExtension(url) === "pdf";
+}
 
-  return /\.pdf(\?.*)?$/i.test(url);
+function isWordDocument(url: string | null) {
+  const extension = getFileExtension(url);
+
+  return ["doc", "docx"].includes(extension);
+}
+
+function getFileLabel(url: string | null) {
+  const extension = getFileExtension(url);
+
+  if (!extension) {
+    return "Submitted File";
+  }
+
+  return `${extension.toUpperCase()} File`;
 }
 
 /* =========================================================
@@ -146,7 +187,7 @@ export default function TutorClassworkDetailsPage() {
     useState("");
 
   /* =======================================================
-  MARKING / FEEDBACK
+  MARKING
   ======================================================= */
 
   const [score, setScore] =
@@ -161,6 +202,10 @@ export default function TutorClassworkDetailsPage() {
   const [feedback, setFeedback] =
     useState("");
 
+  /* =======================================================
+  CORRECTION
+  ======================================================= */
+
   const [correctionText, setCorrectionText] =
     useState("");
 
@@ -172,7 +217,9 @@ export default function TutorClassworkDetailsPage() {
   ======================================================= */
 
   useEffect(() => {
-    if (!studentId || !classworkId) return;
+    if (!studentId || !classworkId) {
+      return;
+    }
 
     loadPage();
   }, [studentId, classworkId]);
@@ -183,9 +230,9 @@ export default function TutorClassworkDetailsPage() {
       setError("");
       setMessage("");
 
-      /* -----------------------------------------------
-         LOGGED-IN USER
-      ----------------------------------------------- */
+      /* =====================================================
+      1. LOGGED-IN USER
+      ===================================================== */
 
       const {
         data: { user },
@@ -198,9 +245,9 @@ export default function TutorClassworkDetailsPage() {
         );
       }
 
-      /* -----------------------------------------------
-         GET TUTOR
-      ----------------------------------------------- */
+      /* =====================================================
+      2. GET TUTOR
+      ===================================================== */
 
       const {
         data: tutor,
@@ -218,9 +265,9 @@ export default function TutorClassworkDetailsPage() {
         );
       }
 
-      /* -----------------------------------------------
-         GET STUDENT
-      ----------------------------------------------- */
+      /* =====================================================
+      3. GET STUDENT
+      ===================================================== */
 
       const {
         data: studentData,
@@ -242,10 +289,11 @@ export default function TutorClassworkDetailsPage() {
 
       setStudent(studentData);
 
-      /* -----------------------------------------------
-         GET CLASSWORK
-         Must belong to logged-in tutor.
-      ----------------------------------------------- */
+      /* =====================================================
+      4. GET CLASSWORK
+         
+         The classwork MUST belong to this tutor.
+      ===================================================== */
 
       const {
         data: classworkData,
@@ -281,20 +329,28 @@ export default function TutorClassworkDetailsPage() {
 
       setClasswork(classworkData);
 
-      /* -----------------------------------------------
-         VERIFY CLASSWORK ASSIGNMENT
-      ----------------------------------------------- */
+      /* =====================================================
+      5. VERIFY CLASSWORK IS ASSIGNED TO STUDENT
+      ===================================================== */
 
-     const {
-  data: assignment,
-  error: assignmentError,
-} = await supabase
-  .from("classwork_assignments")
-  .select("classwork_id, student_id")
-  .eq("classwork_id", classworkId)
-  .eq("student_id", studentId)
-  .limit(1)
-  .maybeSingle();
+      const {
+        data: assignment,
+        error: assignmentError,
+      } = await supabase
+        .from("classwork_assignments")
+        .select(
+          "classwork_id, student_id"
+        )
+        .eq(
+          "classwork_id",
+          classworkId
+        )
+        .eq(
+          "student_id",
+          studentId
+        )
+        .maybeSingle();
+
       if (assignmentError) {
         throw new Error(
           assignmentError.message
@@ -307,18 +363,21 @@ export default function TutorClassworkDetailsPage() {
         );
       }
 
-      /* -----------------------------------------------
-         GET ALL SUBMISSIONS FOR THIS CLASSWORK
-         We deliberately fetch the records first,
-         then identify the student's submission.
+      /* =====================================================
+      6. GET STUDENT SUBMISSION
+         
+         PRIMARY ID:
+         student_id
 
-         This handles both:
-         - newer submissions using student_id
-         - older submissions using student_email
-      ----------------------------------------------- */
+         We do NOT fetch every student's submission.
+
+         This query asks Supabase directly for the
+         submission belonging to THIS student and THIS
+         classwork.
+      ===================================================== */
 
       const {
-        data: submissionRows,
+        data: submissionData,
         error: submissionError,
       } = await supabase
         .from("classwork_submissions")
@@ -347,12 +406,18 @@ export default function TutorClassworkDetailsPage() {
           "classwork_id",
           classworkId
         )
+        .eq(
+          "student_id",
+          studentId
+        )
         .order(
           "submitted_at",
           {
             ascending: false,
           }
-        );
+        )
+        .limit(1)
+        .maybeSingle();
 
       if (submissionError) {
         throw new Error(
@@ -360,92 +425,121 @@ export default function TutorClassworkDetailsPage() {
         );
       }
 
-      /* -----------------------------------------------
-         MATCH STUDENT
+      /* =====================================================
+      7. OLD RECORD FALLBACK
+         
+         Some older submissions may have student_email
+         but no student_id.
 
-         Primary match:
-         student_id
+         We only use this fallback if no ID-based
+         submission was found.
+      ===================================================== */
 
-         Fallback:
-         student_email
-      ----------------------------------------------- */
+      let finalSubmission =
+        submissionData || null;
 
-      const normalizedStudentEmail =
+      if (
+        !finalSubmission &&
         studentData.email
-          ?.trim()
-          .toLowerCase() || "";
+      ) {
+        const normalizedEmail =
+          studentData.email
+            .trim()
+            .toLowerCase();
 
-      const matchingSubmissions =
-        (submissionRows || []).filter(
-          (item: Submission) => {
-            const sameStudentId =
-              !!item.student_id &&
-              item.student_id ===
-                studentData.id;
+        const {
+          data: emailSubmission,
+          error: emailSubmissionError,
+        } = await supabase
+          .from(
+            "classwork_submissions"
+          )
+          .select(
+            `
+              id,
+              classwork_id,
+              student_id,
+              student_email,
+              subject,
+              title,
+              image_url,
+              text_answer,
+              status,
+              tutor_feedback,
+              teacher_feedback,
+              submitted_at,
+              score,
+              total_marks,
+              percentage,
+              grade,
+              correction_file_url
+            `
+          )
+          .eq(
+            "classwork_id",
+            classworkId
+          )
+          .eq(
+            "student_email",
+            normalizedEmail
+          )
+          .order(
+            "submitted_at",
+            {
+              ascending: false,
+            }
+          )
+          .limit(1)
+          .maybeSingle();
 
-            const sameStudentEmail =
-              !!normalizedStudentEmail &&
-              !!item.student_email &&
-              item.student_email
-                .trim()
-                .toLowerCase() ===
-                normalizedStudentEmail;
+        if (emailSubmissionError) {
+          throw new Error(
+            emailSubmissionError.message
+          );
+        }
 
-            return (
-              sameStudentId ||
-              sameStudentEmail
-            );
-          }
-        );
-
-      /*
-       * Because submissions are ordered newest first,
-       * the first matching record is the student's
-       * latest submission.
-       */
-
-      const latestSubmission =
-        matchingSubmissions[0] ||
-        null;
+        finalSubmission =
+          emailSubmission || null;
+      }
 
       setSubmission(
-        latestSubmission
+        finalSubmission
       );
 
-      /* -----------------------------------------------
-         LOAD EXISTING MARKING
-      ----------------------------------------------- */
+      /* =====================================================
+      8. LOAD EXISTING MARKING
+      ===================================================== */
 
-      if (latestSubmission) {
+      if (finalSubmission) {
         setScore(
-          latestSubmission.score !== null
+          finalSubmission.score !== null
             ? String(
-                latestSubmission.score
+                finalSubmission.score
               )
             : ""
         );
 
         setTotalMarks(
-          latestSubmission.total_marks !==
+          finalSubmission.total_marks !==
           null
             ? String(
-                latestSubmission.total_marks
+                finalSubmission.total_marks
               )
             : ""
         );
 
         setGrade(
-          latestSubmission.grade || ""
+          finalSubmission.grade || ""
         );
 
         setFeedback(
-          latestSubmission.teacher_feedback ||
-            latestSubmission.tutor_feedback ||
+          finalSubmission.teacher_feedback ||
+            finalSubmission.tutor_feedback ||
             ""
         );
 
         setCorrectionText(
-          latestSubmission.tutor_feedback ||
+          finalSubmission.tutor_feedback ||
             ""
         );
       } else {
@@ -471,9 +565,9 @@ export default function TutorClassworkDetailsPage() {
     }
   }
 
-  /* =======================================================
+  /* =========================================================
   SAVE MARK / FEEDBACK
-  ======================================================= */
+  ========================================================= */
 
   async function saveMarking(
     event: FormEvent
@@ -502,21 +596,51 @@ export default function TutorClassworkDetailsPage() {
           ? Number(totalMarks)
           : null;
 
+      /* -----------------------------------------------
+      VALIDATE SCORE
+      ----------------------------------------------- */
+
       if (
         numericScore !== null &&
-        Number.isNaN(numericScore)
+        !Number.isFinite(numericScore)
       ) {
         throw new Error(
           "Please enter a valid score."
         );
       }
 
+      /* -----------------------------------------------
+      VALIDATE TOTAL
+      ----------------------------------------------- */
+
       if (
         numericTotal !== null &&
-        Number.isNaN(numericTotal)
+        !Number.isFinite(numericTotal)
       ) {
         throw new Error(
           "Please enter valid total marks."
+        );
+      }
+
+      /* -----------------------------------------------
+      VALIDATE SCORE RANGE
+      ----------------------------------------------- */
+
+      if (
+        numericScore !== null &&
+        numericScore < 0
+      ) {
+        throw new Error(
+          "Score cannot be negative."
+        );
+      }
+
+      if (
+        numericTotal !== null &&
+        numericTotal < 0
+      ) {
+        throw new Error(
+          "Total marks cannot be negative."
         );
       }
 
@@ -530,8 +654,13 @@ export default function TutorClassworkDetailsPage() {
         );
       }
 
-      let percentage: number | null =
-        null;
+      /* -----------------------------------------------
+      CALCULATE PERCENTAGE
+      ----------------------------------------------- */
+
+      let percentage:
+        | number
+        | null = null;
 
       if (
         numericScore !== null &&
@@ -544,6 +673,10 @@ export default function TutorClassworkDetailsPage() {
           100;
       }
 
+      /* -----------------------------------------------
+      UPDATE SUBMISSION
+      ----------------------------------------------- */
+
       const {
         data: updatedSubmission,
         error: updateError,
@@ -552,21 +685,30 @@ export default function TutorClassworkDetailsPage() {
           "classwork_submissions"
         )
         .update({
-          score: numericScore,
-          total_marks: numericTotal,
+          score:
+            numericScore,
+
+          total_marks:
+            numericTotal,
+
           percentage:
             percentage !== null
               ? Number(
                   percentage.toFixed(2)
                 )
               : null,
+
           grade:
             grade.trim() || null,
-          teacher_feedback:
-            feedback.trim() || null,
+
           tutor_feedback:
             feedback.trim() || null,
-          status: "marked",
+
+          teacher_feedback:
+            feedback.trim() || null,
+
+          status:
+            "marked",
         })
         .eq(
           "id",
@@ -624,9 +766,9 @@ export default function TutorClassworkDetailsPage() {
     }
   }
 
-  /* =======================================================
+  /* =========================================================
   SAVE CORRECTION
-  ======================================================= */
+  ========================================================= */
 
   async function saveCorrection() {
     if (!submission) {
@@ -651,6 +793,10 @@ export default function TutorClassworkDetailsPage() {
       setError("");
       setMessage("");
 
+      /* -----------------------------------------------
+      AUTH
+      ----------------------------------------------- */
+
       const {
         data: { user },
         error: authError,
@@ -662,12 +808,12 @@ export default function TutorClassworkDetailsPage() {
         );
       }
 
+      /* -----------------------------------------------
+      UPLOAD CORRECTION FILE
+      ----------------------------------------------- */
+
       let correctionFileUrl =
         submission.correction_file_url;
-
-      /* -----------------------------------------------
-         UPLOAD CORRECTION FILE
-      ----------------------------------------------- */
 
       if (correctionFile) {
         const safeFileName =
@@ -723,7 +869,7 @@ export default function TutorClassworkDetailsPage() {
       }
 
       /* -----------------------------------------------
-         SAVE CORRECTION
+      UPDATE SUBMISSION
       ----------------------------------------------- */
 
       const {
@@ -815,9 +961,9 @@ export default function TutorClassworkDetailsPage() {
     }
   }
 
-  /* =======================================================
+  /* =========================================================
   LOADING
-  ======================================================= */
+  ========================================================= */
 
   if (loading) {
     return (
@@ -838,9 +984,9 @@ export default function TutorClassworkDetailsPage() {
     );
   }
 
-  /* =======================================================
+  /* =========================================================
   ERROR
-  ======================================================= */
+  ========================================================= */
 
   if (error && !classwork) {
     return (
@@ -870,15 +1016,17 @@ export default function TutorClassworkDetailsPage() {
     );
   }
 
-  /* =======================================================
+  /* =========================================================
   MAIN PAGE
-  ======================================================= */
+  ========================================================= */
 
   return (
     <main className="min-h-screen bg-slate-50">
       <div className="mx-auto max-w-5xl px-5 py-10">
 
-        {/* BACK */}
+        {/* =================================================
+        BACK
+        ================================================= */}
 
         <Link
           href={`/tutor-dashboard/students/${studentId}/classwork`}
@@ -888,7 +1036,9 @@ export default function TutorClassworkDetailsPage() {
           Back to Classwork
         </Link>
 
-        {/* MESSAGES */}
+        {/* =================================================
+        MESSAGES
+        ================================================= */}
 
         {message && (
           <div className="mt-6 flex items-center gap-3 rounded-2xl border border-green-200 bg-green-50 px-5 py-4 text-sm font-semibold text-green-700">
@@ -909,6 +1059,7 @@ export default function TutorClassworkDetailsPage() {
               onClick={() =>
                 setError("")
               }
+              className="rounded-lg p-1 hover:bg-red-100"
             >
               <X size={18} />
             </button>
@@ -916,7 +1067,7 @@ export default function TutorClassworkDetailsPage() {
         )}
 
         {/* =================================================
-            CLASSWORK HEADER
+        CLASSWORK HEADER
         ================================================= */}
 
         <header className="mt-8">
@@ -963,10 +1114,46 @@ export default function TutorClassworkDetailsPage() {
         </header>
 
         {/* =================================================
-            TUTOR ASSIGNMENT
+        STUDENT
         ================================================= */}
 
-        <section className="mt-8 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm md:p-7">
+        <section className="mt-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+
+          <div className="flex items-center gap-3">
+
+            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-slate-100">
+              <User
+                size={20}
+                className="text-slate-500"
+              />
+            </div>
+
+            <div>
+              <p className="text-xs font-extrabold uppercase tracking-wide text-slate-400">
+                Student
+              </p>
+
+              <p className="mt-1 font-extrabold text-slate-950">
+                {student?.full_name ||
+                  "Student"}
+              </p>
+
+              {student?.email && (
+                <p className="text-sm text-slate-500">
+                  {student.email}
+                </p>
+              )}
+            </div>
+
+          </div>
+
+        </section>
+
+        {/* =================================================
+        TUTOR ASSIGNMENT
+        ================================================= */}
+
+        <section className="mt-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm md:p-7">
 
           <div className="flex items-center gap-3">
 
@@ -982,9 +1169,11 @@ export default function TutorClassworkDetailsPage() {
           </div>
 
           {classwork?.description ? (
-            <p className="mt-5 whitespace-pre-wrap leading-8 text-slate-700">
-              {classwork.description}
-            </p>
+            <div className="mt-5 rounded-2xl bg-slate-50 p-5">
+              <p className="whitespace-pre-wrap leading-8 text-slate-700">
+                {classwork.description}
+              </p>
+            </div>
           ) : (
             <p className="mt-5 text-sm text-slate-400">
               No written instructions were provided.
@@ -1015,17 +1204,32 @@ export default function TutorClassworkDetailsPage() {
 
                 </div>
 
-                <a
-                  href={
-                    classwork.attachment_url
-                  }
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-950 px-4 py-3 text-sm font-bold text-white hover:bg-slate-800"
-                >
-                  <ExternalLink size={16} />
-                  Open Attachment
-                </a>
+                <div className="flex flex-wrap gap-2">
+
+                  <a
+                    href={
+                      classwork.attachment_url
+                    }
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-950 px-4 py-3 text-sm font-bold text-white hover:bg-slate-800"
+                  >
+                    <ExternalLink size={16} />
+                    Open
+                  </a>
+
+                  <a
+                    href={
+                      classwork.attachment_url
+                    }
+                    download
+                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-yellow-500 px-4 py-3 text-sm font-bold text-slate-950 hover:bg-yellow-400"
+                  >
+                    <Download size={16} />
+                    Download
+                  </a>
+
+                </div>
 
               </div>
 
@@ -1035,21 +1239,19 @@ export default function TutorClassworkDetailsPage() {
         </section>
 
         {/* =================================================
-            STUDENT SUBMISSION
+        STUDENT SUBMISSION
         ================================================= */}
 
-        <section className="mt-6">
+        <section className="mt-8">
 
-          <div className="mb-4">
+          <div className="mb-5">
 
-            <h2 className="text-xl font-extrabold text-slate-950">
+            <h2 className="text-2xl font-extrabold text-slate-950">
               Student Submission
             </h2>
 
             <p className="mt-1 text-sm text-slate-500">
-              {student?.full_name
-                ? `Submission from ${student.full_name}.`
-                : "Review the student's submitted work below."}
+              Review the student's written answer and uploaded file.
             </p>
 
           </div>
@@ -1078,17 +1280,19 @@ export default function TutorClassworkDetailsPage() {
 
           ) : (
 
-            <div className="space-y-5">
+            <div className="space-y-6">
 
-              {/* SUBMISSION META */}
+              {/* =================================================
+              SUBMISSION SUMMARY
+              ================================================= */}
 
               <div className="rounded-3xl border border-green-200 bg-green-50 p-6">
 
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
 
                   <div>
 
-                    <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-extrabold text-green-700">
+                    <span className="inline-flex rounded-full bg-green-100 px-3 py-1 text-xs font-extrabold text-green-700">
                       {submission.status ||
                         "Submitted"}
                     </span>
@@ -1104,90 +1308,108 @@ export default function TutorClassworkDetailsPage() {
 
                   </div>
 
-                  {submission.score !== null &&
-                    submission.total_marks !== null && (
-                      <div className="rounded-xl bg-white px-5 py-3 text-center">
+                  <div className="flex flex-wrap gap-3">
 
-                        <p className="text-xs font-bold uppercase text-slate-400">
-                          Score
+                    {submission.score !== null &&
+                      submission.total_marks !== null && (
+                        <div className="min-w-[130px] rounded-2xl bg-white px-5 py-3 text-center shadow-sm">
+
+                          <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
+                            Score
+                          </p>
+
+                          <p className="text-2xl font-black text-blue-600">
+                            {submission.score}
+                            {" / "}
+                            {submission.total_marks}
+                          </p>
+
+                          {submission.percentage !==
+                            null && (
+                            <p className="text-xs font-bold text-slate-500">
+                              {submission.percentage}%
+                            </p>
+                          )}
+
+                        </div>
+                      )}
+
+                    {submission.grade && (
+                      <div className="min-w-[100px] rounded-2xl bg-white px-5 py-3 text-center shadow-sm">
+
+                        <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
+                          Grade
                         </p>
 
                         <p className="text-2xl font-black text-blue-600">
-                          {submission.score}
-                          {" / "}
-                          {submission.total_marks}
+                          {submission.grade}
                         </p>
-
-                        {submission.percentage !==
-                          null && (
-                          <p className="text-xs font-bold text-slate-500">
-                            {submission.percentage}%
-                          </p>
-                        )}
 
                       </div>
                     )}
 
-                  {submission.grade && (
-                    <div className="rounded-xl bg-white px-5 py-3 text-center">
-
-                      <p className="text-xs font-bold uppercase text-slate-400">
-                        Grade
-                      </p>
-
-                      <p className="text-2xl font-black text-blue-600">
-                        {submission.grade}
-                      </p>
-
-                    </div>
-                  )}
+                  </div>
 
                 </div>
 
               </div>
 
-              {/* WRITTEN SUBMISSION */}
+              {/* =================================================
+              WRITTEN ANSWER
+              ================================================= */}
 
               {submission.text_answer && (
-                <div className="rounded-3xl border border-yellow-200 bg-yellow-50 p-6">
+                <section className="rounded-3xl border border-yellow-200 bg-white p-6 shadow-sm">
 
                   <div className="flex items-center gap-3">
 
-                    <MessageSquare
-                      size={22}
-                      className="text-yellow-600"
-                    />
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-yellow-100">
+                      <MessageSquare
+                        size={20}
+                        className="text-yellow-700"
+                      />
+                    </div>
 
-                    <h3 className="text-lg font-extrabold text-slate-950">
-                      Written Submission
-                    </h3>
+                    <div>
+                      <h3 className="text-lg font-extrabold text-slate-950">
+                        Written Answer
+                      </h3>
+
+                      <p className="text-sm text-slate-500">
+                        Answer submitted directly by the student.
+                      </p>
+                    </div>
 
                   </div>
 
-                  <div className="mt-4 rounded-2xl bg-white p-5">
+                  <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-5">
 
-                    <p className="whitespace-pre-wrap leading-8 text-slate-700">
+                    <p className="whitespace-pre-wrap break-words leading-8 text-slate-700">
                       {submission.text_answer}
                     </p>
 
                   </div>
 
-                </div>
+                </section>
               )}
 
-              {/* UPLOADED FILE */}
+              {/* =================================================
+              UPLOADED STUDENT FILE
+              ================================================= */}
 
               {submission.image_url && (
-                <div className="rounded-3xl border border-slate-200 bg-white p-6">
+                <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
 
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 
                     <div className="flex items-center gap-3">
 
-                      <FileText
-                        size={23}
-                        className="text-slate-500"
-                      />
+                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100">
+                        <FileText
+                          size={20}
+                          className="text-slate-600"
+                        />
+                      </div>
 
                       <div>
 
@@ -1196,7 +1418,9 @@ export default function TutorClassworkDetailsPage() {
                         </h3>
 
                         <p className="text-sm text-slate-500">
-                          File submitted by the student.
+                          {getFileLabel(
+                            submission.image_url
+                          )}
                         </p>
 
                       </div>
@@ -1211,7 +1435,7 @@ export default function TutorClassworkDetailsPage() {
                         }
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-bold text-white"
+                        className="inline-flex items-center gap-2 rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-bold text-white hover:bg-slate-800"
                       >
                         <ExternalLink size={16} />
                         View
@@ -1222,7 +1446,7 @@ export default function TutorClassworkDetailsPage() {
                           submission.image_url
                         }
                         download
-                        className="inline-flex items-center gap-2 rounded-xl bg-yellow-500 px-4 py-2.5 text-sm font-bold text-slate-950"
+                        className="inline-flex items-center gap-2 rounded-xl bg-yellow-500 px-4 py-2.5 text-sm font-bold text-slate-950 hover:bg-yellow-400"
                       >
                         <Download size={16} />
                         Download
@@ -1231,6 +1455,8 @@ export default function TutorClassworkDetailsPage() {
                     </div>
 
                   </div>
+
+                  {/* IMAGE PREVIEW */}
 
                   {isImage(
                     submission.image_url
@@ -1248,6 +1474,8 @@ export default function TutorClassworkDetailsPage() {
                     </div>
                   )}
 
+                  {/* PDF PREVIEW */}
+
                   {isPdf(
                     submission.image_url
                   ) && (
@@ -1258,17 +1486,76 @@ export default function TutorClassworkDetailsPage() {
                           submission.image_url
                         }
                         title="Student submitted PDF"
-                        className="h-[700px] w-full"
+                        className="h-[750px] w-full"
                       />
 
                     </div>
                   )}
 
-                </div>
+                  {/* WORD DOCUMENT */}
+
+                  {isWordDocument(
+                    submission.image_url
+                  ) && (
+                    <div className="mt-5 rounded-2xl border border-blue-200 bg-blue-50 p-5">
+
+                      <div className="flex items-start gap-3">
+
+                        <FileText
+                          size={22}
+                          className="mt-0.5 text-blue-600"
+                        />
+
+                        <div>
+
+                          <p className="font-bold text-slate-900">
+                            Word document
+                          </p>
+
+                          <p className="mt-1 text-sm leading-6 text-slate-600">
+                            Word documents may not render directly
+                            inside every browser. Use Download to
+                            open the submitted document in Word or
+                            another compatible application.
+                          </p>
+
+                        </div>
+
+                      </div>
+
+                    </div>
+                  )}
+
+                </section>
               )}
 
               {/* =================================================
-                  MARKING
+              NO CONTENT WARNING
+              ================================================= */}
+
+              {!submission.text_answer &&
+                !submission.image_url && (
+                  <div className="rounded-3xl border border-slate-200 bg-white p-7 text-center">
+
+                    <FileText
+                      size={38}
+                      className="mx-auto text-slate-300"
+                    />
+
+                    <h3 className="mt-4 font-bold text-slate-900">
+                      Submission record found
+                    </h3>
+
+                    <p className="mt-2 text-sm text-slate-500">
+                      This submission does not currently contain
+                      written text or an uploaded file.
+                    </p>
+
+                  </div>
+                )}
+
+              {/* =================================================
+              MARKING
               ================================================= */}
 
               <form
@@ -1278,10 +1565,12 @@ export default function TutorClassworkDetailsPage() {
 
                 <div className="flex items-center gap-3">
 
-                  <CheckCircle2
-                    size={23}
-                    className="text-blue-600"
-                  />
+                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-100">
+                    <CheckCircle2
+                      size={22}
+                      className="text-blue-600"
+                    />
+                  </div>
 
                   <div>
 
@@ -1299,7 +1588,10 @@ export default function TutorClassworkDetailsPage() {
 
                 <div className="mt-6 grid gap-4 sm:grid-cols-3">
 
+                  {/* SCORE */}
+
                   <div>
+
                     <label className="mb-2 block text-sm font-bold text-slate-700">
                       Score
                     </label>
@@ -1316,9 +1608,13 @@ export default function TutorClassworkDetailsPage() {
                       placeholder="e.g. 18"
                       className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-blue-500"
                     />
+
                   </div>
 
+                  {/* TOTAL */}
+
                   <div>
+
                     <label className="mb-2 block text-sm font-bold text-slate-700">
                       Total Marks
                     </label>
@@ -1335,9 +1631,13 @@ export default function TutorClassworkDetailsPage() {
                       placeholder="e.g. 20"
                       className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-blue-500"
                     />
+
                   </div>
 
+                  {/* GRADE */}
+
                   <div>
+
                     <label className="mb-2 block text-sm font-bold text-slate-700">
                       Grade
                     </label>
@@ -1353,9 +1653,12 @@ export default function TutorClassworkDetailsPage() {
                       placeholder="e.g. A"
                       className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-blue-500"
                     />
+
                   </div>
 
                 </div>
+
+                {/* FEEDBACK */}
 
                 <div className="mt-5">
 
@@ -1380,7 +1683,7 @@ export default function TutorClassworkDetailsPage() {
                 <button
                   type="submit"
                   disabled={saving}
-                  className="mt-5 inline-flex items-center gap-2 rounded-xl bg-slate-950 px-6 py-3 font-bold text-white hover:bg-slate-800 disabled:opacity-60"
+                  className="mt-5 inline-flex items-center gap-2 rounded-xl bg-slate-950 px-6 py-3 font-bold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
                 >
 
                   {saving ? (
@@ -1401,17 +1704,19 @@ export default function TutorClassworkDetailsPage() {
               </form>
 
               {/* =================================================
-                  CORRECTION
+              CORRECTION
               ================================================= */}
 
               <section className="rounded-3xl border border-yellow-200 bg-yellow-50 p-6">
 
                 <div className="flex items-center gap-3">
 
-                  <MessageSquare
-                    size={23}
-                    className="text-yellow-600"
-                  />
+                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-yellow-100">
+                    <MessageSquare
+                      size={22}
+                      className="text-yellow-700"
+                    />
+                  </div>
 
                   <div>
 
@@ -1427,6 +1732,8 @@ export default function TutorClassworkDetailsPage() {
 
                 </div>
 
+                {/* CORRECTION TEXT */}
+
                 <textarea
                   value={correctionText}
                   onChange={(event) =>
@@ -1438,6 +1745,8 @@ export default function TutorClassworkDetailsPage() {
                   placeholder="Write the correction here..."
                   className="mt-5 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 leading-7 outline-none focus:border-yellow-500"
                 />
+
+                {/* CORRECTION FILE */}
 
                 <div className="mt-5">
 
@@ -1483,7 +1792,7 @@ export default function TutorClassworkDetailsPage() {
                   disabled={
                     uploadingCorrection
                   }
-                  className="mt-5 inline-flex items-center gap-2 rounded-xl bg-yellow-500 px-6 py-3 font-bold text-slate-950 hover:bg-yellow-400 disabled:opacity-60"
+                  className="mt-5 inline-flex items-center gap-2 rounded-xl bg-yellow-500 px-6 py-3 font-bold text-slate-950 hover:bg-yellow-400 disabled:cursor-not-allowed disabled:opacity-60"
                 >
 
                   {uploadingCorrection ? (
@@ -1501,22 +1810,37 @@ export default function TutorClassworkDetailsPage() {
 
                 </button>
 
-                {/* EXISTING CORRECTION */}
+                {/* EXISTING CORRECTION FILE */}
 
                 {submission.correction_file_url && (
                   <div className="mt-6 border-t border-yellow-200 pt-5">
 
-                    <a
-                      href={
-                        submission.correction_file_url
-                      }
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 font-bold text-slate-900 underline underline-offset-4 hover:text-yellow-700"
-                    >
-                      <ExternalLink size={16} />
-                      View Correction →
-                    </a>
+                    <div className="flex flex-wrap gap-2">
+
+                      <a
+                        href={
+                          submission.correction_file_url
+                        }
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-bold text-white hover:bg-slate-800"
+                      >
+                        <ExternalLink size={16} />
+                        View Correction
+                      </a>
+
+                      <a
+                        href={
+                          submission.correction_file_url
+                        }
+                        download
+                        className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50"
+                      >
+                        <Download size={16} />
+                        Download Correction
+                      </a>
+
+                    </div>
 
                   </div>
                 )}
