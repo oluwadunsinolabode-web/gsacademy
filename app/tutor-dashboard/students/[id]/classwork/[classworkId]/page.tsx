@@ -20,7 +20,7 @@ import { useParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
 /* =========================================================
-TYPES
+   TYPES
 ========================================================= */
 
 type Classwork = {
@@ -62,7 +62,7 @@ type Submission = {
 };
 
 /* =========================================================
-HELPERS
+   HELPERS
 ========================================================= */
 
 function formatDate(value: string | null) {
@@ -137,7 +137,7 @@ function getFileLabel(url: string | null) {
 }
 
 /* =========================================================
-PAGE
+   PAGE
 ========================================================= */
 
 export default function TutorClassworkDetailsPage() {
@@ -152,66 +152,58 @@ export default function TutorClassworkDetailsPage() {
     : params.classworkId;
 
   /* =======================================================
-  DATA
+     DATA
   ======================================================= */
 
-  const [student, setStudent] =
-    useState<Student | null>(null);
-
-  const [classwork, setClasswork] =
-    useState<Classwork | null>(null);
-
+  const [student, setStudent] = useState<Student | null>(null);
+  const [classwork, setClasswork] = useState<Classwork | null>(null);
   const [submission, setSubmission] =
     useState<Submission | null>(null);
 
+  /*
+   * Keep the real database submission IDs.
+   *
+   * Your current database has:
+   *
+   * Row 1 = written answer
+   * Row 2 = uploaded image
+   *
+   * We need both IDs when saving marking/correction.
+   */
+  const [submissionIds, setSubmissionIds] = useState<string[]>([]);
+
   /* =======================================================
-  STATE
+     STATE
   ======================================================= */
 
-  const [loading, setLoading] =
-    useState(true);
-
-  const [saving, setSaving] =
-    useState(false);
-
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [uploadingCorrection, setUploadingCorrection] =
     useState(false);
 
-  const [error, setError] =
-    useState("");
-
-  const [message, setMessage] =
-    useState("");
+  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
 
   /* =======================================================
-  MARKING
+     MARKING
   ======================================================= */
 
-  const [score, setScore] =
-    useState("");
-
-  const [totalMarks, setTotalMarks] =
-    useState("");
-
-  const [grade, setGrade] =
-    useState("");
-
-  const [feedback, setFeedback] =
-    useState("");
+  const [score, setScore] = useState("");
+  const [totalMarks, setTotalMarks] = useState("");
+  const [grade, setGrade] = useState("");
+  const [feedback, setFeedback] = useState("");
 
   /* =======================================================
-  CORRECTION
+     CORRECTION
   ======================================================= */
 
-  const [correctionText, setCorrectionText] =
-    useState("");
-
+  const [correctionText, setCorrectionText] = useState("");
   const [correctionFile, setCorrectionFile] =
     useState<File | null>(null);
 
-  /* =========================================================
-  LOAD PAGE
-  ========================================================= */
+  /* =======================================================
+     LOAD
+  ======================================================= */
 
   useEffect(() => {
     if (!studentId || !classworkId) {
@@ -221,6 +213,10 @@ export default function TutorClassworkDetailsPage() {
     loadPage();
   }, [studentId, classworkId]);
 
+  /* =========================================================
+     LOAD PAGE
+  ========================================================= */
+
   async function loadPage() {
     try {
       setLoading(true);
@@ -228,7 +224,7 @@ export default function TutorClassworkDetailsPage() {
       setMessage("");
 
       /* =====================================================
-      1. LOGGED-IN USER
+         1. LOGGED-IN USER
       ===================================================== */
 
       const {
@@ -243,7 +239,7 @@ export default function TutorClassworkDetailsPage() {
       }
 
       /* =====================================================
-      2. GET TUTOR
+         2. GET TUTOR
       ===================================================== */
 
       const {
@@ -263,7 +259,7 @@ export default function TutorClassworkDetailsPage() {
       }
 
       /* =====================================================
-      3. GET STUDENT
+         3. GET STUDENT
       ===================================================== */
 
       const {
@@ -285,7 +281,7 @@ export default function TutorClassworkDetailsPage() {
       setStudent(studentData);
 
       /* =====================================================
-      4. GET CLASSWORK
+         4. GET CLASSWORK
       ===================================================== */
 
       const {
@@ -310,10 +306,7 @@ export default function TutorClassworkDetailsPage() {
         .eq("tutor_id", tutor.id)
         .single();
 
-      if (
-        classworkError ||
-        !classworkData
-      ) {
+      if (classworkError || !classworkData) {
         throw new Error(
           classworkError?.message ||
             "Classwork could not be found."
@@ -323,7 +316,7 @@ export default function TutorClassworkDetailsPage() {
       setClasswork(classworkData);
 
       /* =====================================================
-      5. VERIFY CLASSWORK IS ASSIGNED TO STUDENT
+         5. VERIFY ASSIGNMENT
       ===================================================== */
 
       const {
@@ -331,17 +324,9 @@ export default function TutorClassworkDetailsPage() {
         error: assignmentError,
       } = await supabase
         .from("classwork_assignments")
-        .select(
-          "classwork_id, student_id"
-        )
-        .eq(
-          "classwork_id",
-          classworkId
-        )
-        .eq(
-          "student_id",
-          studentId
-        )
+        .select("classwork_id, student_id")
+        .eq("classwork_id", classworkId)
+        .eq("student_id", studentData.id)
         .maybeSingle();
 
       if (assignmentError) {
@@ -357,14 +342,32 @@ export default function TutorClassworkDetailsPage() {
       }
 
       /* =====================================================
-      6. GET ALL STUDENT SUBMISSIONS
+         6. GET SUBMISSIONS BY CLASSWORK ONLY
+         
+         THIS IS THE IMPORTANT FIX.
+         
+         We DO NOT do:
+         
+         .eq("classwork_id", classworkId)
+         .eq("student_id", studentId)
+         
+         because that can hide the submission if the
+         route/student ID doesn't exactly match the
+         submission row.
+         
+         Instead, fetch the classwork submissions and
+         identify the student in JavaScript using either:
+         
+         student_id
+         
+         OR
+         
+         student_email
       ===================================================== */
 
-      let submissionRows: Submission[] = [];
-
       const {
-        data: submissionsById,
-        error: submissionsByIdError,
+        data: allClassworkSubmissions,
+        error: submissionsError,
       } = await supabase
         .from("classwork_submissions")
         .select(
@@ -389,211 +392,224 @@ export default function TutorClassworkDetailsPage() {
           `
         )
         .eq("classwork_id", classworkId)
-        .eq("student_id", studentId)
         .order("submitted_at", {
           ascending: false,
         });
 
-      if (submissionsByIdError) {
+      if (submissionsError) {
         throw new Error(
-          submissionsByIdError.message
+          submissionsError.message
         );
       }
 
-      submissionRows =
-        submissionsById || [];
-
       /* =====================================================
-      FALLBACK: SEARCH USING STUDENT EMAIL
+         7. MATCH STUDENT
       ===================================================== */
 
-      if (
-        submissionRows.length === 0 &&
-        studentData.email
-      ) {
-        const {
-          data: submissionsByEmail,
-          error: submissionsByEmailError,
-        } = await supabase
-          .from("classwork_submissions")
-          .select(
-            `
-              id,
-              classwork_id,
-              student_id,
-              student_email,
-              subject,
-              title,
-              image_url,
-              text_answer,
-              status,
-              tutor_feedback,
-              teacher_feedback,
-              submitted_at,
-              score,
-              total_marks,
-              percentage,
-              grade,
-              correction_file_url
-            `
-          )
-          .eq(
-            "classwork_id",
-            classworkId
-          )
-          .eq(
-            "student_email",
-            studentData.email
-          )
-          .order("submitted_at", {
-            ascending: false,
-          });
+      const normalizedStudentEmail =
+        studentData.email?.trim().toLowerCase() || "";
 
-        if (
-          submissionsByEmailError
-        ) {
-          throw new Error(
-            submissionsByEmailError.message
-          );
+      const matchingSubmissions =
+        (allClassworkSubmissions || []).filter(
+          (row) => {
+            const rowStudentId =
+              row.student_id?.trim() || "";
+
+            const rowEmail =
+              row.student_email
+                ?.trim()
+                .toLowerCase() || "";
+
+            const idMatches =
+              rowStudentId !== "" &&
+              rowStudentId === studentData.id;
+
+            const emailMatches =
+              normalizedStudentEmail !== "" &&
+              rowEmail !== "" &&
+              rowEmail === normalizedStudentEmail;
+
+            return idMatches || emailMatches;
+          }
+        ) as Submission[];
+
+      console.log(
+        "Tutor classwork submission debug:",
+        {
+          classworkId,
+          routeStudentId: studentId,
+          databaseStudentId: studentData.id,
+          studentEmail: studentData.email,
+          allSubmissions:
+            allClassworkSubmissions,
+          matchingSubmissions,
         }
+      );
 
-        submissionRows =
-          submissionsByEmail || [];
+      /* =====================================================
+         8. NO MATCH
+      ===================================================== */
+
+      if (matchingSubmissions.length === 0) {
+        setSubmission(null);
+        setSubmissionIds([]);
+
+        setScore("");
+        setTotalMarks("");
+        setGrade("");
+        setFeedback("");
+        setCorrectionText("");
+
+        return;
       }
 
       /* =====================================================
-      COMBINE SUBMISSION ROWS
+         9. SAVE REAL SUBMISSION IDS
       ===================================================== */
 
-      let combinedSubmission:
-        | Submission
-        | null = null;
+      setSubmissionIds(
+        matchingSubmissions.map(
+          (row) => row.id
+        )
+      );
 
-      if (submissionRows.length > 0) {
-        const latestRow =
-          submissionRows[0];
+      /* =====================================================
+         10. COMBINE SUBMISSION ROWS
+         
+         Example:
+         
+         ROW A
+         text_answer = "Here is my answer"
+         image_url = null
+         
+         ROW B
+         text_answer = null
+         image_url = "https://..."
+         
+         RESULT:
+         
+         text_answer = "Here is my answer"
+         image_url = "https://..."
+      ===================================================== */
 
-        combinedSubmission = {
-          ...latestRow,
+      const latestRow =
+        matchingSubmissions[0];
 
-          text_answer:
-            submissionRows.find(
-              (row) =>
-                row.text_answer &&
-                row.text_answer.trim() !== ""
-            )?.text_answer || null,
+      const combinedSubmission: Submission = {
+        ...latestRow,
 
-          image_url:
-            submissionRows.find(
-              (row) =>
-                row.image_url &&
-                row.image_url.trim() !== ""
-            )?.image_url || null,
+        text_answer:
+          matchingSubmissions.find(
+            (row) =>
+              row.text_answer &&
+              row.text_answer.trim() !== ""
+          )?.text_answer || null,
 
-          status:
-            submissionRows.find(
-              (row) => row.status
-            )?.status ||
-            latestRow.status ||
-            "submitted",
+        image_url:
+          matchingSubmissions.find(
+            (row) =>
+              row.image_url &&
+              row.image_url.trim() !== ""
+          )?.image_url || null,
 
-          tutor_feedback:
-            submissionRows.find(
-              (row) =>
-                row.tutor_feedback &&
-                row.tutor_feedback.trim() !== ""
-            )?.tutor_feedback || null,
+        status:
+          matchingSubmissions.find(
+            (row) => row.status
+          )?.status ||
+          latestRow.status ||
+          "submitted",
 
-          teacher_feedback:
-            submissionRows.find(
-              (row) =>
-                row.teacher_feedback &&
-                row.teacher_feedback.trim() !== ""
-            )?.teacher_feedback || null,
+        submitted_at:
+          matchingSubmissions.find(
+            (row) => row.submitted_at
+          )?.submitted_at ||
+          latestRow.submitted_at ||
+          null,
 
-          score:
-            submissionRows.find(
-              (row) =>
-                row.score !== null
-            )?.score ?? null,
+        tutor_feedback:
+          matchingSubmissions.find(
+            (row) =>
+              row.tutor_feedback &&
+              row.tutor_feedback.trim() !== ""
+          )?.tutor_feedback || null,
 
-          total_marks:
-            submissionRows.find(
-              (row) =>
-                row.total_marks !== null
-            )?.total_marks ?? null,
+        teacher_feedback:
+          matchingSubmissions.find(
+            (row) =>
+              row.teacher_feedback &&
+              row.teacher_feedback.trim() !== ""
+          )?.teacher_feedback || null,
 
-          percentage:
-            submissionRows.find(
-              (row) =>
-                row.percentage !== null
-            )?.percentage ?? null,
+        score:
+          matchingSubmissions.find(
+            (row) =>
+              row.score !== null
+          )?.score ?? null,
 
-          grade:
-            submissionRows.find(
-              (row) =>
-                row.grade &&
-                row.grade.trim() !== ""
-            )?.grade || null,
+        total_marks:
+          matchingSubmissions.find(
+            (row) =>
+              row.total_marks !== null
+          )?.total_marks ?? null,
 
-          correction_file_url:
-            submissionRows.find(
-              (row) =>
-                row.correction_file_url
-            )?.correction_file_url ||
-            null,
-        };
-      }
+        percentage:
+          matchingSubmissions.find(
+            (row) =>
+              row.percentage !== null
+          )?.percentage ?? null,
+
+        grade:
+          matchingSubmissions.find(
+            (row) =>
+              row.grade &&
+              row.grade.trim() !== ""
+          )?.grade || null,
+
+        correction_file_url:
+          matchingSubmissions.find(
+            (row) =>
+              row.correction_file_url
+          )?.correction_file_url || null,
+      };
 
       setSubmission(
         combinedSubmission
       );
 
       /* =====================================================
-      7. LOAD EXISTING MARKING
+         11. LOAD MARKING
       ===================================================== */
 
-      if (combinedSubmission) {
-        setScore(
-          combinedSubmission.score !==
-            null
-            ? String(
-                combinedSubmission.score
-              )
-            : ""
-        );
+      setScore(
+        combinedSubmission.score !== null
+          ? String(
+              combinedSubmission.score
+            )
+          : ""
+      );
 
-        setTotalMarks(
-          combinedSubmission.total_marks !==
-            null
-            ? String(
-                combinedSubmission.total_marks
-              )
-            : ""
-        );
+      setTotalMarks(
+        combinedSubmission.total_marks !== null
+          ? String(
+              combinedSubmission.total_marks
+            )
+          : ""
+      );
 
-        setGrade(
-          combinedSubmission.grade ||
-            ""
-        );
+      setGrade(
+        combinedSubmission.grade || ""
+      );
 
-        setFeedback(
-          combinedSubmission.teacher_feedback ||
-            combinedSubmission.tutor_feedback ||
-            ""
-        );
-
-        setCorrectionText(
+      setFeedback(
+        combinedSubmission.teacher_feedback ||
           combinedSubmission.tutor_feedback ||
-            ""
-        );
-      } else {
-        setScore("");
-        setTotalMarks("");
-        setGrade("");
-        setFeedback("");
-        setCorrectionText("");
-      }
+          ""
+      );
+
+      setCorrectionText(
+        combinedSubmission.tutor_feedback ||
+          ""
+      );
     } catch (err) {
       console.error(
         "Classwork details loading error:",
@@ -611,7 +627,7 @@ export default function TutorClassworkDetailsPage() {
   }
 
   /* =========================================================
-  SAVE MARK / FEEDBACK
+     SAVE MARKING
   ========================================================= */
 
   async function saveMarking(
@@ -622,6 +638,13 @@ export default function TutorClassworkDetailsPage() {
     if (!submission) {
       setError(
         "There is no student submission to mark."
+      );
+      return;
+    }
+
+    if (submissionIds.length === 0) {
+      setError(
+        "No submission records were found."
       );
       return;
     }
@@ -641,8 +664,6 @@ export default function TutorClassworkDetailsPage() {
           ? Number(totalMarks)
           : null;
 
-      /* VALIDATE SCORE */
-
       if (
         numericScore !== null &&
         !Number.isFinite(numericScore)
@@ -652,8 +673,6 @@ export default function TutorClassworkDetailsPage() {
         );
       }
 
-      /* VALIDATE TOTAL */
-
       if (
         numericTotal !== null &&
         !Number.isFinite(numericTotal)
@@ -662,8 +681,6 @@ export default function TutorClassworkDetailsPage() {
           "Please enter valid total marks."
         );
       }
-
-      /* VALIDATE SCORE RANGE */
 
       if (
         numericScore !== null &&
@@ -693,8 +710,6 @@ export default function TutorClassworkDetailsPage() {
         );
       }
 
-      /* CALCULATE PERCENTAGE */
-
       let percentage:
         | number
         | null = null;
@@ -711,15 +726,15 @@ export default function TutorClassworkDetailsPage() {
       }
 
       /* =====================================================
-      UPDATE ALL ROWS FOR THIS STUDENT + CLASSWORK
+         UPDATE ALL MATCHING SUBMISSION ROWS
+         
+         This keeps the text row and file row synchronized.
       ===================================================== */
 
       const {
         error: updateError,
       } = await supabase
-        .from(
-          "classwork_submissions"
-        )
+        .from("classwork_submissions")
         .update({
           score: numericScore,
 
@@ -744,13 +759,9 @@ export default function TutorClassworkDetailsPage() {
 
           status: "marked",
         })
-        .eq(
-          "classwork_id",
-          classworkId
-        )
-        .eq(
-          "student_id",
-          studentId
+        .in(
+          "id",
+          submissionIds
         );
 
       if (updateError) {
@@ -759,14 +770,38 @@ export default function TutorClassworkDetailsPage() {
         );
       }
 
-      /*
-       * Reload the combined submission.
-       *
-       * This ensures the text row and image row
-       * are both represented correctly after marking.
-       */
+      /* =====================================================
+         UPDATE LOCAL STATE
+      ===================================================== */
 
-      await loadPage();
+      setSubmission(
+        (current) => ({
+          ...(current || submission),
+
+          score: numericScore,
+
+          total_marks:
+            numericTotal,
+
+          percentage:
+            percentage !== null
+              ? Number(
+                  percentage.toFixed(2)
+                )
+              : null,
+
+          grade:
+            grade.trim() || null,
+
+          tutor_feedback:
+            feedback.trim() || null,
+
+          teacher_feedback:
+            feedback.trim() || null,
+
+          status: "marked",
+        })
+      );
 
       setMessage(
         "Mark and feedback saved successfully."
@@ -788,13 +823,20 @@ export default function TutorClassworkDetailsPage() {
   }
 
   /* =========================================================
-  SAVE CORRECTION
+     SAVE CORRECTION
   ========================================================= */
 
   async function saveCorrection() {
     if (!submission) {
       setError(
         "There is no submission to attach a correction to."
+      );
+      return;
+    }
+
+    if (submissionIds.length === 0) {
+      setError(
+        "No submission records were found."
       );
       return;
     }
@@ -814,7 +856,9 @@ export default function TutorClassworkDetailsPage() {
       setError("");
       setMessage("");
 
-      /* AUTH */
+      /* =====================================================
+         AUTH
+      ===================================================== */
 
       const {
         data: { user },
@@ -828,7 +872,7 @@ export default function TutorClassworkDetailsPage() {
       }
 
       /* =====================================================
-      UPLOAD CORRECTION FILE
+         UPLOAD CORRECTION FILE
       ===================================================== */
 
       let correctionFileUrl =
@@ -888,15 +932,13 @@ export default function TutorClassworkDetailsPage() {
       }
 
       /* =====================================================
-      UPDATE ALL STUDENT SUBMISSION ROWS
+         UPDATE ALL SUBMISSION ROWS
       ===================================================== */
 
       const {
         error: updateError,
       } = await supabase
-        .from(
-          "classwork_submissions"
-        )
+        .from("classwork_submissions")
         .update({
           correction_file_url:
             correctionFileUrl ||
@@ -907,13 +949,9 @@ export default function TutorClassworkDetailsPage() {
             submission.tutor_feedback ||
             null,
         })
-        .eq(
-          "classwork_id",
-          classworkId
-        )
-        .eq(
-          "student_id",
-          studentId
+        .in(
+          "id",
+          submissionIds
         );
 
       if (updateError) {
@@ -922,12 +960,28 @@ export default function TutorClassworkDetailsPage() {
         );
       }
 
-      /*
-       * Reload everything so both submission rows
-       * remain synchronized on the page.
-       */
+      /* =====================================================
+         UPDATE LOCAL STATE
+      ===================================================== */
 
-      await loadPage();
+      const newCorrectionText =
+        correctionText.trim() ||
+        submission.tutor_feedback ||
+        null;
+
+      setSubmission(
+        (current) => ({
+          ...(current || submission),
+
+          correction_file_url:
+            correctionFileUrl ||
+            current?.correction_file_url ||
+            null,
+
+          tutor_feedback:
+            newCorrectionText,
+        })
+      );
 
       setCorrectionFile(null);
 
@@ -939,6 +993,10 @@ export default function TutorClassworkDetailsPage() {
       if (fileInput) {
         fileInput.value = "";
       }
+
+      setCorrectionText(
+        newCorrectionText || ""
+      );
 
       setMessage(
         "Correction saved successfully."
@@ -960,7 +1018,7 @@ export default function TutorClassworkDetailsPage() {
   }
 
   /* =========================================================
-  LOADING
+     LOADING
   ========================================================= */
 
   if (loading) {
@@ -983,7 +1041,7 @@ export default function TutorClassworkDetailsPage() {
   }
 
   /* =========================================================
-  ERROR
+     ERROR
   ========================================================= */
 
   if (error && !classwork) {
@@ -1013,7 +1071,7 @@ export default function TutorClassworkDetailsPage() {
   }
 
   /* =========================================================
-  MAIN PAGE
+     MAIN PAGE
   ========================================================= */
 
   return (
@@ -1127,7 +1185,7 @@ export default function TutorClassworkDetailsPage() {
           </div>
         </section>
 
-        {/* TUTOR ASSIGNMENT */}
+        {/* ASSIGNMENT */}
 
         <section className="mt-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm md:p-7">
           <div className="flex items-center gap-3">
@@ -1156,6 +1214,7 @@ export default function TutorClassworkDetailsPage() {
           {classwork?.attachment_url && (
             <div className="mt-6 border-t border-slate-100 pt-5">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+
                 <div className="flex items-center gap-3">
                   <FileText
                     size={22}
@@ -1238,6 +1297,7 @@ export default function TutorClassworkDetailsPage() {
 
               <div className="rounded-3xl border border-green-200 bg-green-50 p-6">
                 <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+
                   <div>
                     <span className="inline-flex rounded-full bg-green-100 px-3 py-1 text-xs font-extrabold text-green-700">
                       {submission.status ||
@@ -1255,6 +1315,7 @@ export default function TutorClassworkDetailsPage() {
                   </div>
 
                   <div className="flex flex-wrap gap-3">
+
                     {submission.score !== null &&
                       submission.total_marks !== null && (
                         <div className="min-w-[130px] rounded-2xl bg-white px-5 py-3 text-center shadow-sm">
@@ -1268,8 +1329,7 @@ export default function TutorClassworkDetailsPage() {
                             {submission.total_marks}
                           </p>
 
-                          {submission.percentage !==
-                            null && (
+                          {submission.percentage !== null && (
                             <p className="text-xs font-bold text-slate-500">
                               {submission.percentage}%
                             </p>
@@ -1297,6 +1357,7 @@ export default function TutorClassworkDetailsPage() {
               {submission.text_answer && (
                 <section className="rounded-3xl border border-yellow-200 bg-white p-6 shadow-sm">
                   <div className="flex items-center gap-3">
+
                     <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-yellow-100">
                       <MessageSquare
                         size={20}
@@ -1323,11 +1384,13 @@ export default function TutorClassworkDetailsPage() {
                 </section>
               )}
 
-              {/* UPLOADED STUDENT FILE */}
+              {/* UPLOADED FILE */}
 
               {submission.image_url && (
                 <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+
                     <div className="flex items-center gap-3">
                       <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100">
                         <FileText
@@ -1350,6 +1413,7 @@ export default function TutorClassworkDetailsPage() {
                     </div>
 
                     <div className="flex flex-wrap gap-2">
+
                       <a
                         href={
                           submission.image_url
@@ -1375,7 +1439,7 @@ export default function TutorClassworkDetailsPage() {
                     </div>
                   </div>
 
-                  {/* IMAGE PREVIEW */}
+                  {/* IMAGE */}
 
                   {isImage(
                     submission.image_url
@@ -1391,7 +1455,7 @@ export default function TutorClassworkDetailsPage() {
                     </div>
                   )}
 
-                  {/* PDF PREVIEW */}
+                  {/* PDF */}
 
                   {isPdf(
                     submission.image_url
@@ -1407,13 +1471,14 @@ export default function TutorClassworkDetailsPage() {
                     </div>
                   )}
 
-                  {/* WORD DOCUMENT */}
+                  {/* WORD */}
 
                   {isWordDocument(
                     submission.image_url
                   ) && (
                     <div className="mt-5 rounded-2xl border border-blue-200 bg-blue-50 p-5">
                       <div className="flex items-start gap-3">
+
                         <FileText
                           size={22}
                           className="mt-0.5 text-blue-600"
@@ -1425,10 +1490,7 @@ export default function TutorClassworkDetailsPage() {
                           </p>
 
                           <p className="mt-1 text-sm leading-6 text-slate-600">
-                            Word documents may not render directly
-                            inside every browser. Use Download to
-                            open the submitted document in Word or
-                            another compatible application.
+                            Word documents may not render directly inside every browser. Use Download to open the submitted document.
                           </p>
                         </div>
                       </div>
@@ -1437,7 +1499,7 @@ export default function TutorClassworkDetailsPage() {
                 </section>
               )}
 
-              {/* NO CONTENT WARNING */}
+              {/* NO CONTENT */}
 
               {!submission.text_answer &&
                 !submission.image_url && (
@@ -1452,8 +1514,7 @@ export default function TutorClassworkDetailsPage() {
                     </h3>
 
                     <p className="mt-2 text-sm text-slate-500">
-                      This submission does not currently contain
-                      written text or an uploaded file.
+                      This submission does not currently contain written text or an uploaded file.
                     </p>
                   </div>
                 )}
@@ -1465,6 +1526,7 @@ export default function TutorClassworkDetailsPage() {
                 className="rounded-3xl border border-blue-200 bg-blue-50 p-6"
               >
                 <div className="flex items-center gap-3">
+
                   <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-100">
                     <CheckCircle2
                       size={22}
@@ -1485,8 +1547,6 @@ export default function TutorClassworkDetailsPage() {
 
                 <div className="mt-6 grid gap-4 sm:grid-cols-3">
 
-                  {/* SCORE */}
-
                   <div>
                     <label className="mb-2 block text-sm font-bold text-slate-700">
                       Score
@@ -1505,8 +1565,6 @@ export default function TutorClassworkDetailsPage() {
                       className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-blue-500"
                     />
                   </div>
-
-                  {/* TOTAL */}
 
                   <div>
                     <label className="mb-2 block text-sm font-bold text-slate-700">
@@ -1527,8 +1585,6 @@ export default function TutorClassworkDetailsPage() {
                     />
                   </div>
 
-                  {/* GRADE */}
-
                   <div>
                     <label className="mb-2 block text-sm font-bold text-slate-700">
                       Grade
@@ -1547,8 +1603,6 @@ export default function TutorClassworkDetailsPage() {
                     />
                   </div>
                 </div>
-
-                {/* FEEDBACK */}
 
                 <div className="mt-5">
                   <label className="mb-2 block text-sm font-bold text-slate-700">
@@ -1591,7 +1645,9 @@ export default function TutorClassworkDetailsPage() {
               {/* CORRECTION */}
 
               <section className="rounded-3xl border border-yellow-200 bg-yellow-50 p-6">
+
                 <div className="flex items-center gap-3">
+
                   <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-yellow-100">
                     <MessageSquare
                       size={22}
@@ -1610,8 +1666,6 @@ export default function TutorClassworkDetailsPage() {
                   </div>
                 </div>
 
-                {/* CORRECTION TEXT */}
-
                 <textarea
                   value={correctionText}
                   onChange={(event) =>
@@ -1623,8 +1677,6 @@ export default function TutorClassworkDetailsPage() {
                   placeholder="Write the correction here..."
                   className="mt-5 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 leading-7 outline-none focus:border-yellow-500"
                 />
-
-                {/* CORRECTION FILE */}
 
                 <div className="mt-5">
                   <label
@@ -1681,11 +1733,10 @@ export default function TutorClassworkDetailsPage() {
                     : "Send Correction"}
                 </button>
 
-                {/* EXISTING CORRECTION FILE */}
-
                 {submission.correction_file_url && (
                   <div className="mt-6 border-t border-yellow-200 pt-5">
                     <div className="flex flex-wrap gap-2">
+
                       <a
                         href={
                           submission.correction_file_url
@@ -1708,6 +1759,7 @@ export default function TutorClassworkDetailsPage() {
                         <Download size={16} />
                         Download Correction
                       </a>
+
                     </div>
                   </div>
                 )}
