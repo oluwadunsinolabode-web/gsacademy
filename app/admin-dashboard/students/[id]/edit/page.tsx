@@ -44,7 +44,8 @@ export default function EditStudentPage() {
 
   const [studentPackage,setStudentPackage] =
     useState("");
-
+const [googleMeetLink, setGoogleMeetLink] =
+  useState("");
 
 
   // all subjects from database
@@ -183,7 +184,9 @@ setSubjects(subjectList);
     setStudentPackage(
       student.package || ""
     );
-
+setGoogleMeetLink(
+  student.google_meet_link || ""
+);
 
 
     
@@ -382,17 +385,18 @@ async function handleSave() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          full_name: studentName,
-          email,
-          phone,
-          parent_name: parentName,
-          parent_phone: parentPhone,
-          country,
-          academic_level: academicLevel,
-          package: studentPackage,
-          subjects: selectedSubjects,
-                           }),
+       body: JSON.stringify({
+  full_name: studentName,
+  email,
+  phone,
+  parent_name: parentName,
+  parent_phone: parentPhone,
+  country,
+  academic_level: academicLevel,
+  package: studentPackage,
+  subjects: selectedSubjects,
+  google_meet_link: googleMeetLink,
+}),
       }
     );
 
@@ -663,6 +667,20 @@ return (
 
 
         </select>
+        <input
+  value={googleMeetLink}
+  onChange={(e) =>
+    setGoogleMeetLink(e.target.value)
+  }
+  placeholder="Google Meet Link"
+  className="
+    rounded-xl
+    border
+    border-slate-300
+    px-5
+    py-4
+  "
+/>
 {/* Subject Selection */}
 
 <div className="
