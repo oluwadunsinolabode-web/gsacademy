@@ -274,9 +274,7 @@ export default function TutorClassworkDetailsPage() {
         error: studentError,
       } = await supabase
         .from("students")
-        .select(
-          "id, full_name, email"
-        )
+        .select("id, full_name, email")
         .eq("id", studentId)
         .single();
 
@@ -291,8 +289,6 @@ export default function TutorClassworkDetailsPage() {
 
       /* =====================================================
       4. GET CLASSWORK
-         
-         The classwork MUST belong to this tutor.
       ===================================================== */
 
       const {
@@ -363,182 +359,292 @@ export default function TutorClassworkDetailsPage() {
         );
       }
 
-     /* =====================================================
-6. GET STUDENT SUBMISSION
-===================================================== */
+      /* =====================================================
+      6. GET ALL STUDENT SUBMISSIONS
+      ===================================================== */
 
-let submissionData: Submission | null = null;
+      let submissionRows: Submission[] = [];
 
-/* -----------------------------------------------
-   FIRST: try using student_id
------------------------------------------------- */
+      /*
+       * FIRST:
+       * Search using student_id.
+       *
+       * We intentionally fetch ALL rows instead of .limit(1)
+       * because the student may have:
+       *
+       * Row 1 = text answer
+       * Row 2 = uploaded image
+       *
+       * Both rows belong to the same classwork/student.
+       */
 
-const {
-  data: submissionById,
-  error: submissionByIdError,
-} = await supabase
-  .from("classwork_submissions")
-  .select(`
-    id,
-    classwork_id,
-    student_id,
-    student_email,
-    subject,
-    title,
-    image_url,
-    text_answer,
-    status,
-    tutor_feedback,
-    teacher_feedback,
-    submitted_at,
-    score,
-    total_marks,
-    percentage,
-    grade,
-    correction_file_url
-  `)
-  .eq("classwork_id", classworkId)
-  .eq("student_id", studentId)
-  .order("submitted_at", {
-    ascending: false,
-  })
-  .limit(1)
-  .maybeSingle();
+      const {
+        data: submissionsById,
+        error: submissionsByIdError,
+      } = await supabase
+        .from("classwork_submissions")
+        .select(
+          `
+            id,
+            classwork_id,
+            student_id,
+            student_email,
+            subject,
+            title,
+            image_url,
+            text_answer,
+            status,
+            tutor_feedback,
+            teacher_feedback,
+            submitted_at,
+            score,
+            total_marks,
+            percentage,
+            grade,
+            correction_file_url
+          `
+        )
+        .eq("classwork_id", classworkId)
+        .eq("student_id", studentId)
+        .order("submitted_at", {
+          ascending: false,
+        });
 
-if (submissionByIdError) {
-  throw new Error(submissionByIdError.message);
-}
+      if (submissionsByIdError) {
+        throw new Error(
+          submissionsByIdError.message
+        );
+      }
 
-submissionData = submissionById;
+      submissionRows =
+        submissionsById || [];
 
+      /* =====================================================
+      FALLBACK:
+      SEARCH USING STUDENT EMAIL
+      ===================================================== */
 
-/* -----------------------------------------------
-   FALLBACK: try using student email
------------------------------------------------- */
+      if (
+        submissionRows.length === 0 &&
+        studentData.email
+      ) {
+        const {
+          data: submissionsByEmail,
+          error: submissionsByEmailError,
+        } = await supabase
+          .from("classwork_submissions")
+          .select(
+            `
+              id,
+              classwork_id,
+              student_id,
+              student_email,
+              subject,
+              title,
+              image_url,
+              text_answer,
+              status,
+              tutor_feedback,
+              teacher_feedback,
+              submitted_at,
+              score,
+              total_marks,
+              percentage,
+              grade,
+              correction_file_url
+            `
+          )
+          .eq(
+            "classwork_id",
+            classworkId
+          )
+          .eq(
+            "student_email",
+            studentData.email
+          )
+          .order("submitted_at", {
+            ascending: false,
+          });
 
-if (!submissionData && studentData.email) {
-  const {
-    data: submissionByEmail,
-    error: submissionByEmailError,
-  } = await supabase
-    .from("classwork_submissions")
-    .select(`
-      id,
-      classwork_id,
-      student_id,
-      student_email,
-      subject,
-      title,
-      image_url,
-      text_answer,
-      status,
-      tutor_feedback,
-      teacher_feedback,
-      submitted_at,
-      score,
-      total_marks,
-      percentage,
-      grade,
-      correction_file_url
-    `)
-    .eq("classwork_id", classworkId)
-    .eq("student_email", studentData.email)
-    .order("submitted_at", {
-      ascending: false,
-    })
-    .limit(1)
-    .maybeSingle();
+        if (
+          submissionsByEmailError
+        ) {
+          throw new Error(
+            submissionsByEmailError.message
+          );
+        }
 
-  if (submissionByEmailError) {
-    throw new Error(
-      submissionByEmailError.message
-    );
-  }
+        submissionRows =
+          submissionsByEmail || [];
+      }
 
-  submissionData = submissionByEmail;
-}
+      /* =====================================================
+      COMBINE SUBMISSION ROWS
+      ===================================================== */
 
-setSubmission(submissionData || null);
+      let combinedSubmission:
+        | Submission
+        | null = null;
 
+      if (submissionRows.length > 0) {
+        /*
+         * The newest row becomes the base row.
+         *
+         * Then we search ALL rows for:
+         * - text answer
+         * - uploaded file
+         * - feedback
+         * - score
+         * - total marks
+         * - percentage
+         * - grade
+         * - correction file
+         */
 
-/* =====================================================
-7. LOAD EXISTING MARKING
-===================================================== */
+        const latestRow =
+          submissionRows[0];
 
-if (submissionData) {
-  setScore(
-    submissionData.score !== null
-      ? String(submissionData.score)
-      : ""
-  );
+        combinedSubmission = {
+          ...latestRow,
 
-  setTotalMarks(
-    submissionData.total_marks !== null
-      ? String(submissionData.total_marks)
-      : ""
-  );
+          /* TEXT ANSWER */
 
-  setGrade(
-    submissionData.grade || ""
-  );
+          text_answer:
+            submissionRows.find(
+              (row) =>
+                row.text_answer &&
+                row.text_answer.trim() !== ""
+            )?.text_answer || null,
 
-  setFeedback(
-    submissionData.teacher_feedback ||
-      submissionData.tutor_feedback ||
-      ""
-  );
+          /* UPLOADED FILE */
 
-  setCorrectionText(
-    submissionData.tutor_feedback || ""
-  );
-} else {
-  setScore("");
-  setTotalMarks("");
-  setGrade("");
-  setFeedback("");
-  setCorrectionText("");
-}
+          image_url:
+            submissionRows.find(
+              (row) =>
+                row.image_url &&
+                row.image_url.trim() !== ""
+            )?.image_url || null,
 
+          /* STATUS */
 
-/* =====================================================
-7. LOAD EXISTING MARKING
-===================================================== */
+          status:
+            submissionRows.find(
+              (row) => row.status
+            )?.status ||
+            latestRow.status ||
+            "submitted",
 
-if (submissionData) {
-  setScore(
-    submissionData.score !== null
-      ? String(submissionData.score)
-      : ""
-  );
+          /* TUTOR FEEDBACK */
 
-  setTotalMarks(
-    submissionData.total_marks !== null
-      ? String(submissionData.total_marks)
-      : ""
-  );
+          tutor_feedback:
+            submissionRows.find(
+              (row) =>
+                row.tutor_feedback &&
+                row.tutor_feedback.trim() !== ""
+            )?.tutor_feedback || null,
 
-  setGrade(
-    submissionData.grade || ""
-  );
+          /* TEACHER FEEDBACK */
 
-  setFeedback(
-    submissionData.teacher_feedback ||
-      submissionData.tutor_feedback ||
-      ""
-  );
+          teacher_feedback:
+            submissionRows.find(
+              (row) =>
+                row.teacher_feedback &&
+                row.teacher_feedback.trim() !== ""
+            )?.teacher_feedback || null,
 
-  setCorrectionText(
-    submissionData.tutor_feedback || ""
-  );
-} else {
-  setScore("");
-  setTotalMarks("");
-  setGrade("");
-  setFeedback("");
-  setCorrectionText("");
-}
+          /* SCORE */
 
-     
+          score:
+            submissionRows.find(
+              (row) =>
+                row.score !== null
+            )?.score ?? null,
+
+          /* TOTAL MARKS */
+
+          total_marks:
+            submissionRows.find(
+              (row) =>
+                row.total_marks !== null
+            )?.total_marks ?? null,
+
+          /* PERCENTAGE */
+
+          percentage:
+            submissionRows.find(
+              (row) =>
+                row.percentage !== null
+            )?.percentage ?? null,
+
+          /* GRADE */
+
+          grade:
+            submissionRows.find(
+              (row) =>
+                row.grade &&
+                row.grade.trim() !== ""
+            )?.grade || null,
+
+          /* CORRECTION FILE */
+
+          correction_file_url:
+            submissionRows.find(
+              (row) =>
+                row.correction_file_url
+            )?.correction_file_url ||
+            null,
+        };
+      }
+
+      setSubmission(
+        combinedSubmission
+      );
+
+      /* =====================================================
+      7. LOAD EXISTING MARKING
+      ===================================================== */
+
+      if (combinedSubmission) {
+        setScore(
+          combinedSubmission.score !==
+            null
+            ? String(
+                combinedSubmission.score
+              )
+            : ""
+        );
+
+        setTotalMarks(
+          combinedSubmission.total_marks !==
+            null
+            ? String(
+                combinedSubmission.total_marks
+              )
+            : ""
+        );
+
+        setGrade(
+          combinedSubmission.grade ||
+            ""
+        );
+
+        setFeedback(
+          combinedSubmission.teacher_feedback ||
+            combinedSubmission.tutor_feedback ||
+            ""
+        );
+
+        setCorrectionText(
+          combinedSubmission.tutor_feedback ||
+            ""
+        );
+      } else {
+        setScore("");
+        setTotalMarks("");
+        setGrade("");
+        setFeedback("");
+        setCorrectionText("");
+      }
     } catch (err) {
       console.error(
         "Classwork details loading error:",
@@ -586,9 +692,7 @@ if (submissionData) {
           ? Number(totalMarks)
           : null;
 
-      /* -----------------------------------------------
-      VALIDATE SCORE
-      ----------------------------------------------- */
+      /* VALIDATE SCORE */
 
       if (
         numericScore !== null &&
@@ -599,9 +703,7 @@ if (submissionData) {
         );
       }
 
-      /* -----------------------------------------------
-      VALIDATE TOTAL
-      ----------------------------------------------- */
+      /* VALIDATE TOTAL */
 
       if (
         numericTotal !== null &&
@@ -612,9 +714,7 @@ if (submissionData) {
         );
       }
 
-      /* -----------------------------------------------
-      VALIDATE SCORE RANGE
-      ----------------------------------------------- */
+      /* VALIDATE SCORE RANGE */
 
       if (
         numericScore !== null &&
@@ -644,9 +744,7 @@ if (submissionData) {
         );
       }
 
-      /* -----------------------------------------------
-      CALCULATE PERCENTAGE
-      ----------------------------------------------- */
+      /* CALCULATE PERCENTAGE */
 
       let percentage:
         | number
@@ -663,9 +761,7 @@ if (submissionData) {
           100;
       }
 
-      /* -----------------------------------------------
-      UPDATE SUBMISSION
-      ----------------------------------------------- */
+      /* UPDATE SUBMISSION */
 
       const {
         data: updatedSubmission,
@@ -675,8 +771,7 @@ if (submissionData) {
           "classwork_submissions"
         )
         .update({
-          score:
-            numericScore,
+          score: numericScore,
 
           total_marks:
             numericTotal,
@@ -697,8 +792,7 @@ if (submissionData) {
           teacher_feedback:
             feedback.trim() || null,
 
-          status:
-            "marked",
+          status: "marked",
         })
         .eq(
           "id",
@@ -733,9 +827,32 @@ if (submissionData) {
         );
       }
 
-      setSubmission(
-        updatedSubmission
-      );
+      /*
+       * The database row we update is the latest/base row.
+       *
+       * Preserve the combined text/image information
+       * already displayed on the page.
+       */
+
+      setSubmission((current) => ({
+        ...(current || {}),
+        ...updatedSubmission,
+
+        text_answer:
+          current?.text_answer ||
+          updatedSubmission.text_answer ||
+          null,
+
+        image_url:
+          current?.image_url ||
+          updatedSubmission.image_url ||
+          null,
+
+        correction_file_url:
+          current?.correction_file_url ||
+          updatedSubmission.correction_file_url ||
+          null,
+      }));
 
       setMessage(
         "Mark and feedback saved successfully."
@@ -783,9 +900,7 @@ if (submissionData) {
       setError("");
       setMessage("");
 
-      /* -----------------------------------------------
-      AUTH
-      ----------------------------------------------- */
+      /* AUTH */
 
       const {
         data: { user },
@@ -798,9 +913,7 @@ if (submissionData) {
         );
       }
 
-      /* -----------------------------------------------
-      UPLOAD CORRECTION FILE
-      ----------------------------------------------- */
+      /* UPLOAD CORRECTION FILE */
 
       let correctionFileUrl =
         submission.correction_file_url;
@@ -858,9 +971,7 @@ if (submissionData) {
           publicUrlData.publicUrl;
       }
 
-      /* -----------------------------------------------
-      UPDATE SUBMISSION
-      ----------------------------------------------- */
+      /* UPDATE SUBMISSION */
 
       const {
         data: updatedSubmission,
@@ -912,9 +1023,30 @@ if (submissionData) {
         );
       }
 
-      setSubmission(
-        updatedSubmission
-      );
+      /*
+       * Preserve the combined text/image submission
+       * after updating the correction.
+       */
+
+      setSubmission((current) => ({
+        ...(current || {}),
+        ...updatedSubmission,
+
+        text_answer:
+          current?.text_answer ||
+          updatedSubmission.text_answer ||
+          null,
+
+        image_url:
+          current?.image_url ||
+          updatedSubmission.image_url ||
+          null,
+
+        correction_file_url:
+          updatedSubmission.correction_file_url ||
+          current?.correction_file_url ||
+          null,
+      }));
 
       setCorrectionFile(null);
 
@@ -1014,9 +1146,7 @@ if (submissionData) {
     <main className="min-h-screen bg-slate-50">
       <div className="mx-auto max-w-5xl px-5 py-10">
 
-        {/* =================================================
-        BACK
-        ================================================= */}
+        {/* BACK */}
 
         <Link
           href={`/tutor-dashboard/students/${studentId}/classwork`}
@@ -1026,9 +1156,7 @@ if (submissionData) {
           Back to Classwork
         </Link>
 
-        {/* =================================================
-        MESSAGES
-        ================================================= */}
+        {/* MESSAGES */}
 
         {message && (
           <div className="mt-6 flex items-center gap-3 rounded-2xl border border-green-200 bg-green-50 px-5 py-4 text-sm font-semibold text-green-700">
@@ -1056,9 +1184,7 @@ if (submissionData) {
           </div>
         )}
 
-        {/* =================================================
-        CLASSWORK HEADER
-        ================================================= */}
+        {/* CLASSWORK HEADER */}
 
         <header className="mt-8">
 
@@ -1103,9 +1229,7 @@ if (submissionData) {
 
         </header>
 
-        {/* =================================================
-        STUDENT
-        ================================================= */}
+        {/* STUDENT */}
 
         <section className="mt-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
 
@@ -1119,6 +1243,7 @@ if (submissionData) {
             </div>
 
             <div>
+
               <p className="text-xs font-extrabold uppercase tracking-wide text-slate-400">
                 Student
               </p>
@@ -1133,15 +1258,14 @@ if (submissionData) {
                   {student.email}
                 </p>
               )}
+
             </div>
 
           </div>
 
         </section>
 
-        {/* =================================================
-        TUTOR ASSIGNMENT
-        ================================================= */}
+        {/* TUTOR ASSIGNMENT */}
 
         <section className="mt-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm md:p-7">
 
@@ -1160,9 +1284,11 @@ if (submissionData) {
 
           {classwork?.description ? (
             <div className="mt-5 rounded-2xl bg-slate-50 p-5">
+
               <p className="whitespace-pre-wrap leading-8 text-slate-700">
                 {classwork.description}
               </p>
+
             </div>
           ) : (
             <p className="mt-5 text-sm text-slate-400">
@@ -1183,6 +1309,7 @@ if (submissionData) {
                   />
 
                   <div>
+
                     <p className="font-bold text-slate-900">
                       Tutor Attachment
                     </p>
@@ -1190,6 +1317,7 @@ if (submissionData) {
                     <p className="text-sm text-slate-500">
                       Supporting file for this assignment.
                     </p>
+
                   </div>
 
                 </div>
@@ -1228,9 +1356,7 @@ if (submissionData) {
 
         </section>
 
-        {/* =================================================
-        STUDENT SUBMISSION
-        ================================================= */}
+        {/* STUDENT SUBMISSION */}
 
         <section className="mt-8">
 
@@ -1255,6 +1381,7 @@ if (submissionData) {
                 <AlertCircle size={23} />
 
                 <div>
+
                   <h3 className="font-extrabold">
                     No submission yet
                   </h3>
@@ -1262,6 +1389,7 @@ if (submissionData) {
                   <p className="mt-1 text-sm">
                     The student has not submitted this classwork.
                   </p>
+
                 </div>
 
               </div>
@@ -1272,9 +1400,7 @@ if (submissionData) {
 
             <div className="space-y-6">
 
-              {/* =================================================
-              SUBMISSION SUMMARY
-              ================================================= */}
+              {/* SUBMISSION SUMMARY */}
 
               <div className="rounded-3xl border border-green-200 bg-green-50 p-6">
 
@@ -1302,6 +1428,7 @@ if (submissionData) {
 
                     {submission.score !== null &&
                       submission.total_marks !== null && (
+
                         <div className="min-w-[130px] rounded-2xl bg-white px-5 py-3 text-center shadow-sm">
 
                           <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
@@ -1322,9 +1449,11 @@ if (submissionData) {
                           )}
 
                         </div>
+
                       )}
 
                     {submission.grade && (
+
                       <div className="min-w-[100px] rounded-2xl bg-white px-5 py-3 text-center shadow-sm">
 
                         <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
@@ -1336,6 +1465,7 @@ if (submissionData) {
                         </p>
 
                       </div>
+
                     )}
 
                   </div>
@@ -1344,23 +1474,25 @@ if (submissionData) {
 
               </div>
 
-              {/* =================================================
-              WRITTEN ANSWER
-              ================================================= */}
+              {/* WRITTEN ANSWER */}
 
               {submission.text_answer && (
+
                 <section className="rounded-3xl border border-yellow-200 bg-white p-6 shadow-sm">
 
                   <div className="flex items-center gap-3">
 
                     <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-yellow-100">
+
                       <MessageSquare
                         size={20}
                         className="text-yellow-700"
                       />
+
                     </div>
 
                     <div>
+
                       <h3 className="text-lg font-extrabold text-slate-950">
                         Written Answer
                       </h3>
@@ -1368,6 +1500,7 @@ if (submissionData) {
                       <p className="text-sm text-slate-500">
                         Answer submitted directly by the student.
                       </p>
+
                     </div>
 
                   </div>
@@ -1381,13 +1514,13 @@ if (submissionData) {
                   </div>
 
                 </section>
+
               )}
 
-              {/* =================================================
-              UPLOADED STUDENT FILE
-              ================================================= */}
+              {/* UPLOADED STUDENT FILE */}
 
               {submission.image_url && (
+
                 <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
 
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -1395,10 +1528,12 @@ if (submissionData) {
                     <div className="flex items-center gap-3">
 
                       <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100">
+
                         <FileText
                           size={20}
                           className="text-slate-600"
                         />
+
                       </div>
 
                       <div>
@@ -1451,6 +1586,7 @@ if (submissionData) {
                   {isImage(
                     submission.image_url
                   ) && (
+
                     <div className="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-4">
 
                       <img
@@ -1462,6 +1598,7 @@ if (submissionData) {
                       />
 
                     </div>
+
                   )}
 
                   {/* PDF PREVIEW */}
@@ -1469,6 +1606,7 @@ if (submissionData) {
                   {isPdf(
                     submission.image_url
                   ) && (
+
                     <div className="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-slate-100">
 
                       <iframe
@@ -1480,6 +1618,7 @@ if (submissionData) {
                       />
 
                     </div>
+
                   )}
 
                   {/* WORD DOCUMENT */}
@@ -1487,6 +1626,7 @@ if (submissionData) {
                   {isWordDocument(
                     submission.image_url
                   ) && (
+
                     <div className="mt-5 rounded-2xl border border-blue-200 bg-blue-50 p-5">
 
                       <div className="flex items-start gap-3">
@@ -1514,17 +1654,18 @@ if (submissionData) {
                       </div>
 
                     </div>
+
                   )}
 
                 </section>
+
               )}
 
-              {/* =================================================
-              NO CONTENT WARNING
-              ================================================= */}
+              {/* NO CONTENT WARNING */}
 
               {!submission.text_answer &&
                 !submission.image_url && (
+
                   <div className="rounded-3xl border border-slate-200 bg-white p-7 text-center">
 
                     <FileText
@@ -1542,11 +1683,10 @@ if (submissionData) {
                     </p>
 
                   </div>
+
                 )}
 
-              {/* =================================================
-              MARKING
-              ================================================= */}
+              {/* MARKING */}
 
               <form
                 onSubmit={saveMarking}
@@ -1556,10 +1696,12 @@ if (submissionData) {
                 <div className="flex items-center gap-3">
 
                   <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-100">
+
                     <CheckCircle2
                       size={22}
                       className="text-blue-600"
                     />
+
                   </div>
 
                   <div>
@@ -1693,19 +1835,19 @@ if (submissionData) {
 
               </form>
 
-              {/* =================================================
-              CORRECTION
-              ================================================= */}
+              {/* CORRECTION */}
 
               <section className="rounded-3xl border border-yellow-200 bg-yellow-50 p-6">
 
                 <div className="flex items-center gap-3">
 
                   <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-yellow-100">
+
                     <MessageSquare
                       size={22}
                       className="text-yellow-700"
                     />
+
                   </div>
 
                   <div>
@@ -1765,8 +1907,7 @@ if (submissionData) {
                     className="hidden"
                     onChange={(event) =>
                       setCorrectionFile(
-                        event.target
-                          .files?.[0] ||
+                        event.target.files?.[0] ||
                           null
                       )
                     }
@@ -1803,6 +1944,7 @@ if (submissionData) {
                 {/* EXISTING CORRECTION FILE */}
 
                 {submission.correction_file_url && (
+
                   <div className="mt-6 border-t border-yellow-200 pt-5">
 
                     <div className="flex flex-wrap gap-2">
@@ -1833,11 +1975,13 @@ if (submissionData) {
                     </div>
 
                   </div>
+
                 )}
 
               </section>
 
             </div>
+
           )}
 
         </section>

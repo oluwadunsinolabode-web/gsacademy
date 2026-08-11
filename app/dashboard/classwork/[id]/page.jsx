@@ -1,11 +1,6 @@
 "use client";
 
-import {
-  ChangeEvent,
-  FormEvent,
-  useEffect,
-  useState,
-} from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -23,52 +18,16 @@ import { useParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
 /* =========================================================
-   TYPES
-========================================================= */
-
-type Classwork = {
-  id: string;
-  tutor_id: string;
-  subject: string;
-  title: string;
-  description: string | null;
-  attachment_url: string | null;
-  due_date: string | null;
-  status: string | null;
-  created_at: string;
-};
-
-type Submission = {
-  id: string;
-  classwork_id: string;
-  student_id: string;
-  student_email: string | null;
-  subject: string | null;
-  title: string | null;
-  image_url: string | null;
-  text_answer: string | null;
-  status: string | null;
-  tutor_feedback: string | null;
-  teacher_feedback: string | null;
-  submitted_at: string | null;
-  score: number | null;
-  total_marks: number | null;
-  percentage: number | null;
-  grade: string | null;
-  correction_file_url: string | null;
-};
-
-/* =========================================================
    HELPERS
 ========================================================= */
 
-function formatDate(value: string | null) {
+function formatDate(value) {
   if (!value) return "No date";
 
   return new Date(value).toLocaleString();
 }
 
-function formatShortDate(value: string | null) {
+function formatShortDate(value) {
   if (!value) return null;
 
   return new Date(value).toLocaleDateString(undefined, {
@@ -78,7 +37,7 @@ function formatShortDate(value: string | null) {
   });
 }
 
-function getFileType(url: string | null) {
+function getFileType(url) {
   if (!url) return "unknown";
 
   const cleanUrl = url.split("?")[0].toLowerCase();
@@ -98,19 +57,21 @@ function getFileType(url: string | null) {
   return "unknown";
 }
 
-function isBrowserViewable(url: string | null) {
+function isBrowserViewable(url) {
   const type = getFileType(url);
 
   return type === "image" || type === "pdf";
 }
-function isDoc(url: string | null) {
+
+function isDoc(url) {
   if (!url) return false;
 
   const cleanUrl = url.split("?")[0].toLowerCase();
 
   return /\.(doc|docx)$/.test(cleanUrl);
 }
-function getFileName(url: string | null) {
+
+function getFileName(url) {
   if (!url) return "Submitted file";
 
   try {
@@ -118,18 +79,13 @@ function getFileName(url: string | null) {
     const parts = cleanUrl.split("/");
     const lastPart = parts[parts.length - 1];
 
-    return decodeURIComponent(
-      lastPart || "Submitted file"
-    );
+    return decodeURIComponent(lastPart || "Submitted file");
   } catch {
     return "Submitted file";
   }
 }
 
-function getSubmissionNumber(
-  submissions: Submission[],
-  submissionId: string
-) {
+function getSubmissionNumber(submissions, submissionId) {
   const index = submissions.findIndex(
     (item) => item.id === submissionId
   );
@@ -154,46 +110,31 @@ export default function ClassworkDetailPage() {
      DATA
   ======================================================= */
 
-  const [classwork, setClasswork] =
-    useState<Classwork | null>(null);
-
-  const [submissions, setSubmissions] =
-    useState<Submission[]>([]);
+  const [classwork, setClasswork] = useState(null);
+  const [submissions, setSubmissions] = useState([]);
 
   /* =======================================================
      FORM
   ======================================================= */
 
-  const [textAnswer, setTextAnswer] =
-    useState("");
-
-  const [selectedFile, setSelectedFile] =
-    useState<File | null>(null);
+  const [textAnswer, setTextAnswer] = useState("");
+  const [selectedFile, setSelectedFile] = useState(null);
 
   /* =======================================================
      UI
   ======================================================= */
 
-  const [loading, setLoading] =
-    useState(true);
-
-  const [submitting, setSubmitting] =
-    useState(false);
-
-  const [message, setMessage] =
-    useState("");
-
-  const [error, setError] =
-    useState("");
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
 
   /* =======================================================
      LATEST SUBMISSION
   ======================================================= */
 
   const latestSubmission =
-    submissions.length > 0
-      ? submissions[0]
-      : null;
+    submissions.length > 0 ? submissions[0] : null;
 
   /* =======================================================
      LOAD CLASSWORK
@@ -235,9 +176,7 @@ export default function ClassworkDetailPage() {
         error: studentError,
       } = await supabase
         .from("students")
-        .select(
-          "id, auth_id, full_name, email"
-        )
+        .select("id, auth_id, full_name, email")
         .eq("auth_id", user.id)
         .single();
 
@@ -257,23 +196,13 @@ export default function ClassworkDetailPage() {
         error: assignmentError,
       } = await supabase
         .from("classwork_assignments")
-        .select(
-          "classwork_id, student_id"
-        )
-        .eq(
-          "classwork_id",
-          classworkId
-        )
-        .eq(
-          "student_id",
-          student.id
-        )
+        .select("classwork_id, student_id")
+        .eq("classwork_id", classworkId)
+        .eq("student_id", student.id)
         .maybeSingle();
 
       if (assignmentError) {
-        throw new Error(
-          assignmentError.message
-        );
+        throw new Error(assignmentError.message);
       }
 
       if (!assignment) {
@@ -291,47 +220,31 @@ export default function ClassworkDetailPage() {
         error: classworkError,
       } = await supabase
         .from("classworks")
-        .select(
-          `
-            id,
-            tutor_id,
-            subject,
-            title,
-            description,
-            attachment_url,
-            due_date,
-            status,
-            created_at
-          `
-        )
-        .eq(
-          "id",
-          classworkId
-        )
+        .select(`
+          id,
+          tutor_id,
+          subject,
+          title,
+          description,
+          attachment_url,
+          due_date,
+          status,
+          created_at
+        `)
+        .eq("id", classworkId)
         .single();
 
-      if (
-        classworkError ||
-        !classworkData
-      ) {
+      if (classworkError || !classworkData) {
         throw new Error(
           classworkError?.message ||
             "Classwork could not be found."
         );
       }
 
-      setClasswork(
-        classworkData as Classwork
-      );
+      setClasswork(classworkData);
 
       /* -----------------------------------------------
          GET ALL STUDENT SUBMISSIONS
-         
-         IMPORTANT:
-         We deliberately DO NOT use .limit(1)
-         or .maybeSingle() here.
-
-         Every submission is kept as history.
       ------------------------------------------------ */
 
       const {
@@ -339,67 +252,46 @@ export default function ClassworkDetailPage() {
         error: submissionError,
       } = await supabase
         .from("classwork_submissions")
-        .select(
-          `
-            id,
-            classwork_id,
-            student_id,
-            student_email,
-            subject,
-            title,
-            image_url,
-            text_answer,
-            status,
-            tutor_feedback,
-            teacher_feedback,
-            submitted_at,
-            score,
-            total_marks,
-            percentage,
-            grade,
-            correction_file_url
-          `
-        )
-        .eq(
-          "classwork_id",
-          classworkId
-        )
-        .eq(
-          "student_id",
-          student.id
-        )
-        .order(
-          "submitted_at",
-          {
-            ascending: false,
-          }
-        );
+        .select(`
+          id,
+          classwork_id,
+          student_id,
+          student_email,
+          subject,
+          title,
+          image_url,
+          text_answer,
+          status,
+          tutor_feedback,
+          teacher_feedback,
+          submitted_at,
+          score,
+          total_marks,
+          percentage,
+          grade,
+          correction_file_url
+        `)
+        .eq("classwork_id", classworkId)
+        .eq("student_id", student.id)
+        .order("submitted_at", {
+          ascending: false,
+        });
 
       if (submissionError) {
-        throw new Error(
-          submissionError.message
-        );
+        throw new Error(submissionError.message);
       }
 
-      const loadedSubmissions =
-        (submissionData || []) as Submission[];
+      const loadedSubmissions = submissionData || [];
 
-      setSubmissions(
-        loadedSubmissions
-      );
+      setSubmissions(loadedSubmissions);
 
       /* -----------------------------------------------
          PRE-FILL LATEST TEXT
-
-         This allows the student to correct/edit
-         the previous written answer before creating
-         another submission version.
       ------------------------------------------------ */
 
       if (loadedSubmissions.length > 0) {
         setTextAnswer(
-          loadedSubmissions[0].text_answer ||
-            ""
+          loadedSubmissions[0].text_answer || ""
         );
       } else {
         setTextAnswer("");
@@ -424,12 +316,8 @@ export default function ClassworkDetailPage() {
      FILE SELECT
   ======================================================= */
 
-  function handleFileChange(
-    event: ChangeEvent<HTMLInputElement>
-  ) {
-    const file =
-      event.target.files?.[0] ||
-      null;
+  function handleFileChange(event) {
+    const file = event.target.files?.[0] || null;
 
     setError("");
     setMessage("");
@@ -441,8 +329,7 @@ export default function ClassworkDetailPage() {
 
     /* 10MB LIMIT */
 
-    const maxSize =
-      10 * 1024 * 1024;
+    const maxSize = 10 * 1024 * 1024;
 
     if (file.size > maxSize) {
       setError(
@@ -457,13 +344,6 @@ export default function ClassworkDetailPage() {
 
     /* -----------------------------------------------
        ALLOWED FILE TYPES
-       
-       PDF
-       DOC
-       DOCX
-       JPG
-       JPEG
-       PNG
     ------------------------------------------------ */
 
     const allowedTypes = [
@@ -492,16 +372,10 @@ export default function ClassworkDetailPage() {
   }
 
   /* =======================================================
-     SUBMIT ANSWER
-     
-     IMPORTANT:
-     Every submission creates a NEW database row.
-     Existing submissions are never deleted.
+     SUBMIT / UPDATE ANSWER
   ======================================================= */
 
-  async function submitAnswer(
-    event: FormEvent
-  ) {
+  async function submitAnswer(event) {
     event.preventDefault();
 
     if (!classwork) return;
@@ -521,9 +395,7 @@ export default function ClassworkDetailPage() {
       } = await supabase.auth.getUser();
 
       if (authError || !user) {
-        throw new Error(
-          "You must be logged in."
-        );
+        throw new Error("You must be logged in.");
       }
 
       /* -----------------------------------------------
@@ -535,13 +407,8 @@ export default function ClassworkDetailPage() {
         error: studentError,
       } = await supabase
         .from("students")
-        .select(
-          "id, auth_id, email"
-        )
-        .eq(
-          "auth_id",
-          user.id
-        )
+        .select("id, auth_id, email")
+        .eq("auth_id", user.id)
         .single();
 
       if (studentError || !student) {
@@ -565,31 +432,61 @@ export default function ClassworkDetailPage() {
       }
 
       /* -----------------------------------------------
-         UPLOAD FILE
+         FIND EXISTING LATEST SUBMISSION
       ------------------------------------------------ */
 
-      let uploadedFileUrl:
-        | string
-        | null = null;
+      const {
+        data: existingSubmission,
+        error: existingSubmissionError,
+      } = await supabase
+        .from("classwork_submissions")
+        .select(`
+          id,
+          classwork_id,
+          student_id,
+          student_email,
+          subject,
+          title,
+          image_url,
+          text_answer,
+          status,
+          tutor_feedback,
+          teacher_feedback,
+          submitted_at,
+          score,
+          total_marks,
+          percentage,
+          grade,
+          correction_file_url
+        `)
+        .eq("classwork_id", classwork.id)
+        .eq("student_id", student.id)
+        .order("submitted_at", {
+          ascending: false,
+        })
+        .limit(1)
+        .maybeSingle();
+
+      /* IMPORTANT:
+         This is the corrected variable name.
+      */
+
+      if (existingSubmissionError) {
+        throw new Error(
+          existingSubmissionError.message
+        );
+      }
+
+      /* -----------------------------------------------
+         UPLOAD NEW FILE IF SELECTED
+      ------------------------------------------------ */
+
+      let uploadedFileUrl = null;
 
       if (selectedFile) {
-        const safeFileName =
-          selectedFile.name
-            .replace(
-              /[^a-zA-Z0-9._-]/g,
-              "_"
-            )
-            .replace(
-              /\s+/g,
-              "_"
-            );
-
-        /*
-         * Each uploaded file gets a unique path.
-         *
-         * Therefore a new submission cannot overwrite
-         * an older submission's file.
-         */
+        const safeFileName = selectedFile.name
+          .replace(/[^a-zA-Z0-9._-]/g, "_")
+          .replace(/\s+/g, "_");
 
         const filePath =
           `students/${student.id}/classwork/${classwork.id}/${crypto.randomUUID()}-${safeFileName}`;
@@ -597,9 +494,7 @@ export default function ClassworkDetailPage() {
         const {
           error: uploadError,
         } = await supabase.storage
-          .from(
-            "classwork-submissions"
-          )
+          .from("classwork-submissions")
           .upload(
             filePath,
             selectedFile,
@@ -607,8 +502,7 @@ export default function ClassworkDetailPage() {
               cacheControl: "3600",
               upsert: false,
               contentType:
-                selectedFile.type ||
-                undefined,
+                selectedFile.type || undefined,
             }
           );
 
@@ -618,74 +512,61 @@ export default function ClassworkDetailPage() {
           );
         }
 
-        /*
-         * Using the existing confirmed
-         * classwork-submissions bucket.
-         */
-
         const {
           data: publicUrlData,
-        } =
-          supabase.storage
-            .from(
-              "classwork-submissions"
-            )
-            .getPublicUrl(
-              filePath
-            );
+        } = supabase.storage
+          .from("classwork-submissions")
+          .getPublicUrl(filePath);
 
         uploadedFileUrl =
           publicUrlData.publicUrl;
       }
 
       /* -----------------------------------------------
-         CREATE NEW SUBMISSION ROW
-         
-         IMPORTANT:
-         This INSERT does NOT update or delete
-         previous submissions.
+         PREPARE DATA
       ------------------------------------------------ */
 
-      const {
-        data: newSubmission,
-        error: submissionError,
-      } = await supabase
-        .from(
-          "classwork_submissions"
-        )
-        .insert({
-          classwork_id:
-            classwork.id,
+      const submissionData = {
+        student_email:
+          student.email ||
+          user.email ||
+          existingSubmission?.student_email ||
+          null,
 
-          student_id:
-            student.id,
+        subject: classwork.subject,
 
-          student_email:
-            student.email ||
-            user.email ||
-            null,
+        title: classwork.title,
 
-          subject:
-            classwork.subject,
+        text_answer:
+          textAnswer.trim() ||
+          existingSubmission?.text_answer ||
+          null,
 
-          title:
-            classwork.title,
+        image_url:
+          uploadedFileUrl ||
+          existingSubmission?.image_url ||
+          null,
 
-          text_answer:
-            textAnswer.trim() ||
-            null,
+        status: "submitted",
 
-          image_url:
-            uploadedFileUrl,
+        submitted_at:
+          new Date().toISOString(),
+      };
 
-          status:
-            "submitted",
+      /* -----------------------------------------------
+         EXISTING SUBMISSION
+         UPDATE SAME ROW
+      ------------------------------------------------ */
 
-          submitted_at:
-            new Date().toISOString(),
-        })
-        .select(
-          `
+      if (existingSubmission) {
+        const {
+          data: updatedSubmission,
+          error: updateError,
+        } = await supabase
+          .from("classwork_submissions")
+          .update(submissionData)
+          .eq("id", existingSubmission.id)
+          .select(`
             id,
             classwork_id,
             student_id,
@@ -703,59 +584,118 @@ export default function ClassworkDetailPage() {
             percentage,
             grade,
             correction_file_url
-          `
-        )
+          `)
+          .single();
+
+        if (
+          updateError ||
+          !updatedSubmission
+        ) {
+          throw new Error(
+            updateError?.message ||
+              "Unable to update your submission."
+          );
+        }
+
+        const updated = updatedSubmission;
+
+        setSubmissions((current) =>
+          current.map((item) =>
+            item.id === updated.id
+              ? updated
+              : item
+          )
+        );
+
+        setTextAnswer(
+          updated.text_answer || ""
+        );
+
+        setSelectedFile(null);
+
+        const fileInput =
+          document.getElementById(
+            "student-answer-file"
+          );
+
+        if (fileInput) {
+          fileInput.value = "";
+        }
+
+        setMessage(
+          "Your submission has been updated successfully. Your written answer and uploaded file are saved together."
+        );
+
+        return;
+      }
+
+      /* -----------------------------------------------
+         NO EXISTING SUBMISSION
+         CREATE FIRST ROW
+      ------------------------------------------------ */
+
+      const {
+        data: newSubmission,
+        error: insertError,
+      } = await supabase
+        .from("classwork_submissions")
+        .insert({
+          classwork_id: classwork.id,
+          student_id: student.id,
+          ...submissionData,
+        })
+        .select(`
+          id,
+          classwork_id,
+          student_id,
+          student_email,
+          subject,
+          title,
+          image_url,
+          text_answer,
+          status,
+          tutor_feedback,
+          teacher_feedback,
+          submitted_at,
+          score,
+          total_marks,
+          percentage,
+          grade,
+          correction_file_url
+        `)
         .single();
 
       if (
-        submissionError ||
+        insertError ||
         !newSubmission
       ) {
         throw new Error(
-          submissionError?.message ||
+          insertError?.message ||
             "Unable to submit your answer."
         );
       }
 
-      /* -----------------------------------------------
-         ADD NEW VERSION TO LOCAL HISTORY
-      ------------------------------------------------ */
+      const created = newSubmission;
 
-      const createdSubmission =
-        newSubmission as Submission;
+      setSubmissions([created]);
 
-      setSubmissions(
-        (current) => [
-          createdSubmission,
-          ...current,
-        ]
+      setTextAnswer(
+        created.text_answer || ""
       );
-
-      /* -----------------------------------------------
-         RESET FILE ONLY
-         
-         Keep text visible because it is the
-         submitted answer.
-      ------------------------------------------------ */
 
       setSelectedFile(null);
 
       const fileInput =
         document.getElementById(
           "student-answer-file"
-        ) as HTMLInputElement | null;
+        );
 
       if (fileInput) {
         fileInput.value = "";
       }
 
-      setTextAnswer(
-        createdSubmission.text_answer ||
-          ""
-      );
-
       setMessage(
-        "Your answer has been submitted successfully. Your previous submission remains in your history."
+        "Your answer has been submitted successfully."
       );
     } catch (err) {
       console.error(
@@ -806,7 +746,6 @@ export default function ClassworkDetailPage() {
     return (
       <main className="min-h-screen bg-slate-50">
         <div className="mx-auto max-w-5xl px-6 py-12">
-
           <Link
             href="/dashboard"
             className="inline-flex items-center gap-2 text-sm font-bold text-slate-600 hover:text-slate-950"
@@ -816,16 +755,13 @@ export default function ClassworkDetailPage() {
           </Link>
 
           <div className="mt-8 rounded-3xl border border-red-200 bg-red-50 p-7">
-
             <div className="flex items-start gap-3">
-
               <AlertCircle
                 size={22}
                 className="mt-0.5 text-red-600"
               />
 
               <div>
-
                 <h1 className="font-bold text-red-900">
                   Unable to load classwork
                 </h1>
@@ -833,13 +769,9 @@ export default function ClassworkDetailPage() {
                 <p className="mt-2 text-sm text-red-700">
                   {error}
                 </p>
-
               </div>
-
             </div>
-
           </div>
-
         </div>
       </main>
     );
@@ -855,12 +787,9 @@ export default function ClassworkDetailPage() {
 
   return (
     <main className="min-h-screen bg-slate-50">
-
       <div className="mx-auto max-w-5xl px-6 py-10">
 
-        {/* =================================================
-            BACK
-        ================================================= */}
+        {/* BACK */}
 
         <Link
           href={`/dashboard/classwork?subject=${encodeURIComponent(
@@ -872,12 +801,9 @@ export default function ClassworkDetailPage() {
           Back to Classwork
         </Link>
 
-        {/* =================================================
-            HEADER
-        ================================================= */}
+        {/* HEADER */}
 
         <header className="mt-8">
-
           <p className="text-sm font-bold uppercase tracking-wider text-yellow-600">
             {classwork.subject}
           </p>
@@ -887,7 +813,6 @@ export default function ClassworkDetailPage() {
           </h1>
 
           <div className="mt-4 flex flex-wrap gap-4 text-sm text-slate-500">
-
             <span>
               Posted{" "}
               {formatShortDate(
@@ -903,18 +828,13 @@ export default function ClassworkDetailPage() {
                 )}
               </span>
             )}
-
           </div>
-
         </header>
 
-        {/* =================================================
-            MESSAGES
-        ================================================= */}
+        {/* MESSAGES */}
 
         {message && (
           <div className="mt-7 flex items-start gap-3 rounded-2xl border border-green-200 bg-green-50 p-5 text-green-800">
-
             <CheckCircle2
               size={21}
               className="mt-0.5 shrink-0"
@@ -923,13 +843,11 @@ export default function ClassworkDetailPage() {
             <p className="font-semibold">
               {message}
             </p>
-
           </div>
         )}
 
         {error && (
           <div className="mt-7 flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 p-5 text-red-800">
-
             <AlertCircle
               size={21}
               className="mt-0.5 shrink-0"
@@ -938,18 +856,13 @@ export default function ClassworkDetailPage() {
             <p className="font-semibold">
               {error}
             </p>
-
           </div>
         )}
 
-        {/* =================================================
-            TUTOR ASSIGNMENT
-        ================================================= */}
+        {/* TUTOR ASSIGNMENT */}
 
         <section className="mt-8 rounded-3xl bg-white p-6 shadow-sm md:p-8">
-
           <div className="flex items-center gap-3">
-
             <FileText
               size={23}
               className="text-yellow-600"
@@ -958,7 +871,6 @@ export default function ClassworkDetailPage() {
             <h2 className="text-xl font-black text-slate-950">
               Tutor's Assignment
             </h2>
-
           </div>
 
           {classwork.description ? (
@@ -970,27 +882,20 @@ export default function ClassworkDetailPage() {
               No written instructions were provided.
             </p>
           )}
-
         </section>
 
-        {/* =================================================
-            TUTOR ATTACHMENT
-        ================================================= */}
+        {/* TUTOR ATTACHMENT */}
 
         {classwork.attachment_url && (
           <section className="mt-5 rounded-3xl bg-white p-6 shadow-sm md:p-8">
-
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-
               <div className="flex items-center gap-3">
-
                 <FileText
                   size={23}
                   className="text-yellow-600"
                 />
 
                 <div>
-
                   <h2 className="font-black text-slate-950">
                     Tutor Attachment
                   </h2>
@@ -998,56 +903,37 @@ export default function ClassworkDetailPage() {
                   <p className="mt-1 text-sm text-slate-500">
                     Open or download the file provided by your tutor.
                   </p>
-
                 </div>
-
               </div>
 
               <div className="flex flex-wrap gap-2">
-
                 <a
-                  href={
-                    classwork.attachment_url
-                  }
+                  href={classwork.attachment_url}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-sm font-bold text-white transition hover:bg-slate-800"
                 >
-                  <ExternalLink
-                    size={17}
-                  />
+                  <ExternalLink size={17} />
                   View
                 </a>
 
                 <a
-                  href={
-                    classwork.attachment_url
-                  }
+                  href={classwork.attachment_url}
                   download
                   className="inline-flex items-center gap-2 rounded-xl bg-yellow-500 px-4 py-3 text-sm font-bold text-slate-950 transition hover:bg-yellow-400"
                 >
-                  <Download
-                    size={17}
-                  />
+                  <Download size={17} />
                   Download
                 </a>
-
               </div>
-
             </div>
-
-          
           </section>
         )}
 
-        {/* =================================================
-            CURRENT SUBMISSION
-        ================================================= */}
+        {/* CURRENT SUBMISSION */}
 
         <section className="mt-5 rounded-3xl bg-white p-6 shadow-sm md:p-8">
-
           <div>
-
             <h2 className="text-xl font-black text-slate-950">
               Your Submission
             </h2>
@@ -1056,29 +942,19 @@ export default function ClassworkDetailPage() {
               Submit your answer as text, a PDF, DOC, DOCX,
               JPG or PNG file, or both text and a file.
             </p>
-
           </div>
 
-          {/* =================================================
-              LATEST SUBMISSION
-          ================================================= */}
+          {/* LATEST SUBMISSION */}
 
           {latestSubmission && (
             <div className="mt-6 rounded-2xl border border-green-200 bg-green-50 p-5">
-
               <div className="flex flex-wrap items-center justify-between gap-3">
-
                 <div>
-
                   <span className="inline-flex items-center gap-2 rounded-full bg-green-100 px-3 py-1 text-xs font-bold text-green-700">
-
-                    <CheckCircle2
-                      size={14}
-                    />
+                    <CheckCircle2 size={14} />
 
                     {latestSubmission.status ||
                       "Submitted"}
-
                   </span>
 
                   {latestSubmission.submitted_at && (
@@ -1089,12 +965,10 @@ export default function ClassworkDetailPage() {
                       )}
                     </p>
                   )}
-
                 </div>
 
                 {latestSubmission.grade && (
                   <div className="rounded-xl bg-white px-4 py-3 text-center">
-
                     <p className="text-xs font-bold uppercase text-slate-400">
                       Grade
                     </p>
@@ -1102,17 +976,14 @@ export default function ClassworkDetailPage() {
                     <p className="text-xl font-black text-blue-600">
                       {latestSubmission.grade}
                     </p>
-
                   </div>
                 )}
-
               </div>
 
               {/* LATEST TEXT */}
 
               {latestSubmission.text_answer && (
                 <div className="mt-5 rounded-2xl bg-white p-5">
-
                   <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
                     Written Answer
                   </p>
@@ -1120,7 +991,6 @@ export default function ClassworkDetailPage() {
                   <p className="mt-3 whitespace-pre-wrap leading-7 text-slate-700">
                     {latestSubmission.text_answer}
                   </p>
-
                 </div>
               )}
 
@@ -1128,11 +998,8 @@ export default function ClassworkDetailPage() {
 
               {latestSubmission.image_url && (
                 <div className="mt-5 rounded-2xl bg-white p-5">
-
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-
                     <div className="min-w-0">
-
                       <p className="font-bold text-slate-900">
                         Submitted File
                       </p>
@@ -1142,11 +1009,9 @@ export default function ClassworkDetailPage() {
                           latestSubmission.image_url
                         )}
                       </p>
-
                     </div>
 
                     <div className="flex flex-wrap gap-2">
-
                       {isBrowserViewable(
                         latestSubmission.image_url
                       ) && (
@@ -1170,53 +1035,38 @@ export default function ClassworkDetailPage() {
                         download
                         className="inline-flex items-center gap-2 rounded-xl bg-yellow-500 px-4 py-2 text-sm font-bold text-slate-950"
                       >
-                        <Download
-                          size={16}
-                        />
+                        <Download size={16} />
                         Download
                       </a>
-
                     </div>
-
                   </div>
-
-              
-                  {/* DOC/DOCX NOTICE */}
 
                   {isDoc(
                     latestSubmission.image_url
                   ) && (
                     <div className="mt-5 rounded-2xl bg-slate-50 p-5">
-
                       <p className="text-sm font-semibold text-slate-700">
                         DOC/DOCX files cannot be reliably
                         previewed directly in every browser.
                         Use Download to open the document
                         in Word or another compatible application.
                       </p>
-
                     </div>
                   )}
-
                 </div>
               )}
-
             </div>
           )}
 
-          {/* =================================================
-              SUBMISSION FORM
-          ================================================= */}
+          {/* SUBMISSION FORM */}
 
           <form
             onSubmit={submitAnswer}
             className="mt-7"
           >
-
             {/* TEXT */}
 
             <div>
-
               <label className="mb-2 block text-sm font-bold text-slate-700">
                 Written Answer
               </label>
@@ -1232,13 +1082,11 @@ export default function ClassworkDetailPage() {
                 placeholder="Type your answer here..."
                 className="w-full rounded-2xl border border-slate-200 px-5 py-4 leading-7 outline-none transition focus:border-yellow-500 focus:ring-2 focus:ring-yellow-100"
               />
-
             </div>
 
             {/* FILE */}
 
             <div className="mt-6">
-
               <label className="mb-2 block text-sm font-bold text-slate-700">
                 Upload Completed Work
               </label>
@@ -1247,14 +1095,12 @@ export default function ClassworkDetailPage() {
                 htmlFor="student-answer-file"
                 className="flex cursor-pointer items-center gap-4 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5 transition hover:border-yellow-500 hover:bg-yellow-50"
               >
-
                 <Upload
                   size={23}
                   className="text-slate-500"
                 />
 
                 <div className="min-w-0">
-
                   <p className="truncate font-bold text-slate-800">
                     {selectedFile
                       ? selectedFile.name
@@ -1264,33 +1110,26 @@ export default function ClassworkDetailPage() {
                   <p className="mt-1 text-xs text-slate-500">
                     PDF, DOC, DOCX, JPG or PNG · Maximum 10MB
                   </p>
-
                 </div>
-
               </label>
 
               <input
                 id="student-answer-file"
                 type="file"
                 accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                onChange={
-                  handleFileChange
-                }
+                onChange={handleFileChange}
                 className="hidden"
               />
-
             </div>
 
             {/* SUBMIT */}
 
             <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:items-center">
-
               <button
                 type="submit"
                 disabled={submitting}
                 className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-950 px-6 py-4 font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
               >
-
                 {submitting && (
                   <Loader2
                     size={19}
@@ -1299,59 +1138,47 @@ export default function ClassworkDetailPage() {
                 )}
 
                 {submitting
-                  ? "Submitting..."
+                  ? "Saving..."
                   : latestSubmission
-                  ? "Submit New Version"
+                  ? "Update Submission"
                   : "Submit Answer"}
-
               </button>
 
               {latestSubmission && (
                 <p className="text-sm text-slate-500">
-                  A new submission creates a new version.
-                  Your previous submissions remain saved.
+                  Updating your submission keeps your written
+                  answer and uploaded file together in the same
+                  submission.
                 </p>
               )}
-
             </div>
-
           </form>
-
         </section>
 
-        {/* =================================================
-            SUBMISSION HISTORY
-        ================================================= */}
+        {/* SUBMISSION HISTORY */}
 
         {submissions.length > 0 && (
           <section className="mt-5 rounded-3xl bg-white p-6 shadow-sm md:p-8">
-
             <div className="flex items-center gap-3">
-
               <History
                 size={23}
                 className="text-yellow-600"
               />
 
               <div>
-
                 <h2 className="text-xl font-black text-slate-950">
                   Submission History
                 </h2>
 
                 <p className="mt-1 text-sm text-slate-500">
-                  Every version you have submitted for this classwork is saved here.
+                  Your previous submission records are shown here.
                 </p>
-
               </div>
-
             </div>
 
             <div className="mt-6 space-y-4">
-
               {submissions.map(
                 (item, index) => {
-
                   const version =
                     getSubmissionNumber(
                       submissions,
@@ -1370,15 +1197,11 @@ export default function ClassworkDetailPage() {
                           : "border-slate-200 bg-slate-50"
                       }`}
                     >
-
                       {/* HISTORY HEADER */}
 
                       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-
                         <div>
-
                           <div className="flex flex-wrap items-center gap-2">
-
                             <span className="font-black text-slate-900">
                               Submission Version{" "}
                               {version}
@@ -1389,7 +1212,6 @@ export default function ClassworkDetailPage() {
                                 Latest
                               </span>
                             )}
-
                           </div>
 
                           {item.submitted_at && (
@@ -1399,21 +1221,18 @@ export default function ClassworkDetailPage() {
                               )}
                             </p>
                           )}
-
                         </div>
 
                         <span className="inline-flex w-fit rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-600">
                           {item.status ||
                             "Submitted"}
                         </span>
-
                       </div>
 
                       {/* HISTORY TEXT */}
 
                       {item.text_answer && (
                         <div className="mt-4 rounded-xl bg-white p-4">
-
                           <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
                             Written Answer
                           </p>
@@ -1421,7 +1240,6 @@ export default function ClassworkDetailPage() {
                           <p className="mt-2 whitespace-pre-wrap text-sm leading-7 text-slate-700">
                             {item.text_answer}
                           </p>
-
                         </div>
                       )}
 
@@ -1429,11 +1247,8 @@ export default function ClassworkDetailPage() {
 
                       {item.image_url && (
                         <div className="mt-4 rounded-xl bg-white p-4">
-
                           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-
                             <div className="min-w-0">
-
                               <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
                                 Uploaded File
                               </p>
@@ -1443,11 +1258,9 @@ export default function ClassworkDetailPage() {
                                   item.image_url
                                 )}
                               </p>
-
                             </div>
 
                             <div className="flex flex-wrap gap-2">
-
                               {isBrowserViewable(
                                 item.image_url
                               ) && (
@@ -1459,9 +1272,7 @@ export default function ClassworkDetailPage() {
                                   rel="noopener noreferrer"
                                   className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-3 py-2 text-xs font-bold text-white"
                                 >
-                                  <Eye
-                                    size={14}
-                                  />
+                                  <Eye size={14} />
                                   View
                                 </a>
                               )}
@@ -1473,16 +1284,11 @@ export default function ClassworkDetailPage() {
                                 download
                                 className="inline-flex items-center gap-2 rounded-lg bg-yellow-500 px-3 py-2 text-xs font-bold text-slate-950"
                               >
-                                <Download
-                                  size={14}
-                                />
+                                <Download size={14} />
                                 Download
                               </a>
-
                             </div>
-
                           </div>
-
                         </div>
                       )}
 
@@ -1492,10 +1298,8 @@ export default function ClassworkDetailPage() {
                         item.percentage !== null ||
                         item.grade) && (
                         <div className="mt-4 grid gap-3 sm:grid-cols-3">
-
                           {item.score !== null && (
                             <div className="rounded-xl bg-white p-4">
-
                               <p className="text-xs font-bold uppercase text-slate-400">
                                 Score
                               </p>
@@ -1506,13 +1310,11 @@ export default function ClassworkDetailPage() {
                                   null &&
                                   ` / ${item.total_marks}`}
                               </p>
-
                             </div>
                           )}
 
                           {item.percentage !== null && (
                             <div className="rounded-xl bg-white p-4">
-
                               <p className="text-xs font-bold uppercase text-slate-400">
                                 Percentage
                               </p>
@@ -1520,13 +1322,11 @@ export default function ClassworkDetailPage() {
                               <p className="mt-1 font-black text-purple-700">
                                 {item.percentage}%
                               </p>
-
                             </div>
                           )}
 
                           {item.grade && (
                             <div className="rounded-xl bg-white p-4">
-
                               <p className="text-xs font-bold uppercase text-slate-400">
                                 Grade
                               </p>
@@ -1534,10 +1334,8 @@ export default function ClassworkDetailPage() {
                               <p className="mt-1 font-black text-yellow-700">
                                 {item.grade}
                               </p>
-
                             </div>
                           )}
-
                         </div>
                       )}
 
@@ -1546,7 +1344,6 @@ export default function ClassworkDetailPage() {
                       {(item.teacher_feedback ||
                         item.tutor_feedback) && (
                         <div className="mt-4 rounded-xl bg-blue-50 p-4">
-
                           <p className="text-xs font-bold uppercase tracking-wide text-blue-500">
                             Tutor Feedback
                           </p>
@@ -1555,7 +1352,6 @@ export default function ClassworkDetailPage() {
                             {item.teacher_feedback ||
                               item.tutor_feedback}
                           </p>
-
                         </div>
                       )}
 
@@ -1563,11 +1359,8 @@ export default function ClassworkDetailPage() {
 
                       {item.correction_file_url && (
                         <div className="mt-4 rounded-xl bg-white p-4">
-
                           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-
                             <div>
-
                               <p className="font-bold text-slate-900">
                                 Tutor Correction
                               </p>
@@ -1575,11 +1368,9 @@ export default function ClassworkDetailPage() {
                               <p className="mt-1 text-sm text-slate-500">
                                 A correction file has been provided for this submission.
                               </p>
-
                             </div>
 
                             <div className="flex flex-wrap gap-2">
-
                               {isBrowserViewable(
                                 item.correction_file_url
                               ) && (
@@ -1591,9 +1382,7 @@ export default function ClassworkDetailPage() {
                                   rel="noopener noreferrer"
                                   className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-3 py-2 text-xs font-bold text-white"
                                 >
-                                  <Eye
-                                    size={14}
-                                  />
+                                  <Eye size={14} />
                                   View
                                 </a>
                               )}
@@ -1605,31 +1394,21 @@ export default function ClassworkDetailPage() {
                                 download
                                 className="inline-flex items-center gap-2 rounded-lg bg-yellow-500 px-3 py-2 text-xs font-bold text-slate-950"
                               >
-                                <Download
-                                  size={14}
-                                />
+                                <Download size={14} />
                                 Download
                               </a>
-
                             </div>
-
                           </div>
-
                         </div>
                       )}
-
                     </div>
                   );
                 }
               )}
-
             </div>
-
           </section>
         )}
-
       </div>
-
     </main>
   );
 }
