@@ -42,6 +42,9 @@ type Classwork = {
   due_date: string | null;
   status: string;
   created_at: string;
+  classwork_assignments?: {
+    student_id: string;
+  }[];
 };
 
 type Submission = {
@@ -235,8 +238,12 @@ export default function TutorClassworkPage() {
 
       setSubject(firstAssignedSubject);
 
-      /* -----------------------------------------------
+          /* -----------------------------------------------
          EXISTING CLASSWORK
+         
+         IMPORTANT:
+         Only load classwork that is actually
+         assigned to THIS student.
       ----------------------------------------------- */
 
       const {
@@ -254,10 +261,18 @@ export default function TutorClassworkPage() {
             attachment_url,
             due_date,
             status,
-            created_at
+            created_at,
+
+            classwork_assignments!inner(
+              student_id
+            )
           `
         )
         .eq("tutor_id", tutorData.id)
+        .eq(
+          "classwork_assignments.student_id",
+          studentData.id
+        )
         .order("created_at", {
           ascending: false,
         });
@@ -285,9 +300,8 @@ export default function TutorClassworkPage() {
         );
 
       setClassworks(
-        studentClassworks
+        studentClassworks as Classwork[]
       );
-
       /* -----------------------------------------------
          EXISTING STUDENT SUBMISSIONS
          -----------------------------------------------
