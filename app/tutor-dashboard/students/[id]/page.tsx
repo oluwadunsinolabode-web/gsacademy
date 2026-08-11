@@ -49,15 +49,22 @@ export default function StudentWorkspace() {
         }
 
         /*
-         * IMPORTANT:
-         * We are no longer using /api/tutor/students.
+         * IMPORTANT
+         * ---------------------------------------------
+         * The tutor workspace ALWAYS gets the student
+         * information directly from Supabase.
          *
-         * The My Students page already successfully reads
-         * students directly from Supabase, so the workspace
-         * will use the same method.
+         * The Google Meet link comes ONLY from:
+         *
+         * students.google_meet_link
+         *
+         * There is NO hardcoded Google Meet link here.
          */
 
-        const { data, error: studentError } = await supabase
+        const {
+          data,
+          error: studentError,
+        } = await supabase
           .from("students")
           .select(`
             id,
@@ -74,15 +81,21 @@ export default function StudentWorkspace() {
           .single();
 
         if (studentError) {
-          console.error("Workspace student query error:", studentError);
+          console.error(
+            "Workspace student query error:",
+            studentError
+          );
 
           throw new Error(
-            studentError.message || "Unable to load student."
+            studentError.message ||
+              "Unable to load student."
           );
         }
 
         if (!data) {
-          throw new Error("Student not found.");
+          throw new Error(
+            "Student not found."
+          );
         }
 
         setStudent(data);
@@ -146,7 +159,8 @@ export default function StudentWorkspace() {
           </h1>
 
           <p className="mt-3 text-slate-500">
-            {error || "Unable to load this student."}
+            {error ||
+              "Unable to load this student."}
           </p>
 
           <Link
@@ -168,12 +182,26 @@ export default function StudentWorkspace() {
    */
 
   const subjects =
-    student.subjects && student.subjects.length > 0
+    student.subjects &&
+    student.subjects.length > 0
       ? student.subjects.join(" • ")
       : "No subjects assigned";
 
+  /*
+   * IMPORTANT:
+   *
+   * This is the ONLY Meet link used by
+   * the Start Class button.
+   *
+   * It comes directly from Supabase:
+   *
+   * students.google_meet_link
+   */
+
   const meetLink =
-    student.google_meet_link?.trim() || "";
+    typeof student.google_meet_link === "string"
+      ? student.google_meet_link.trim()
+      : "";
 
   /*
    * =========================
@@ -193,7 +221,8 @@ export default function StudentWorkspace() {
         <div>
 
           <h1 className="text-4xl font-extrabold text-slate-900">
-            {student.full_name || "Unnamed Student"}
+            {student.full_name ||
+              "Unnamed Student"}
           </h1>
 
           <p className="mt-3 text-slate-600">
@@ -208,7 +237,8 @@ export default function StudentWorkspace() {
 
         <span
           className={`rounded-full px-5 py-3 font-semibold ${
-            student.status?.toLowerCase() === "active"
+            student.status?.toLowerCase() ===
+            "active"
               ? "bg-green-100 text-green-700"
               : "bg-slate-100 text-slate-600"
           }`}
@@ -217,7 +247,6 @@ export default function StudentWorkspace() {
         </span>
 
       </div>
-
 
       {/* =========================
           START CLASS
@@ -232,20 +261,18 @@ export default function StudentWorkspace() {
             rel="noopener noreferrer"
             className="inline-flex items-center gap-3 rounded-xl bg-yellow-500 px-7 py-4 font-bold text-slate-900 transition hover:bg-yellow-400"
           >
-
             <Video size={22} />
 
             Start Class
-
           </a>
         ) : (
           <div className="rounded-2xl bg-slate-100 px-5 py-4 text-sm text-slate-500">
-            No Google Meet link has been added for this student yet.
+            No Google Meet link has been added
+            for this student yet.
           </div>
         )}
 
       </div>
-
 
       {/* =========================
           STATISTICS
@@ -270,7 +297,6 @@ export default function StudentWorkspace() {
 
         </div>
 
-
         <div className="rounded-3xl bg-white p-6 shadow-sm">
 
           <ClipboardCheck
@@ -288,7 +314,6 @@ export default function StudentWorkspace() {
 
         </div>
 
-
         <div className="rounded-3xl bg-white p-6 shadow-sm">
 
           <BookOpen
@@ -305,7 +330,6 @@ export default function StudentWorkspace() {
           </h2>
 
         </div>
-
 
         <div className="rounded-3xl bg-white p-6 shadow-sm">
 
@@ -325,7 +349,6 @@ export default function StudentWorkspace() {
         </div>
 
       </div>
-
 
       {/* =========================
           ACTIONS
@@ -348,11 +371,11 @@ export default function StudentWorkspace() {
           </h2>
 
           <p className="mt-3 text-slate-600">
-            Review submissions, score work and send feedback.
+            Review submissions, score work and
+            send feedback.
           </p>
 
         </Link>
-
 
         <Link
           href={`/tutor-dashboard/students/${student.id}/homework`}
@@ -369,11 +392,11 @@ export default function StudentWorkspace() {
           </h2>
 
           <p className="mt-3 text-slate-600">
-            Assign homework and review completed work.
+            Assign homework and review completed
+            work.
           </p>
 
         </Link>
-
 
         <Link
           href={`/tutor-dashboard/students/${student.id}/resources`}
@@ -390,11 +413,11 @@ export default function StudentWorkspace() {
           </h2>
 
           <p className="mt-3 text-slate-600">
-            Upload corrections, notes and extra learning materials.
+            Upload corrections, notes and extra
+            learning materials.
           </p>
 
         </Link>
-
 
         <Link
           href={`/tutor-dashboard/students/${student.id}/report`}
@@ -411,11 +434,11 @@ export default function StudentWorkspace() {
           </h2>
 
           <p className="mt-3 text-slate-600">
-            View performance history and assessment records.
+            View performance history and assessment
+            records.
           </p>
 
         </Link>
-
 
         <Link
           href={`/tutor-dashboard/students/${student.id}/profile`}
@@ -432,13 +455,13 @@ export default function StudentWorkspace() {
           </h2>
 
           <p className="mt-3 text-slate-600">
-            Contact information, package and enrolled subjects.
+            Contact information, package and enrolled
+            subjects.
           </p>
 
         </Link>
 
       </div>
-
 
       {/* =========================
           STUDENT INFORMATION
@@ -459,11 +482,11 @@ export default function StudentWorkspace() {
             </p>
 
             <p className="mt-1 font-semibold text-slate-900">
-              {student.email || "No email"}
+              {student.email ||
+                "No email"}
             </p>
 
           </div>
-
 
           <div className="rounded-2xl bg-slate-50 p-5">
 
@@ -472,11 +495,11 @@ export default function StudentWorkspace() {
             </p>
 
             <p className="mt-1 font-semibold text-slate-900">
-              {student.phone || "No phone number"}
+              {student.phone ||
+                "No phone number"}
             </p>
 
           </div>
-
 
           <div className="rounded-2xl bg-slate-50 p-5">
 
@@ -490,7 +513,6 @@ export default function StudentWorkspace() {
 
           </div>
 
-
           <div className="rounded-2xl bg-slate-50 p-5">
 
             <p className="text-sm text-slate-500">
@@ -498,11 +520,11 @@ export default function StudentWorkspace() {
             </p>
 
             <p className="mt-1 font-semibold text-slate-900">
-              {student.package || "No package assigned"}
+              {student.package ||
+                "No package assigned"}
             </p>
 
           </div>
-
 
           <div className="rounded-2xl bg-slate-50 p-5">
 
