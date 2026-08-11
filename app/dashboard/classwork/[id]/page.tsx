@@ -103,6 +103,13 @@ function isBrowserViewable(url: string | null) {
 
   return type === "image" || type === "pdf";
 }
+function isDoc(url: string | null) {
+  if (!url) return false;
+
+  const cleanUrl = url.split("?")[0].toLowerCase();
+
+  return /\.(doc|docx)$/.test(cleanUrl);
+}
 function getFileName(url: string | null) {
   if (!url) return "Submitted file";
 
