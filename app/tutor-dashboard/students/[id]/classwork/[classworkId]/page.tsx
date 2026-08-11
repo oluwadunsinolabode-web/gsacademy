@@ -363,20 +363,19 @@ export default function TutorClassworkDetailsPage() {
         );
       }
 
-      /* =====================================================
+     /* =====================================================
 6. GET STUDENT SUBMISSION
-
-   IMPORTANT:
-   We identify the submission using BOTH:
-   - classwork_id
-   - student_id
-
-   This works for EVERY student dynamically.
 ===================================================== */
 
+let submissionData: Submission | null = null;
+
+/* -----------------------------------------------
+   FIRST: try using student_id
+------------------------------------------------ */
+
 const {
-  data: submissionData,
-  error: submissionError,
+  data: submissionById,
+  error: submissionByIdError,
 } = await supabase
   .from("classwork_submissions")
   .select(`
@@ -406,11 +405,99 @@ const {
   .limit(1)
   .maybeSingle();
 
-if (submissionError) {
-  throw new Error(submissionError.message);
+if (submissionByIdError) {
+  throw new Error(submissionByIdError.message);
+}
+
+submissionData = submissionById;
+
+
+/* -----------------------------------------------
+   FALLBACK: try using student email
+------------------------------------------------ */
+
+if (!submissionData && studentData.email) {
+  const {
+    data: submissionByEmail,
+    error: submissionByEmailError,
+  } = await supabase
+    .from("classwork_submissions")
+    .select(`
+      id,
+      classwork_id,
+      student_id,
+      student_email,
+      subject,
+      title,
+      image_url,
+      text_answer,
+      status,
+      tutor_feedback,
+      teacher_feedback,
+      submitted_at,
+      score,
+      total_marks,
+      percentage,
+      grade,
+      correction_file_url
+    `)
+    .eq("classwork_id", classworkId)
+    .eq("student_email", studentData.email)
+    .order("submitted_at", {
+      ascending: false,
+    })
+    .limit(1)
+    .maybeSingle();
+
+  if (submissionByEmailError) {
+    throw new Error(
+      submissionByEmailError.message
+    );
+  }
+
+  submissionData = submissionByEmail;
 }
 
 setSubmission(submissionData || null);
+
+
+/* =====================================================
+7. LOAD EXISTING MARKING
+===================================================== */
+
+if (submissionData) {
+  setScore(
+    submissionData.score !== null
+      ? String(submissionData.score)
+      : ""
+  );
+
+  setTotalMarks(
+    submissionData.total_marks !== null
+      ? String(submissionData.total_marks)
+      : ""
+  );
+
+  setGrade(
+    submissionData.grade || ""
+  );
+
+  setFeedback(
+    submissionData.teacher_feedback ||
+      submissionData.tutor_feedback ||
+      ""
+  );
+
+  setCorrectionText(
+    submissionData.tutor_feedback || ""
+  );
+} else {
+  setScore("");
+  setTotalMarks("");
+  setGrade("");
+  setFeedback("");
+  setCorrectionText("");
+}
 
 
 /* =====================================================
