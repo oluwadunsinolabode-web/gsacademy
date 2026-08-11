@@ -78,28 +78,31 @@ function formatShortDate(value: string | null) {
   });
 }
 
-function isImage(url: string | null) {
-  if (!url) return false;
+function getFileType(url: string | null) {
+  if (!url) return "unknown";
 
-  return /\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i.test(url);
-}
+  const cleanUrl = url.split("?")[0].toLowerCase();
 
-function isPdf(url: string | null) {
-  if (!url) return false;
+  if (/\.(jpg|jpeg|png|gif|webp)$/.test(cleanUrl)) {
+    return "image";
+  }
 
-  return /\.pdf(\?.*)?$/i.test(url);
-}
+  if (/\.pdf$/.test(cleanUrl)) {
+    return "pdf";
+  }
 
-function isDoc(url: string | null) {
-  if (!url) return false;
+  if (/\.(doc|docx)$/.test(cleanUrl)) {
+    return "document";
+  }
 
-  return /\.(doc|docx)(\?.*)?$/i.test(url);
+  return "unknown";
 }
 
 function isBrowserViewable(url: string | null) {
-  return isImage(url) || isPdf(url);
-}
+  const type = getFileType(url);
 
+  return type === "image" || type === "pdf";
+}
 function getFileName(url: string | null) {
   if (!url) return "Submitted file";
 
@@ -1026,36 +1029,7 @@ export default function ClassworkDetailPage() {
 
             </div>
 
-            {/* BROWSER PREVIEW */}
-
-            {isBrowserViewable(
-              classwork.attachment_url
-            ) && (
-              <div className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
-
-                {isImage(
-                  classwork.attachment_url
-                ) ? (
-                  <img
-                    src={
-                      classwork.attachment_url
-                    }
-                    alt="Tutor attachment"
-                    className="mx-auto max-h-[700px] w-auto max-w-full object-contain"
-                  />
-                ) : (
-                  <iframe
-                    src={
-                      classwork.attachment_url
-                    }
-                    title="Tutor attachment"
-                    className="h-[700px] w-full"
-                  />
-                )}
-
-              </div>
-            )}
-
+          
           </section>
         )}
 
@@ -1199,42 +1173,7 @@ export default function ClassworkDetailPage() {
 
                   </div>
 
-                  {/* IMAGE PREVIEW */}
-
-                  {isImage(
-                    latestSubmission.image_url
-                  ) && (
-                    <div className="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-4">
-
-                      <img
-                        src={
-                          latestSubmission.image_url
-                        }
-                        alt="Your submitted work"
-                        className="mx-auto max-h-[650px] w-auto max-w-full rounded-xl object-contain"
-                      />
-
-                    </div>
-                  )}
-
-                  {/* PDF PREVIEW */}
-
-                  {isPdf(
-                    latestSubmission.image_url
-                  ) && (
-                    <div className="mt-5 overflow-hidden rounded-2xl border border-slate-200">
-
-                      <iframe
-                        src={
-                          latestSubmission.image_url
-                        }
-                        title="Your submitted PDF"
-                        className="h-[650px] w-full"
-                      />
-
-                    </div>
-                  )}
-
+              
                   {/* DOC/DOCX NOTICE */}
 
                   {isDoc(
