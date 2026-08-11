@@ -364,191 +364,94 @@ export default function TutorClassworkDetailsPage() {
       }
 
       /* =====================================================
-      6. GET STUDENT SUBMISSION
-         
-         PRIMARY ID:
-         student_id
+6. GET STUDENT SUBMISSION
 
-         We do NOT fetch every student's submission.
+   IMPORTANT:
+   We identify the submission using BOTH:
+   - classwork_id
+   - student_id
 
-         This query asks Supabase directly for the
-         submission belonging to THIS student and THIS
-         classwork.
-      ===================================================== */
+   This works for EVERY student dynamically.
+===================================================== */
 
-      const {
-        data: submissionData,
-        error: submissionError,
-      } = await supabase
-        .from("classwork_submissions")
-        .select(
-          `
-            id,
-            classwork_id,
-            student_id,
-            student_email,
-            subject,
-            title,
-            image_url,
-            text_answer,
-            status,
-            tutor_feedback,
-            teacher_feedback,
-            submitted_at,
-            score,
-            total_marks,
-            percentage,
-            grade,
-            correction_file_url
-          `
-        )
-        .eq(
-          "classwork_id",
-          classworkId
-        )
-        .eq(
-          "student_id",
-          studentId
-        )
-        .order(
-          "submitted_at",
-          {
-            ascending: false,
-          }
-        )
-        .limit(1)
-        .maybeSingle();
+const {
+  data: submissionData,
+  error: submissionError,
+} = await supabase
+  .from("classwork_submissions")
+  .select(`
+    id,
+    classwork_id,
+    student_id,
+    student_email,
+    subject,
+    title,
+    image_url,
+    text_answer,
+    status,
+    tutor_feedback,
+    teacher_feedback,
+    submitted_at,
+    score,
+    total_marks,
+    percentage,
+    grade,
+    correction_file_url
+  `)
+  .eq("classwork_id", classworkId)
+  .eq("student_id", studentId)
+  .order("submitted_at", {
+    ascending: false,
+  })
+  .limit(1)
+  .maybeSingle();
 
-      if (submissionError) {
-        throw new Error(
-          submissionError.message
-        );
-      }
+if (submissionError) {
+  throw new Error(submissionError.message);
+}
 
-      /* =====================================================
-      7. OLD RECORD FALLBACK
-         
-         Some older submissions may have student_email
-         but no student_id.
+setSubmission(submissionData || null);
 
-         We only use this fallback if no ID-based
-         submission was found.
-      ===================================================== */
 
-      let finalSubmission =
-        submissionData || null;
+/* =====================================================
+7. LOAD EXISTING MARKING
+===================================================== */
 
-      if (
-        !finalSubmission &&
-        studentData.email
-      ) {
-        const normalizedEmail =
-          studentData.email
-            .trim()
-            .toLowerCase();
+if (submissionData) {
+  setScore(
+    submissionData.score !== null
+      ? String(submissionData.score)
+      : ""
+  );
 
-        const {
-          data: emailSubmission,
-          error: emailSubmissionError,
-        } = await supabase
-          .from(
-            "classwork_submissions"
-          )
-          .select(
-            `
-              id,
-              classwork_id,
-              student_id,
-              student_email,
-              subject,
-              title,
-              image_url,
-              text_answer,
-              status,
-              tutor_feedback,
-              teacher_feedback,
-              submitted_at,
-              score,
-              total_marks,
-              percentage,
-              grade,
-              correction_file_url
-            `
-          )
-          .eq(
-            "classwork_id",
-            classworkId
-          )
-          .eq(
-            "student_email",
-            normalizedEmail
-          )
-          .order(
-            "submitted_at",
-            {
-              ascending: false,
-            }
-          )
-          .limit(1)
-          .maybeSingle();
+  setTotalMarks(
+    submissionData.total_marks !== null
+      ? String(submissionData.total_marks)
+      : ""
+  );
 
-        if (emailSubmissionError) {
-          throw new Error(
-            emailSubmissionError.message
-          );
-        }
+  setGrade(
+    submissionData.grade || ""
+  );
 
-        finalSubmission =
-          emailSubmission || null;
-      }
+  setFeedback(
+    submissionData.teacher_feedback ||
+      submissionData.tutor_feedback ||
+      ""
+  );
 
-      setSubmission(
-        finalSubmission
-      );
+  setCorrectionText(
+    submissionData.tutor_feedback || ""
+  );
+} else {
+  setScore("");
+  setTotalMarks("");
+  setGrade("");
+  setFeedback("");
+  setCorrectionText("");
+}
 
-      /* =====================================================
-      8. LOAD EXISTING MARKING
-      ===================================================== */
-
-      if (finalSubmission) {
-        setScore(
-          finalSubmission.score !== null
-            ? String(
-                finalSubmission.score
-              )
-            : ""
-        );
-
-        setTotalMarks(
-          finalSubmission.total_marks !==
-          null
-            ? String(
-                finalSubmission.total_marks
-              )
-            : ""
-        );
-
-        setGrade(
-          finalSubmission.grade || ""
-        );
-
-        setFeedback(
-          finalSubmission.teacher_feedback ||
-            finalSubmission.tutor_feedback ||
-            ""
-        );
-
-        setCorrectionText(
-          finalSubmission.tutor_feedback ||
-            ""
-        );
-      } else {
-        setScore("");
-        setTotalMarks("");
-        setGrade("");
-        setFeedback("");
-        setCorrectionText("");
-      }
+     
     } catch (err) {
       console.error(
         "Classwork details loading error:",
