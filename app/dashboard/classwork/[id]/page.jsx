@@ -781,148 +781,179 @@ export default function ClassworkDetailPage() {
     return null;
   }
 
-  /* =======================================================
+   /* =======================================================
      MAIN PAGE
   ======================================================= */
 
   return (
     <main className="min-h-screen bg-slate-50">
-      <div className="mx-auto max-w-5xl px-6 py-10">
+      <div className="mx-auto max-w-5xl px-5 py-8 sm:px-6 lg:py-10">
 
-        {/* BACK */}
-
+        {/* BACK TO DASHBOARD */}
         <Link
-          href={`/dashboard/classwork?subject=${encodeURIComponent(
-            classwork.subject
-          )}`}
-          className="inline-flex items-center gap-2 text-sm font-bold text-slate-600 transition hover:text-slate-950"
+          href="/dashboard"
+          className="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 transition hover:text-slate-950"
         >
           <ArrowLeft size={17} />
-          Back to Classwork
+          Back to Dashboard
         </Link>
 
-        {/* HEADER */}
+        {/* =================================================
+            PAGE HEADER
+        ================================================= */}
 
-        <header className="mt-8">
-          <p className="text-sm font-bold uppercase tracking-wider text-yellow-600">
-            {classwork.subject}
-          </p>
+        <header className="mt-7">
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="rounded-full bg-yellow-100 px-3 py-1 text-xs font-bold uppercase tracking-wide text-yellow-700">
+              {classwork.subject}
+            </span>
 
-          <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-950 md:text-4xl">
+            {latestSubmission?.status && (
+              <span
+                className={`rounded-full px-3 py-1 text-xs font-bold capitalize ${
+                  latestSubmission.status.toLowerCase() === "marked"
+                    ? "bg-green-100 text-green-700"
+                    : latestSubmission.status.toLowerCase() === "submitted"
+                    ? "bg-blue-100 text-blue-700"
+                    : "bg-slate-100 text-slate-600"
+                }`}
+              >
+                {latestSubmission.status}
+              </span>
+            )}
+          </div>
+
+          <h1 className="mt-4 text-3xl font-black tracking-tight text-slate-950 md:text-4xl">
             {classwork.title}
           </h1>
 
-          <div className="mt-4 flex flex-wrap gap-4 text-sm text-slate-500">
+          <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-slate-500">
             <span>
-              Posted{" "}
-              {formatShortDate(
-                classwork.created_at
-              )}
+              Posted {formatShortDate(classwork.created_at)}
             </span>
 
             {classwork.due_date && (
               <span>
-                Due{" "}
-                {formatShortDate(
-                  classwork.due_date
-                )}
+                Due {formatShortDate(classwork.due_date)}
               </span>
             )}
           </div>
         </header>
 
-        {/* MESSAGES */}
+        {/* =================================================
+            MESSAGES
+        ================================================= */}
 
         {message && (
-          <div className="mt-7 flex items-start gap-3 rounded-2xl border border-green-200 bg-green-50 p-5 text-green-800">
+          <div className="mt-6 flex items-start gap-3 rounded-2xl border border-green-200 bg-green-50 p-4 text-green-800">
             <CheckCircle2
-              size={21}
+              size={20}
               className="mt-0.5 shrink-0"
             />
 
-            <p className="font-semibold">
+            <p className="text-sm font-semibold">
               {message}
             </p>
           </div>
         )}
 
         {error && (
-          <div className="mt-7 flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 p-5 text-red-800">
+          <div className="mt-6 flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-red-800">
             <AlertCircle
-              size={21}
+              size={20}
               className="mt-0.5 shrink-0"
             />
 
-            <p className="font-semibold">
+            <p className="text-sm font-semibold">
               {error}
             </p>
           </div>
         )}
 
-        {/* TUTOR ASSIGNMENT */}
+        {/* =================================================
+            ASSIGNMENT
+        ================================================= */}
 
-        <section className="mt-8 rounded-3xl bg-white p-6 shadow-sm md:p-8">
-          <div className="flex items-center gap-3">
-            <FileText
-              size={23}
-              className="text-yellow-600"
-            />
+        <section className="mt-8 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
 
-            <h2 className="text-xl font-black text-slate-950">
-              Tutor's Assignment
-            </h2>
+          <div className="border-b border-slate-100 px-6 py-5 md:px-8">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-yellow-100">
+                <FileText
+                  size={21}
+                  className="text-yellow-700"
+                />
+              </div>
+
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                  Assignment
+                </p>
+
+                <h2 className="mt-0.5 text-lg font-black text-slate-950">
+                  Tutor's Instructions
+                </h2>
+              </div>
+            </div>
           </div>
 
-          {classwork.description ? (
-            <div className="mt-5 whitespace-pre-wrap leading-8 text-slate-700">
-              {classwork.description}
-            </div>
-          ) : (
-            <p className="mt-5 text-sm text-slate-500">
-              No written instructions were provided.
-            </p>
-          )}
+          <div className="px-6 py-6 md:px-8">
+            {classwork.description ? (
+              <div className="whitespace-pre-wrap text-[15px] leading-8 text-slate-700">
+                {classwork.description}
+              </div>
+            ) : (
+              <p className="text-sm text-slate-500">
+                No written instructions were provided.
+              </p>
+            )}
+          </div>
         </section>
 
-        {/* TUTOR ATTACHMENT */}
+        {/* =================================================
+            TUTOR ATTACHMENT
+        ================================================= */}
 
         {classwork.attachment_url && (
-          <section className="mt-5 rounded-3xl bg-white p-6 shadow-sm md:p-8">
+          <section className="mt-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:p-6">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center gap-3">
-                <FileText
-                  size={23}
-                  className="text-yellow-600"
-                />
 
-                <div>
-                  <h2 className="font-black text-slate-950">
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-slate-100">
+                  <FileText
+                    size={21}
+                    className="text-slate-600"
+                  />
+                </div>
+
+                <div className="min-w-0">
+                  <p className="font-bold text-slate-900">
                     Tutor Attachment
-                  </h2>
+                  </p>
 
                   <p className="mt-1 text-sm text-slate-500">
-                    Open or download the file provided by your tutor.
+                    Additional material provided for this assignment.
                   </p>
                 </div>
               </div>
 
-              <div className="flex flex-wrap gap-2">
+              <div className="flex shrink-0 gap-2">
                 <a
                   href={classwork.attachment_url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-sm font-bold text-white transition hover:bg-slate-800"
+                  className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
                 >
-                  <ExternalLink size={17} />
+                  <ExternalLink size={16} />
                   View
                 </a>
 
                 <a
                   href={classwork.attachment_url}
                   download
-                  className="inline-flex items-center gap-2 rounded-xl bg-yellow-500 px-4 py-3 text-sm font-bold text-slate-950 transition hover:bg-yellow-400"
+                  className="inline-flex items-center gap-2 rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-slate-800"
                 >
-                  <Download size={17} />
+                  <Download size={16} />
                   Download
                 </a>
               </div>
@@ -930,98 +961,151 @@ export default function ClassworkDetailPage() {
           </section>
         )}
 
-        {/* CURRENT SUBMISSION */}
+        {/* =================================================
+            MARKED RESULT
+            IMPORTANT: OUTSIDE HISTORY
+        ================================================= */}
 
-        <section className="mt-5 rounded-3xl bg-white p-6 shadow-sm md:p-8">
-          <div>
-            <h2 className="text-xl font-black text-slate-950">
-              Your Submission
-            </h2>
+        {latestSubmission &&
+          (latestSubmission.score !== null ||
+            latestSubmission.percentage !== null ||
+            latestSubmission.grade ||
+            latestSubmission.teacher_feedback ||
+            latestSubmission.tutor_feedback ||
+            latestSubmission.correction_file_url) && (
+            <section className="mt-6 overflow-hidden rounded-3xl border border-green-200 bg-white shadow-sm">
 
-            <p className="mt-1 text-sm text-slate-500">
-              Submit your answer as text, a PDF, DOC, DOCX,
-              JPG or PNG file, or both text and a file.
-            </p>
-          </div>
+              {/* RESULT HEADER */}
 
-          {/* LATEST SUBMISSION */}
+              <div className="border-b border-green-100 bg-green-50 px-6 py-5 md:px-8">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 
-          {latestSubmission && (
-            <div className="mt-6 rounded-2xl border border-green-200 bg-green-50 p-5">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <span className="inline-flex items-center gap-2 rounded-full bg-green-100 px-3 py-1 text-xs font-bold text-green-700">
-                    <CheckCircle2 size={14} />
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-full bg-green-100">
+                      <CheckCircle2
+                        size={23}
+                        className="text-green-700"
+                      />
+                    </div>
 
-                    {latestSubmission.status ||
-                      "Submitted"}
-                  </span>
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-wider text-green-600">
+                        Marked
+                      </p>
 
-                  {latestSubmission.submitted_at && (
-                    <p className="mt-2 text-sm text-green-700">
-                      Latest submission —{" "}
-                      {formatDate(
-                        latestSubmission.submitted_at
-                      )}
-                    </p>
-                  )}
+                      <h2 className="mt-0.5 text-xl font-black text-slate-950">
+                        Your Result
+                      </h2>
+                    </div>
+                  </div>
+
+                  {latestSubmission.score !== null &&
+                    latestSubmission.total_marks !== null && (
+                      <div className="rounded-2xl bg-white px-5 py-3 text-center shadow-sm">
+                        <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
+                          Score
+                        </p>
+
+                        <p className="mt-1 text-2xl font-black text-green-700">
+                          {latestSubmission.score}
+                          <span className="text-base font-bold text-slate-400">
+                            {" "}
+                            / {latestSubmission.total_marks}
+                          </span>
+                        </p>
+                      </div>
+                    )}
                 </div>
+              </div>
+
+              {/* RESULT CONTENT */}
+
+              <div className="grid gap-4 p-6 md:grid-cols-3 md:p-8">
+
+                {latestSubmission.percentage !== null && (
+                  <div className="rounded-2xl bg-slate-50 p-5">
+                    <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
+                      Percentage
+                    </p>
+
+                    <p className="mt-2 text-2xl font-black text-slate-950">
+                      {latestSubmission.percentage}%
+                    </p>
+                  </div>
+                )}
 
                 {latestSubmission.grade && (
-                  <div className="rounded-xl bg-white px-4 py-3 text-center">
-                    <p className="text-xs font-bold uppercase text-slate-400">
+                  <div className="rounded-2xl bg-slate-50 p-5">
+                    <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
                       Grade
                     </p>
 
-                    <p className="text-xl font-black text-blue-600">
+                    <p className="mt-2 text-2xl font-black text-slate-950">
                       {latestSubmission.grade}
+                    </p>
+                  </div>
+                )}
+
+                {latestSubmission.submitted_at && (
+                  <div className="rounded-2xl bg-slate-50 p-5">
+                    <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
+                      Submitted
+                    </p>
+
+                    <p className="mt-2 font-bold text-slate-900">
+                      {formatShortDate(
+                        latestSubmission.submitted_at
+                      )}
                     </p>
                   </div>
                 )}
               </div>
 
-              {/* LATEST TEXT */}
+              {/* FEEDBACK */}
 
-              {latestSubmission.text_answer && (
-                <div className="mt-5 rounded-2xl bg-white p-5">
-                  <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
-                    Written Answer
-                  </p>
+              {(latestSubmission.teacher_feedback ||
+                latestSubmission.tutor_feedback) && (
+                <div className="px-6 pb-6 md:px-8">
+                  <div className="rounded-2xl border border-blue-100 bg-blue-50 p-5">
+                    <p className="text-xs font-bold uppercase tracking-wide text-blue-600">
+                      Tutor Feedback
+                    </p>
 
-                  <p className="mt-3 whitespace-pre-wrap leading-7 text-slate-700">
-                    {latestSubmission.text_answer}
-                  </p>
+                    <p className="mt-2 whitespace-pre-wrap leading-7 text-slate-700">
+                      {latestSubmission.teacher_feedback ||
+                        latestSubmission.tutor_feedback}
+                    </p>
+                  </div>
                 </div>
               )}
 
-              {/* LATEST FILE */}
+              {/* CORRECTION */}
 
-              {latestSubmission.image_url && (
-                <div className="mt-5 rounded-2xl bg-white p-5">
+              {latestSubmission.correction_file_url && (
+                <div className="border-t border-slate-100 px-6 py-5 md:px-8">
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="min-w-0">
+
+                    <div>
                       <p className="font-bold text-slate-900">
-                        Submitted File
+                        Tutor Correction
                       </p>
 
-                      <p className="mt-1 truncate text-sm text-slate-500">
-                        {getFileName(
-                          latestSubmission.image_url
-                        )}
+                      <p className="mt-1 text-sm text-slate-500">
+                        Your tutor provided a correction file for this work.
                       </p>
                     </div>
 
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex gap-2">
                       {isBrowserViewable(
-                        latestSubmission.image_url
+                        latestSubmission.correction_file_url
                       ) && (
                         <a
                           href={
-                            latestSubmission.image_url
+                            latestSubmission.correction_file_url
                           }
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-bold text-white"
+                          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
                         >
                           <Eye size={16} />
                           View
@@ -1030,41 +1114,43 @@ export default function ClassworkDetailPage() {
 
                       <a
                         href={
-                          latestSubmission.image_url
+                          latestSubmission.correction_file_url
                         }
                         download
-                        className="inline-flex items-center gap-2 rounded-xl bg-yellow-500 px-4 py-2 text-sm font-bold text-slate-950"
+                        className="inline-flex items-center gap-2 rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-slate-800"
                       >
                         <Download size={16} />
                         Download
                       </a>
                     </div>
                   </div>
-
-                  {isDoc(
-                    latestSubmission.image_url
-                  ) && (
-                    <div className="mt-5 rounded-2xl bg-slate-50 p-5">
-                      <p className="text-sm font-semibold text-slate-700">
-                        DOC/DOCX files cannot be reliably
-                        previewed directly in every browser.
-                        Use Download to open the document
-                        in Word or another compatible application.
-                      </p>
-                    </div>
-                  )}
                 </div>
               )}
-            </div>
+            </section>
           )}
 
-          {/* SUBMISSION FORM */}
+        {/* =================================================
+            YOUR SUBMISSION
+        ================================================= */}
+
+        <section className="mt-6 rounded-3xl border border-slate-200 bg-white shadow-sm">
+
+          <div className="border-b border-slate-100 px-6 py-5 md:px-8">
+            <h2 className="text-xl font-black text-slate-950">
+              Your Submission
+            </h2>
+
+            <p className="mt-1 text-sm text-slate-500">
+              Submit your written answer, completed file, or both.
+            </p>
+          </div>
 
           <form
             onSubmit={submitAnswer}
-            className="mt-7"
+            className="p-6 md:p-8"
           >
-            {/* TEXT */}
+
+            {/* CURRENT ANSWER */}
 
             <div>
               <label className="mb-2 block text-sm font-bold text-slate-700">
@@ -1074,13 +1160,11 @@ export default function ClassworkDetailPage() {
               <textarea
                 value={textAnswer}
                 onChange={(event) =>
-                  setTextAnswer(
-                    event.target.value
-                  )
+                  setTextAnswer(event.target.value)
                 }
-                rows={8}
+                rows={7}
                 placeholder="Type your answer here..."
-                className="w-full rounded-2xl border border-slate-200 px-5 py-4 leading-7 outline-none transition focus:border-yellow-500 focus:ring-2 focus:ring-yellow-100"
+                className="w-full resize-y rounded-2xl border border-slate-200 bg-white px-5 py-4 leading-7 text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-yellow-500 focus:ring-4 focus:ring-yellow-50"
               />
             </div>
 
@@ -1088,17 +1172,19 @@ export default function ClassworkDetailPage() {
 
             <div className="mt-6">
               <label className="mb-2 block text-sm font-bold text-slate-700">
-                Upload Completed Work
+                Completed Work
               </label>
 
               <label
                 htmlFor="student-answer-file"
                 className="flex cursor-pointer items-center gap-4 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5 transition hover:border-yellow-500 hover:bg-yellow-50"
               >
-                <Upload
-                  size={23}
-                  className="text-slate-500"
-                />
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white shadow-sm">
+                  <Upload
+                    size={20}
+                    className="text-slate-600"
+                  />
+                </div>
 
                 <div className="min-w-0">
                   <p className="truncate font-bold text-slate-800">
@@ -1122,17 +1208,24 @@ export default function ClassworkDetailPage() {
               />
             </div>
 
-            {/* SUBMIT */}
+            {/* ACTION */}
 
-            <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="mt-7 flex flex-col gap-4 border-t border-slate-100 pt-6 sm:flex-row sm:items-center sm:justify-between">
+
+              <p className="max-w-xl text-sm leading-6 text-slate-500">
+                {latestSubmission
+                  ? "Updating your submission will keep your written answer and uploaded file together."
+                  : "You can submit a written answer, a file, or both."}
+              </p>
+
               <button
                 type="submit"
                 disabled={submitting}
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-950 px-6 py-4 font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-slate-950 px-6 py-3.5 font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {submitting && (
                   <Loader2
-                    size={19}
+                    size={18}
                     className="animate-spin"
                   />
                 )}
@@ -1143,134 +1236,124 @@ export default function ClassworkDetailPage() {
                   ? "Update Submission"
                   : "Submit Answer"}
               </button>
-
-              {latestSubmission && (
-                <p className="text-sm text-slate-500">
-                  Updating your submission keeps your written
-                  answer and uploaded file together in the same
-                  submission.
-                </p>
-              )}
             </div>
           </form>
         </section>
 
-        {/* SUBMISSION HISTORY */}
+        {/* =================================================
+            SUBMISSION HISTORY
+            CLEAN TIMELINE — NO MARKING RESULT INSIDE
+        ================================================= */}
 
         {submissions.length > 0 && (
-          <section className="mt-5 rounded-3xl bg-white p-6 shadow-sm md:p-8">
-            <div className="flex items-center gap-3">
-              <History
-                size={23}
-                className="text-yellow-600"
-              />
+          <section className="mt-8">
 
-              <div>
-                <h2 className="text-xl font-black text-slate-950">
-                  Submission History
-                </h2>
+            <div className="mb-4">
+              <h2 className="text-xl font-black text-slate-950">
+                Submission History
+              </h2>
 
-                <p className="mt-1 text-sm text-slate-500">
-                  Your previous submission records are shown here.
-                </p>
-              </div>
+              <p className="mt-1 text-sm text-slate-500">
+                Previous submissions for this assignment.
+              </p>
             </div>
 
-            <div className="mt-6 space-y-4">
-              {submissions.map(
-                (item, index) => {
-                  const version =
-                    getSubmissionNumber(
-                      submissions,
-                      item.id
-                    );
+            <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
 
-                  const isLatest =
-                    index === 0;
+              {submissions.map((item, index) => {
+                const version = getSubmissionNumber(
+                  submissions,
+                  item.id
+                );
 
-                  return (
-                    <div
-                      key={item.id}
-                      className={`rounded-2xl border p-5 ${
-                        isLatest
-                          ? "border-yellow-200 bg-yellow-50/50"
-                          : "border-slate-200 bg-slate-50"
-                      }`}
-                    >
-                      {/* HISTORY HEADER */}
+                const isLatest = index === 0;
 
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                return (
+                  <div
+                    key={item.id}
+                    className={`p-5 md:p-6 ${
+                      index !== submissions.length - 1
+                        ? "border-b border-slate-100"
+                        : ""
+                    }`}
+                  >
+
+                    {/* HISTORY TOP */}
+
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+
+                      <div className="flex items-center gap-3">
+
+                        <div
+                          className={`flex h-10 w-10 items-center justify-center rounded-full text-sm font-black ${
+                            isLatest
+                              ? "bg-yellow-100 text-yellow-700"
+                              : "bg-slate-100 text-slate-500"
+                          }`}
+                        >
+                          {version}
+                        </div>
+
                         <div>
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="font-black text-slate-900">
-                              Submission Version{" "}
-                              {version}
-                            </span>
-
-                            {isLatest && (
-                              <span className="rounded-full bg-yellow-100 px-3 py-1 text-xs font-bold text-yellow-700">
-                                Latest
-                              </span>
-                            )}
-                          </div>
+                          <p className="font-bold text-slate-900">
+                            Submission Version {version}
+                          </p>
 
                           {item.submitted_at && (
-                            <p className="mt-1 text-sm text-slate-500">
-                              {formatDate(
-                                item.submitted_at
-                              )}
+                            <p className="mt-0.5 text-sm text-slate-500">
+                              {formatDate(item.submitted_at)}
                             </p>
                           )}
                         </div>
-
-                        <span className="inline-flex w-fit rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-600">
-                          {item.status ||
-                            "Submitted"}
-                        </span>
                       </div>
 
-                      {/* HISTORY TEXT */}
+                      {isLatest && (
+                        <span className="w-fit rounded-full bg-yellow-100 px-3 py-1 text-xs font-bold text-yellow-700">
+                          Latest
+                        </span>
+                      )}
+                    </div>
+
+                    {/* HISTORY CONTENT */}
+
+                    <div className="mt-5 grid gap-4 md:grid-cols-2">
 
                       {item.text_answer && (
-                        <div className="mt-4 rounded-xl bg-white p-4">
+                        <div className="rounded-2xl bg-slate-50 p-4">
                           <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
                             Written Answer
                           </p>
 
-                          <p className="mt-2 whitespace-pre-wrap text-sm leading-7 text-slate-700">
+                          <p className="mt-2 line-clamp-4 whitespace-pre-wrap text-sm leading-6 text-slate-700">
                             {item.text_answer}
                           </p>
                         </div>
                       )}
 
-                      {/* HISTORY FILE */}
-
                       {item.image_url && (
-                        <div className="mt-4 rounded-xl bg-white p-4">
-                          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="rounded-2xl bg-slate-50 p-4">
+                          <div className="flex items-center justify-between gap-3">
+
                             <div className="min-w-0">
                               <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
                                 Uploaded File
                               </p>
 
                               <p className="mt-1 truncate text-sm font-semibold text-slate-800">
-                                {getFileName(
-                                  item.image_url
-                                )}
+                                {getFileName(item.image_url)}
                               </p>
                             </div>
 
-                            <div className="flex flex-wrap gap-2">
+                            <div className="flex shrink-0 gap-2">
+
                               {isBrowserViewable(
                                 item.image_url
                               ) && (
                                 <a
-                                  href={
-                                    item.image_url
-                                  }
+                                  href={item.image_url}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-3 py-2 text-xs font-bold text-white"
+                                  className="inline-flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-xs font-bold text-slate-700 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50"
                                 >
                                   <Eye size={14} />
                                   View
@@ -1278,11 +1361,9 @@ export default function ClassworkDetailPage() {
                               )}
 
                               <a
-                                href={
-                                  item.image_url
-                                }
+                                href={item.image_url}
                                 download
-                                className="inline-flex items-center gap-2 rounded-lg bg-yellow-500 px-3 py-2 text-xs font-bold text-slate-950"
+                                className="inline-flex items-center gap-2 rounded-lg bg-slate-950 px-3 py-2 text-xs font-bold text-white transition hover:bg-slate-800"
                               >
                                 <Download size={14} />
                                 Download
@@ -1292,122 +1373,19 @@ export default function ClassworkDetailPage() {
                         </div>
                       )}
 
-                      {/* RESULT */}
-
-                      {(item.score !== null ||
-                        item.percentage !== null ||
-                        item.grade) && (
-                        <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                          {item.score !== null && (
-                            <div className="rounded-xl bg-white p-4">
-                              <p className="text-xs font-bold uppercase text-slate-400">
-                                Score
-                              </p>
-
-                              <p className="mt-1 font-black text-blue-700">
-                                {item.score}
-                                {item.total_marks !==
-                                  null &&
-                                  ` / ${item.total_marks}`}
-                              </p>
-                            </div>
-                          )}
-
-                          {item.percentage !== null && (
-                            <div className="rounded-xl bg-white p-4">
-                              <p className="text-xs font-bold uppercase text-slate-400">
-                                Percentage
-                              </p>
-
-                              <p className="mt-1 font-black text-purple-700">
-                                {item.percentage}%
-                              </p>
-                            </div>
-                          )}
-
-                          {item.grade && (
-                            <div className="rounded-xl bg-white p-4">
-                              <p className="text-xs font-bold uppercase text-slate-400">
-                                Grade
-                              </p>
-
-                              <p className="mt-1 font-black text-yellow-700">
-                                {item.grade}
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      {/* FEEDBACK */}
-
-                      {(item.teacher_feedback ||
-                        item.tutor_feedback) && (
-                        <div className="mt-4 rounded-xl bg-blue-50 p-4">
-                          <p className="text-xs font-bold uppercase tracking-wide text-blue-500">
-                            Tutor Feedback
-                          </p>
-
-                          <p className="mt-2 whitespace-pre-wrap text-sm leading-7 text-slate-700">
-                            {item.teacher_feedback ||
-                              item.tutor_feedback}
-                          </p>
-                        </div>
-                      )}
-
-                      {/* CORRECTION */}
-
-                      {item.correction_file_url && (
-                        <div className="mt-4 rounded-xl bg-white p-4">
-                          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                            <div>
-                              <p className="font-bold text-slate-900">
-                                Tutor Correction
-                              </p>
-
-                              <p className="mt-1 text-sm text-slate-500">
-                                A correction file has been provided for this submission.
-                              </p>
-                            </div>
-
-                            <div className="flex flex-wrap gap-2">
-                              {isBrowserViewable(
-                                item.correction_file_url
-                              ) && (
-                                <a
-                                  href={
-                                    item.correction_file_url
-                                  }
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-3 py-2 text-xs font-bold text-white"
-                                >
-                                  <Eye size={14} />
-                                  View
-                                </a>
-                              )}
-
-                              <a
-                                href={
-                                  item.correction_file_url
-                                }
-                                download
-                                className="inline-flex items-center gap-2 rounded-lg bg-yellow-500 px-3 py-2 text-xs font-bold text-slate-950"
-                              >
-                                <Download size={14} />
-                                Download
-                              </a>
-                            </div>
-                          </div>
-                        </div>
-                      )}
                     </div>
-                  );
-                }
-              )}
+                  </div>
+                );
+              })}
             </div>
           </section>
         )}
+
+        {/* =================================================
+            BOTTOM SPACING
+        ================================================= */}
+
+        <div className="h-10" />
       </div>
     </main>
   );
