@@ -24,8 +24,8 @@ type Student = {
 type Schedule = {
   id: string;
   day: string;
-  time: string;
-  meet_link: string | null;
+  time_slot: string;
+  google_meet_link: string | null;
 
   subjects:
     | {
@@ -82,7 +82,7 @@ function getNextLesson(
         return null;
       }
 
-      const start = lesson.time
+      const start = lesson.time_slot
         .split("-")[0]
         .trim();
 
@@ -310,24 +310,6 @@ export default function DashboardPage() {
         // =====================================
         // GET STUDENT TIMETABLE
         // =====================================
-        //
-        // IMPORTANT:
-        //
-        // student_schedules.student_id
-        //        ↓
-        // students.id
-        //
-        // student_schedules.subject_id
-        //        ↓
-        // subjects.id
-        //
-        // student_schedules.tutor_id
-        //        ↓
-        // tutors.id
-        //
-        // WE ARE NOT CHANGING THESE
-        // RELATIONSHIPS.
-        // =====================================
 
         const {
           data: scheduleData,
@@ -339,8 +321,8 @@ export default function DashboardPage() {
               `
                 id,
                 day,
-                time,
-                meet_link,
+                time_slot,
+                google_meet_link,
 
                 subjects (
                   id,
@@ -497,7 +479,7 @@ export default function DashboardPage() {
               </h3>
 
               <p className="mt-1 text-sm text-slate-600">
-                {nextLesson.time}
+                {nextLesson.time_slot}
               </p>
 
               <p className="mt-2 text-sm font-semibold text-slate-800">
@@ -627,7 +609,7 @@ export default function DashboardPage() {
               <p className="mt-2 text-lg font-semibold text-slate-700">
                 {nextLesson.day}
                 {" — "}
-                {nextLesson.time}
+                {nextLesson.time_slot}
               </p>
 
               <p className="mt-2 text-sm text-slate-600">
@@ -639,10 +621,10 @@ export default function DashboardPage() {
                 </span>
               </p>
 
-              {nextLesson.meet_link ? (
+              {nextLesson.google_meet_link ? (
                 <a
                   href={
-                    nextLesson.meet_link
+                    nextLesson.google_meet_link
                   }
                   target="_blank"
                   rel="noopener noreferrer"
@@ -687,32 +669,34 @@ export default function DashboardPage() {
 
           </div>
 
-        <div className="mt-5 space-y-4">
-  <h3 className="text-xl font-extrabold text-slate-900">
-    Happy New Week! 🎉
-  </h3>
+          <div className="mt-5 space-y-4">
 
-  <p className="text-base font-semibold leading-7 text-slate-700">
-    Welcome to a new week at GS Academy. Stay focused, take your
-    studies seriously, and make every lesson count.
-  </p>
+            <h3 className="text-xl font-extrabold text-slate-900">
+              Happy New Week! 🎉
+            </h3>
 
-  <p className="text-base font-semibold leading-7 text-slate-700">
-    📚 Our classwork system is now working. You can now access
-    your classwork and submit your work through the student
-    dashboard.
-  </p>
+            <p className="text-base font-semibold leading-7 text-slate-700">
+              Welcome to a new week at GS Academy. Stay focused, take your
+              studies seriously, and make every lesson count.
+            </p>
 
-  <p className="text-base font-bold leading-7 text-slate-900">
-    Keep learning, keep improving, and let&apos;s have a great week!
-  </p>
-</div>
+            <p className="text-base font-semibold leading-7 text-slate-700">
+              📚 Our classwork system is now working. You can now access
+              your classwork and submit your work through the student
+              dashboard.
+            </p>
+
+            <p className="text-base font-bold leading-7 text-slate-900">
+              Keep learning, keep improving, and let&apos;s have a great week!
+            </p>
+
+          </div>
 
         </div>
 
       </div>
 
-           {/* =====================================
+      {/* =====================================
           MY TIMETABLE
       ====================================== */}
 
@@ -756,22 +740,6 @@ export default function DashboardPage() {
 
           <div className="mt-6 space-y-4">
 
-            {/*
-             * GROUP REAL DATABASE SCHEDULES BY SUBJECT
-             *
-             * We are NOT changing the database.
-             *
-             * Each schedule still comes from:
-             *
-             * student_schedules.student_id → students.id
-             * student_schedules.subject_id → subjects.id
-             * student_schedules.tutor_id   → tutors.id
-             *
-             * We are only combining multiple schedule
-             * rows visually when they belong to the
-             * same subject.
-             */}
-
             {Array.from(
               schedules.reduce(
                 (
@@ -814,20 +782,11 @@ export default function DashboardPage() {
                 subjectSchedules,
               ]) => {
 
-                /*
-                 * Use the first real schedule
-                 * for the shared Join Class button.
-                 *
-                 * Since you will use the same Google
-                 * Meet link for the subject's schedules,
-                 * this is safe.
-                 */
-
                 const joinSchedule =
                   subjectSchedules.find(
                     (schedule) =>
                       Boolean(
-                        schedule.meet_link
+                        schedule.google_meet_link
                       )
                   ) ||
                   subjectSchedules[0];
@@ -847,9 +806,7 @@ export default function DashboardPage() {
 
                     <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
 
-                      {/* =================================
-                          SUBJECT + SCHEDULES
-                      ================================= */}
+                      {/* SUBJECT + SCHEDULES */}
 
                       <div className="min-w-0">
 
@@ -870,8 +827,6 @@ export default function DashboardPage() {
                               {subjectName}
                             </h3>
 
-                            {/* ALL SCHEDULES FOR THIS SUBJECT */}
-
                             <div className="mt-3 space-y-1">
 
                               {subjectSchedules.map(
@@ -887,7 +842,7 @@ export default function DashboardPage() {
                                   >
                                     {schedule.day}
                                     {" — "}
-                                    {schedule.time}
+                                    {schedule.time_slot}
                                   </p>
 
                                 )
@@ -910,19 +865,17 @@ export default function DashboardPage() {
 
                       </div>
 
-                      {/* =================================
-                          ACTIONS
-                      ================================= */}
+                      {/* ACTIONS */}
 
                       <div className="flex shrink-0 flex-col gap-3 sm:flex-row">
 
                         {/* JOIN CLASS */}
 
-                        {joinSchedule.meet_link ? (
+                        {joinSchedule.google_meet_link ? (
 
                           <a
                             href={
-                              joinSchedule.meet_link
+                              joinSchedule.google_meet_link
                             }
                             target="_blank"
                             rel="noopener noreferrer"

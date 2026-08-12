@@ -109,7 +109,7 @@ export default function PricingPage() {
               <div className="mt-8">
 
                 <p className="text-4xl font-extrabold text-slate-900">
-                  ₦40,000
+                  ₦20,000
                 </p>
 
                 <p className="text-slate-600">
@@ -146,7 +146,7 @@ export default function PricingPage() {
               <div className="mt-8">
 
                 <p className="text-4xl font-extrabold text-slate-900">
-                  ₦50,000
+                  ₦30,000
                 </p>
 
                 <p className="text-slate-600">

@@ -9,18 +9,16 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
     <>
+      <main className="min-h-screen bg-slate-100 lg:py-6">
+        <div className="w-full overflow-hidden bg-white lg:mx-auto lg:max-w-7xl lg:rounded-3xl lg:shadow-lg">
 
-     <main className="min-h-screen bg-slate-100 lg:py-6">
-
-      <div className="w-full lg:mx-auto lg:max-w-7xl overflow-hidden bg-white lg:rounded-3xl lg:shadow-lg">
-
-
-          {/* Mobile Dashboard Header */}
+          {/* =====================================================
+              MOBILE DASHBOARD HEADER
+          ===================================================== */}
 
           <div className="flex items-center justify-between bg-slate-950 p-5 text-white lg:hidden">
 
@@ -34,26 +32,23 @@ export default function DashboardLayout({
               </p>
             </div>
 
-
             <button
               onClick={() => setMenuOpen(!menuOpen)}
-              className="rounded-xl bg-slate-800 px-4 py-2 text-2xl"
+              className="rounded-xl bg-slate-800 px-4 py-2 text-2xl text-white"
+              aria-label="Open menu"
             >
               ☰
             </button>
-
           </div>
 
-
-
-          {/* Mobile Menu */}
+          {/* =====================================================
+              MOBILE MENU
+          ===================================================== */}
 
           {menuOpen && (
-
             <div className="bg-slate-950 p-5 text-white lg:hidden">
 
               <nav className="space-y-2">
-
 
                 <Link
                   onClick={() => setMenuOpen(false)}
@@ -63,103 +58,85 @@ export default function DashboardLayout({
                   Dashboard
                 </Link>
 
-
-                <Link
-                  onClick={() => setMenuOpen(false)}
-                  href="/dashboard/classes"
-                  className="block rounded-xl px-5 py-3 text-slate-200 hover:bg-slate-800"
-                >
-                  My Classes
-                </Link>
-
-
                 <Link
                   onClick={() => setMenuOpen(false)}
                   href="/dashboard/classwork"
-                  className="block rounded-xl px-5 py-3 text-slate-200 hover:bg-slate-800"
+                  className="block rounded-xl px-5 py-3 font-semibold text-white hover:bg-slate-800"
                 >
                   Submit Classwork
                 </Link>
 
-
                 <Link
                   onClick={() => setMenuOpen(false)}
                   href="/dashboard/homework"
-                  className="block rounded-xl px-5 py-3 text-slate-200 hover:bg-slate-800"
+                  className="block rounded-xl px-5 py-3 font-semibold text-white hover:bg-slate-800"
                 >
                   Homework
                 </Link>
 
-
                 <Link
                   onClick={() => setMenuOpen(false)}
                   href="/dashboard/resources"
-                  className="block rounded-xl px-5 py-3 text-slate-200 hover:bg-slate-800"
+                  className="block rounded-xl px-5 py-3 font-semibold text-white hover:bg-slate-800"
                 >
                   Learning Resources
                 </Link>
 
-
                 <Link
                   onClick={() => setMenuOpen(false)}
                   href="/dashboard/timetable"
-                  className="block rounded-xl px-5 py-3 text-slate-200 hover:bg-slate-800"
+                  className="block rounded-xl px-5 py-3 font-semibold text-white hover:bg-slate-800"
                 >
                   Timetable
                 </Link>
 
-
                 <Link
                   onClick={() => setMenuOpen(false)}
                   href="/dashboard/progress"
-                  className="block rounded-xl px-5 py-3 text-slate-200 hover:bg-slate-800"
+                  className="block rounded-xl px-5 py-3 font-semibold text-white hover:bg-slate-800"
                 >
                   Progress Report
                 </Link>
 
-
                 <Link
                   onClick={() => setMenuOpen(false)}
                   href="/dashboard/payment"
-                  className="block rounded-xl px-5 py-3 text-slate-200 hover:bg-slate-800"
+                  className="block rounded-xl px-5 py-3 font-semibold text-white hover:bg-slate-800"
                 >
                   Payments
                 </Link>
 
-
                 <Link
                   onClick={() => setMenuOpen(false)}
                   href="/dashboard/settings"
-                  className="block rounded-xl px-5 py-3 text-slate-200 hover:bg-slate-800"
+                  className="block rounded-xl px-5 py-3 font-semibold text-white hover:bg-slate-800"
                 >
                   Settings
                 </Link>
 
-
                 <Link
+                  onClick={() => setMenuOpen(false)}
                   href="/login"
-                  className="block rounded-xl px-5 py-3 text-red-300 hover:bg-red-600 hover:text-white"
+                  className="block rounded-xl px-5 py-3 font-semibold text-red-300 hover:bg-red-600 hover:text-white"
                 >
                   Logout
                 </Link>
 
-
               </nav>
-
             </div>
-
           )}
 
-
-
+          {/* =====================================================
+              DASHBOARD BODY
+          ===================================================== */}
 
           <div className="flex">
 
+            {/* =================================================
+                DESKTOP SIDEBAR
+            ================================================= */}
 
-            {/* Desktop Sidebar */}
-
-            <aside className="hidden w-72 bg-slate-950 p-8 text-white lg:block">
-
+            <aside className="hidden w-72 shrink-0 bg-slate-950 p-8 text-white lg:block">
 
               <div className="mb-10 border-b border-slate-800 pb-8">
 
@@ -173,10 +150,7 @@ export default function DashboardLayout({
 
               </div>
 
-
-
               <nav className="space-y-2">
-
 
                 <Link
                   href="/dashboard"
@@ -185,99 +159,73 @@ export default function DashboardLayout({
                   Dashboard
                 </Link>
 
-
-                <Link
-                  href="/dashboard/classes"
-                  className="block rounded-xl px-5 py-4 text-slate-200 hover:bg-slate-800"
-                >
-                  My Classes
-                </Link>
-
-
                 <Link
                   href="/dashboard/classwork"
-                  className="block rounded-xl px-5 py-4 text-slate-200 hover:bg-slate-800"
+                  className="block rounded-xl px-5 py-4 font-semibold text-white hover:bg-slate-800"
                 >
                   Submit Classwork
                 </Link>
 
-
                 <Link
                   href="/dashboard/homework"
-                  className="block rounded-xl px-5 py-4 text-slate-200 hover:bg-slate-800"
+                  className="block rounded-xl px-5 py-4 font-semibold text-white hover:bg-slate-800"
                 >
                   Homework
                 </Link>
 
-
                 <Link
                   href="/dashboard/resources"
-                  className="block rounded-xl px-5 py-4 text-slate-200 hover:bg-slate-800"
+                  className="block rounded-xl px-5 py-4 font-semibold text-white hover:bg-slate-800"
                 >
                   Learning Resources
                 </Link>
 
-
                 <Link
                   href="/dashboard/timetable"
-                  className="block rounded-xl px-5 py-4 text-slate-200 hover:bg-slate-800"
+                  className="block rounded-xl px-5 py-4 font-semibold text-white hover:bg-slate-800"
                 >
                   Timetable
                 </Link>
 
-
                 <Link
                   href="/dashboard/progress"
-                  className="block rounded-xl px-5 py-4 text-slate-200 hover:bg-slate-800"
+                  className="block rounded-xl px-5 py-4 font-semibold text-white hover:bg-slate-800"
                 >
                   Progress Report
                 </Link>
 
-
                 <Link
                   href="/dashboard/payment"
-                  className="block rounded-xl px-5 py-4 text-slate-200 hover:bg-slate-800"
+                  className="block rounded-xl px-5 py-4 font-semibold text-white hover:bg-slate-800"
                 >
                   Payments
                 </Link>
 
-
                 <Link
                   href="/dashboard/settings"
-                  className="block rounded-xl px-5 py-4 text-slate-200 hover:bg-slate-800"
+                  className="block rounded-xl px-5 py-4 font-semibold text-white hover:bg-slate-800"
                 >
                   Settings
                 </Link>
 
-
               </nav>
-
-
             </aside>
 
+            {/* =================================================
+                MAIN CONTENT
+            ================================================= */}
 
-
-
-            {/* Main Content */}
-
-     <section className="min-h-screen flex-1 bg-white p-5 sm:p-8">
+            <section className="min-h-screen min-w-0 flex-1 bg-white p-5 text-slate-950 sm:p-8">
 
               {children}
 
             </section>
 
-
           </div>
-
-
         </div>
-
-
       </main>
 
-
       <Footer />
-
     </>
   );
 }

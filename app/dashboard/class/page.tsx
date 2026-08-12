@@ -20,8 +20,8 @@ type Student = {
 type Schedule = {
   id: string;
   day: string;
-  time: string;
-  meet_link: string | null;
+  time_slot: string;
+  google_meet_link: string | null;
 
   subjects:
     | {
@@ -219,8 +219,8 @@ export default function ClassPage() {
           .select(`
             id,
             day,
-            time,
-            meet_link,
+            time_slot,
+            google_meet_link,
 
             subjects (
               id,
@@ -252,7 +252,9 @@ export default function ClassPage() {
         const selectedSchedule =
           scheduleData as Schedule;
 
-        setSchedule(selectedSchedule);
+        setSchedule(
+          selectedSchedule
+        );
 
         /* ---------------------------------------------------
            GET SUBJECT FROM SELECTED CLASS
@@ -383,11 +385,13 @@ export default function ClassPage() {
       <main className="min-h-screen bg-slate-50">
         <div className="mx-auto max-w-5xl px-6 py-10">
           <div className="rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+
             <div className="mx-auto h-9 w-9 animate-spin rounded-full border-4 border-slate-200 border-t-yellow-500" />
 
             <p className="mt-4 text-sm font-semibold text-slate-500">
               Loading classwork...
             </p>
+
           </div>
         </div>
       </main>
@@ -493,7 +497,7 @@ export default function ClassPage() {
                 <span className="font-semibold text-slate-700">
                   {schedule.day}
                 </span>{" "}
-                — {schedule.time}
+                — {schedule.time_slot}
               </p>
 
               <p>
