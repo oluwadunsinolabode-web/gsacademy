@@ -6,7 +6,6 @@ import {
   ArrowLeft,
   ArrowRight,
   BookOpen,
-  ExternalLink,
 } from "lucide-react";
 
 import { supabase } from "@/lib/supabase";
@@ -310,7 +309,6 @@ export default function ClassPage() {
 
         /* ---------------------------------------------------
            GET ASSIGNED CLASSWORK
-           ONLY TITLE + SUBJECT + DATE
         --------------------------------------------------- */
 
         const {
@@ -506,20 +504,6 @@ export default function ClassPage() {
               </p>
 
             </div>
-          )}
-
-          {/* LIVE CLASS */}
-
-          {schedule?.meet_link && (
-            <a
-              href={schedule.meet_link}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-5 inline-flex items-center gap-2 rounded-xl bg-slate-950 px-5 py-3 text-sm font-bold text-white transition hover:bg-slate-800"
-            >
-              Join Live Class
-              <ExternalLink size={17} />
-            </a>
           )}
 
         </header>
