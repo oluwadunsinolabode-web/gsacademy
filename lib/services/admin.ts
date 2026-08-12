@@ -1,6 +1,8 @@
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase/server";
 
 export async function createStudent(student: any) {
+  const supabase = await createClient();
+
   return await supabase
     .from("students")
     .insert(student)
@@ -9,6 +11,8 @@ export async function createStudent(student: any) {
 }
 
 export async function createTutor(tutor: any) {
+  const supabase = await createClient();
+
   return await supabase
     .from("tutors")
     .insert(tutor)
@@ -17,6 +21,8 @@ export async function createTutor(tutor: any) {
 }
 
 export async function getStudents() {
+  const supabase = await createClient();
+
   return await supabase
     .from("students")
     .select("*")
@@ -24,6 +30,8 @@ export async function getStudents() {
 }
 
 export async function getTutors() {
+  const supabase = await createClient();
+
   return await supabase
     .from("tutors")
     .select("*")
