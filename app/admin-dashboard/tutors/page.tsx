@@ -1,27 +1,13 @@
-"use client";
-
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { UserPlus } from "lucide-react";
-import { getTutors } from "@/lib/services/tutor";
+import { getTutors } from "@/lib/services/admin";
 
-export default function TutorsPage() {
-  const [tutors, setTutors] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+export default async function TutorsPage() {
+  const { data: tutors, error } = await getTutors();
 
-  useEffect(() => {
-    async function loadTutors() {
-      const { data, error } = await getTutors();
-
-      if (!error && data) {
-        setTutors(data);
-      }
-
-      setLoading(false);
-    }
-
-    loadTutors();
-  }, []);
+  if (error) {
+    console.error("Failed to load tutors:", error);
+  }
 
   return (
     <div className="mx-auto max-w-7xl">
@@ -29,7 +15,7 @@ export default function TutorsPage() {
       <div className="flex items-end justify-between">
 
         <div>
-          <h1 className="text-4xl font-extrabold">
+          <h1 className="text-4xl font-extrabold text-slate-900">
             Tutors
           </h1>
 
@@ -50,20 +36,23 @@ export default function TutorsPage() {
 
       <div className="mt-10 overflow-x-auto rounded-3xl bg-white p-8 shadow-sm">
 
-        {loading ? (
+        {error ? (
 
-          <p>Loading tutors...</p>
+          <div className="text-red-600">
+            Failed to load tutors.
+          </div>
 
-        ) : tutors.length === 0 ? (
+        ) : !tutors || tutors.length === 0 ? (
 
-          <p>No tutors found.</p>
+          <p className="text-slate-500">
+            No tutors found.
+          </p>
 
         ) : (
 
           <table className="w-full">
 
             <thead>
-
               <tr className="border-b">
 
                 <th className="py-4 text-left">
@@ -91,12 +80,11 @@ export default function TutorsPage() {
                 </th>
 
               </tr>
-
             </thead>
 
             <tbody>
 
-              {tutors.map((tutor) => (
+              {tutors.map((tutor: any) => (
 
                 <tr
                   key={tutor.id}
@@ -112,13 +100,13 @@ export default function TutorsPage() {
                   </td>
 
                   <td>
-                    {tutor.phone}
+                    {tutor.phone || "No phone"}
                   </td>
 
                   <td>
                     {Array.isArray(tutor.subjects)
                       ? tutor.subjects.join(", ")
-                      : tutor.subjects}
+                      : tutor.subjects || "No subjects"}
                   </td>
 
                   <td>
