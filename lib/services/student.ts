@@ -31,7 +31,6 @@ export async function getStudents() {
     .order("created_at", { ascending: false });
 }
 
-
 // ==========================================
 // CREATE STUDENT
 // ==========================================
@@ -93,24 +92,37 @@ export async function createStudent(student: {
     .single();
 }
 
-
 // ==========================================
 // GET SINGLE STUDENT
-// ==========================================
-//
-// IMPORTANT:
-// Keep this query simple for now.
-// The student profile itself must load first.
-// Tutor assignments can be loaded separately.
 // ==========================================
 export async function getStudent(id: string) {
   return await supabase
     .from("students")
-    .select("*")
+    .select(`
+      *,
+      tutor_assignments (
+        id,
+        tutor_id,
+        subject_id,
+        day,
+        time_slot,
+        google_meet_link,
+        status,
+        subjects (
+          id,
+          name
+        ),
+        tutors (
+          id,
+          full_name,
+          email,
+          phone
+        )
+      )
+    `)
     .eq("id", id)
-    .single();
+    .maybeSingle();
 }
-
 
 // ==========================================
 // GET STUDENT BY AUTH ID
@@ -144,7 +156,6 @@ export async function getStudentByAuthId(authId: string) {
     .single();
 }
 
-
 // ==========================================
 // UPDATE STUDENT
 // ==========================================
@@ -177,7 +188,6 @@ export async function updateStudent(
     .select()
     .single();
 }
-
 
 // ==========================================
 // DELETE STUDENT
