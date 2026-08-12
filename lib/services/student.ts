@@ -1,9 +1,11 @@
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase/server";
 
 // ==========================================
 // GET ALL STUDENTS
 // ==========================================
 export async function getStudents() {
+  const supabase = await createClient();
+
   return await supabase
     .from("students")
     .select(`
@@ -53,6 +55,8 @@ export async function createStudent(student: {
   status?: string;
   auth_id?: string;
 }) {
+  const supabase = await createClient();
+
   return await supabase
     .from("students")
     .insert({
@@ -65,28 +69,14 @@ export async function createStudent(student: {
       academic_level: student.academic_level,
       package: student.package,
       tutor_id: student.tutor_id,
-
       subjects: student.subjects ?? [],
-
       amount_paid: student.amount_paid ?? 0,
-
-      outstanding_balance:
-        student.outstanding_balance ?? 0,
-
-      payment_due_date:
-        student.payment_due_date ?? null,
-
-      google_meet_link:
-        student.google_meet_link ?? null,
-
-      lesson_schedule:
-        student.lesson_schedule ?? null,
-
-      status:
-        student.status ?? "Active",
-
-      auth_id:
-        student.auth_id ?? null,
+      outstanding_balance: student.outstanding_balance ?? 0,
+      payment_due_date: student.payment_due_date ?? null,
+      google_meet_link: student.google_meet_link ?? null,
+      lesson_schedule: student.lesson_schedule ?? null,
+      status: student.status ?? "Active",
+      auth_id: student.auth_id ?? null,
     })
     .select()
     .single();
@@ -96,6 +86,8 @@ export async function createStudent(student: {
 // GET SINGLE STUDENT
 // ==========================================
 export async function getStudent(id: string) {
+  const supabase = await createClient();
+
   return await supabase
     .from("students")
     .select(`
@@ -128,6 +120,8 @@ export async function getStudent(id: string) {
 // GET STUDENT BY AUTH ID
 // ==========================================
 export async function getStudentByAuthId(authId: string) {
+  const supabase = await createClient();
+
   return await supabase
     .from("students")
     .select(`
@@ -181,6 +175,8 @@ export async function updateStudent(
     auth_id?: string;
   }
 ) {
+  const supabase = await createClient();
+
   return await supabase
     .from("students")
     .update(updates)
@@ -193,6 +189,8 @@ export async function updateStudent(
 // DELETE STUDENT
 // ==========================================
 export async function deleteStudent(id: string) {
+  const supabase = await createClient();
+
   return await supabase
     .from("students")
     .delete()
