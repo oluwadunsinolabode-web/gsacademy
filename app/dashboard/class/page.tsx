@@ -20,8 +20,8 @@ type Student = {
 type Schedule = {
   id: string;
   day: string;
-  time_slot: string;
-  google_meet_link: string | null;
+  time: string;
+  meet_link: string | null;
 
   subjects:
     | {
@@ -216,22 +216,22 @@ export default function ClassPage() {
           error: scheduleError,
         } = await supabase
           .from("student_schedules")
-          .select(`
-            id,
-            day,
-            time_slot,
-            google_meet_link,
+         .select(`
+  id,
+  day,
+  time,
+  meet_link,
 
-            subjects (
-              id,
-              name
-            ),
+  subjects (
+    id,
+    name
+  ),
 
-            tutors (
-              id,
-              full_name
-            )
-          `)
+  tutors (
+    id,
+    full_name
+  )
+`)
           .eq("id", scheduleId)
           .eq(
             "student_id",
