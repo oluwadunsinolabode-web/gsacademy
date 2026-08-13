@@ -640,9 +640,7 @@ function ClassPageContent() {
                   index
                 ) => (
 
-                  <Link
-                    key={work.id}
-                    href={`/dashboard/classwork/${work.id}`}
+                href={`/dashboard/classwork/${work.id}?schedule_id=${schedule?.id}`}
                     className={`group flex items-center justify-between gap-5 px-6 py-6 transition hover:bg-slate-50 ${
                       index !==
                       classworks.length - 1
