@@ -60,22 +60,6 @@ export default function DashboardLayout({
 
                 <Link
                   onClick={() => setMenuOpen(false)}
-                  href="/dashboard/classwork"
-                  className="block rounded-xl px-5 py-3 font-semibold text-white hover:bg-slate-800"
-                >
-                  Submit Classwork
-                </Link>
-
-                <Link
-                  onClick={() => setMenuOpen(false)}
-                  href="/dashboard/homework"
-                  className="block rounded-xl px-5 py-3 font-semibold text-white hover:bg-slate-800"
-                >
-                  Homework
-                </Link>
-
-                <Link
-                  onClick={() => setMenuOpen(false)}
                   href="/dashboard/resources"
                   className="block rounded-xl px-5 py-3 font-semibold text-white hover:bg-slate-800"
                 >
@@ -157,20 +141,6 @@ export default function DashboardLayout({
                   className="block rounded-xl bg-yellow-500 px-5 py-4 font-semibold text-slate-900"
                 >
                   Dashboard
-                </Link>
-
-                <Link
-                  href="/dashboard/classwork"
-                  className="block rounded-xl px-5 py-4 font-semibold text-white hover:bg-slate-800"
-                >
-                  Submit Classwork
-                </Link>
-
-                <Link
-                  href="/dashboard/homework"
-                  className="block rounded-xl px-5 py-4 font-semibold text-white hover:bg-slate-800"
-                >
-                  Homework
                 </Link>
 
                 <Link

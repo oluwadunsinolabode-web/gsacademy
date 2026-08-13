@@ -17,7 +17,7 @@ export default function ResourcesPage() {
             LESSON NOTES
         ===================================================== */}
 
-        <div className="rounded-3xl bg-white p-8 shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
+        <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
 
           <div className="h-1 w-16 rounded-full bg-yellow-500"></div>
 
@@ -29,9 +29,12 @@ export default function ResourcesPage() {
             View and download notes from topics covered during your lessons.
           </p>
 
-          <button className="mt-8 w-full rounded-xl bg-yellow-500 py-3 font-bold text-slate-900 transition hover:bg-yellow-400">
+          <Link
+            href="/dashboard/resources/lesson-notes"
+            className="mt-8 block w-full rounded-xl bg-yellow-500 py-3 text-center font-bold text-slate-900 transition hover:bg-yellow-400"
+          >
             View Notes
-          </button>
+          </Link>
 
         </div>
 
@@ -40,7 +43,7 @@ export default function ResourcesPage() {
             MONTHLY MOCK EXAM
         ===================================================== */}
 
-        <div className="rounded-3xl bg-white p-8 shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
+        <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
 
           <div className="h-1 w-16 rounded-full bg-slate-900"></div>
 
@@ -52,7 +55,10 @@ export default function ResourcesPage() {
             Take scheduled monthly assessments and monitor your academic progress.
           </p>
 
-          <button className="mt-8 w-full rounded-xl bg-slate-900 py-3 font-bold text-white transition hover:bg-slate-800">
+          <button
+            type="button"
+            className="mt-8 w-full rounded-xl bg-slate-900 py-3 font-bold text-white transition hover:bg-slate-800"
+          >
             View Exams
           </button>
 

@@ -24,8 +24,8 @@ type Student = {
 type Schedule = {
   id: string;
   day: string;
-  time_slot: string;
-  google_meet_link: string | null;
+  time: string;
+  meet_link: string | null;
 
   subjects:
     | {
@@ -60,6 +60,10 @@ const DAYS = [
   "Saturday",
 ];
 
+/* =========================================================
+   GET NEXT LESSON
+========================================================= */
+
 function getNextLesson(
   scheduleList: Schedule[]
 ): Schedule | null {
@@ -82,7 +86,7 @@ function getNextLesson(
         return null;
       }
 
-      const start = lesson.time_slot
+      const start = lesson.time
         .split("-")[0]
         .trim();
 
@@ -171,6 +175,10 @@ function getNextLesson(
     : null;
 }
 
+/* =========================================================
+   GET SUBJECT NAME
+========================================================= */
+
 function getSubjectName(
   schedule: Schedule
 ): string {
@@ -192,6 +200,10 @@ function getSubjectName(
     "Subject"
   );
 }
+
+/* =========================================================
+   GET TUTOR NAME
+========================================================= */
 
 function getTutorName(
   schedule: Schedule
@@ -215,6 +227,10 @@ function getTutorName(
   );
 }
 
+/* =========================================================
+   DASHBOARD
+========================================================= */
+
 export default function DashboardPage() {
   const [student, setStudent] =
     useState<Student | null>(null);
@@ -228,31 +244,25 @@ export default function DashboardPage() {
   const [error, setError] =
     useState("");
 
+  /* =======================================================
+     LOAD DASHBOARD
+  ======================================================= */
+
   useEffect(() => {
     async function loadDashboard() {
       try {
         setLoading(true);
         setError("");
 
-        // =====================================
-        // GET LOGGED-IN USER
-        // =====================================
+        /* =================================================
+           GET LOGGED-IN USER
+        ================================================= */
 
         const {
           data: { user },
           error: authError,
         } =
           await supabase.auth.getUser();
-
-        console.log(
-          "CURRENT AUTH ID:",
-          user?.id
-        );
-
-        console.log(
-          "CURRENT AUTH EMAIL:",
-          user?.email
-        );
 
         if (
           authError ||
@@ -263,9 +273,9 @@ export default function DashboardPage() {
           );
         }
 
-        // =====================================
-        // GET STUDENT PROFILE
-        // =====================================
+        /* =================================================
+           GET STUDENT PROFILE
+        ================================================= */
 
         const {
           data: studentData,
@@ -288,11 +298,6 @@ export default function DashboardPage() {
             )
             .single();
 
-        console.log(
-          "STUDENT:",
-          studentData
-        );
-
         if (
           studentError ||
           !studentData
@@ -307,9 +312,9 @@ export default function DashboardPage() {
           studentData
         );
 
-        // =====================================
-        // GET STUDENT TIMETABLE
-        // =====================================
+        /* =================================================
+           GET STUDENT TIMETABLE
+        ================================================= */
 
         const {
           data: scheduleData,
@@ -321,8 +326,8 @@ export default function DashboardPage() {
               `
                 id,
                 day,
-                time_slot,
-                google_meet_link,
+                time,
+                meet_link,
 
                 subjects (
                   id,
@@ -339,11 +344,6 @@ export default function DashboardPage() {
               "student_id",
               studentData.id
             );
-
-        console.log(
-          "STUDENT SCHEDULE:",
-          scheduleData
-        );
 
         if (scheduleError) {
           throw new Error(
@@ -375,9 +375,9 @@ export default function DashboardPage() {
     loadDashboard();
   }, []);
 
-  // =====================================
-  // REFRESH NEXT LESSON EVERY MINUTE
-  // =====================================
+  /* =======================================================
+     REFRESH NEXT LESSON EVERY MINUTE
+  ======================================================= */
 
   useEffect(() => {
     const interval =
@@ -393,28 +393,32 @@ export default function DashboardPage() {
       clearInterval(interval);
   }, []);
 
+  /* =======================================================
+     NEXT LESSON
+  ======================================================= */
+
   const nextLesson =
     getNextLesson(
       schedules
     );
 
-  // =====================================
-  // LOADING
-  // =====================================
+  /* =======================================================
+     LOADING
+  ======================================================= */
 
   if (loading) {
     return (
       <div className="flex min-h-[400px] items-center justify-center">
-        <p className="text-lg font-semibold text-slate-600">
+        <p className="text-lg font-semibold text-slate-700">
           Loading dashboard...
         </p>
       </div>
     );
   }
 
-  // =====================================
-  // ERROR
-  // =====================================
+  /* =======================================================
+     ERROR
+  ======================================================= */
 
   if (error) {
     return (
@@ -423,23 +427,23 @@ export default function DashboardPage() {
           Unable to load dashboard
         </h1>
 
-        <p className="mt-2 text-red-600">
+        <p className="mt-2 font-medium text-red-600">
           {error}
         </p>
       </div>
     );
   }
 
-  // =====================================
-  // DASHBOARD
-  // =====================================
+  /* =======================================================
+     DASHBOARD
+  ======================================================= */
 
   return (
-    <div className="pb-10">
+    <div className="w-full min-w-0 pb-10">
 
-      {/* =====================================
+      {/* =================================================
           HEADER
-      ====================================== */}
+      ================================================= */}
 
       <div>
         <h1 className="text-4xl font-extrabold text-slate-900">
@@ -447,15 +451,15 @@ export default function DashboardPage() {
           {student?.full_name || ""}
         </h1>
 
-        <p className="mt-3 text-slate-700">
+        <p className="mt-3 font-medium text-slate-700">
           Here is an overview of your
           learning activities.
         </p>
       </div>
 
-      {/* =====================================
+      {/* =================================================
           SUMMARY CARDS
-      ====================================== */}
+      ================================================= */}
 
       <div className="mt-10 grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
 
@@ -478,8 +482,8 @@ export default function DashboardPage() {
                 {nextLesson.day}
               </h3>
 
-              <p className="mt-1 text-sm text-slate-600">
-                {nextLesson.time_slot}
+              <p className="mt-1 font-medium text-slate-700">
+                {nextLesson.time}
               </p>
 
               <p className="mt-2 text-sm font-semibold text-slate-800">
@@ -509,7 +513,7 @@ export default function DashboardPage() {
             Package
           </p>
 
-          <h3 className="mt-3 text-xl font-extrabold text-slate-900">
+          <h3 className="mt-3 break-words text-xl font-extrabold text-slate-900">
             {student?.package ||
               "Not assigned"}
           </h3>
@@ -533,7 +537,7 @@ export default function DashboardPage() {
             {schedules.length}
           </h3>
 
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 font-medium text-slate-600">
             Scheduled lessons
           </p>
 
@@ -555,18 +559,17 @@ export default function DashboardPage() {
           <h3 className="mt-3 text-xl font-extrabold text-slate-900">
             {
               new Set(
-                schedules
-                  .map(
-                    (schedule) =>
-                      getSubjectName(
-                        schedule
-                      )
-                  )
+                schedules.map(
+                  (schedule) =>
+                    getSubjectName(
+                      schedule
+                    )
+                )
               ).size
             }
           </h3>
 
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 font-medium text-slate-600">
             Active subjects
           </p>
 
@@ -574,21 +577,21 @@ export default function DashboardPage() {
 
       </div>
 
-      {/* =====================================
+      {/* =================================================
           UPCOMING LESSON + UPDATES
-      ====================================== */}
+      ================================================= */}
 
       <div className="mt-10 grid gap-8 lg:grid-cols-2">
 
         {/* UPCOMING LESSON */}
 
-        <div className="rounded-3xl bg-white p-6 shadow-sm">
+        <div className="min-w-0 rounded-3xl bg-white p-6 shadow-sm">
 
           <div className="flex items-center gap-3">
 
             <CalendarDays
               size={30}
-              className="text-yellow-600"
+              className="shrink-0 text-yellow-600"
             />
 
             <h2 className="text-2xl font-bold text-slate-900">
@@ -606,25 +609,25 @@ export default function DashboardPage() {
                 )}
               </h3>
 
-              <p className="mt-2 text-lg font-semibold text-slate-700">
+              <p className="mt-2 font-semibold text-slate-700">
                 {nextLesson.day}
                 {" — "}
-                {nextLesson.time_slot}
+                {nextLesson.time}
               </p>
 
-              <p className="mt-2 text-sm text-slate-600">
+              <p className="mt-2 font-medium text-slate-700">
                 Tutor:{" "}
-                <span className="font-semibold text-slate-900">
+                <span className="font-bold text-slate-900">
                   {getTutorName(
                     nextLesson
                   )}
                 </span>
               </p>
 
-              {nextLesson.google_meet_link ? (
+              {nextLesson.meet_link ? (
                 <a
                   href={
-                    nextLesson.google_meet_link
+                    nextLesson.meet_link
                   }
                   target="_blank"
                   rel="noopener noreferrer"
@@ -643,7 +646,7 @@ export default function DashboardPage() {
 
             </div>
           ) : (
-            <p className="mt-6 text-slate-600">
+            <p className="mt-6 font-medium text-slate-700">
               Your timetable will appear
               here once your lessons have
               been scheduled.
@@ -654,13 +657,13 @@ export default function DashboardPage() {
 
         {/* LATEST UPDATES */}
 
-        <div className="rounded-3xl bg-white p-6 shadow-sm">
+        <div className="min-w-0 rounded-3xl bg-white p-6 shadow-sm">
 
           <div className="flex items-center gap-3">
 
             <Bell
               size={30}
-              className="text-yellow-600"
+              className="shrink-0 text-yellow-600"
             />
 
             <h2 className="text-2xl font-bold text-slate-900">
@@ -675,19 +678,22 @@ export default function DashboardPage() {
               Happy New Week! 🎉
             </h3>
 
-            <p className="text-base font-semibold leading-7 text-slate-700">
-              Welcome to a new week at GS Academy. Stay focused, take your
-              studies seriously, and make every lesson count.
+            <p className="font-semibold leading-7 text-slate-700">
+              Welcome to a new week at GS Academy.
+              Stay focused, take your studies
+              seriously, and make every lesson count.
             </p>
 
-            <p className="text-base font-semibold leading-7 text-slate-700">
-              📚 Our classwork system is now working. You can now access
-              your classwork and submit your work through the student
+            <p className="font-semibold leading-7 text-slate-700">
+              📚 Our classwork system is now working.
+              You can now access your classwork and
+              submit your work through the student
               dashboard.
             </p>
 
-            <p className="text-base font-bold leading-7 text-slate-900">
-              Keep learning, keep improving, and let&apos;s have a great week!
+            <p className="font-bold leading-7 text-slate-900">
+              Keep learning, keep improving, and
+              let&apos;s have a great week!
             </p>
 
           </div>
@@ -696,27 +702,30 @@ export default function DashboardPage() {
 
       </div>
 
-      {/* =====================================
+      {/* =================================================
           MY TIMETABLE
-      ====================================== */}
+      ================================================= */}
 
-      <div className="mt-10 rounded-3xl bg-white p-6 shadow-sm">
+      <div className="mt-10 min-w-0 rounded-3xl bg-white p-6 shadow-sm">
 
         <div className="flex items-center gap-3">
 
           <CalendarDays
             size={30}
-            className="text-yellow-600"
+            className="shrink-0 text-yellow-600"
           />
 
-          <div>
+          <div className="min-w-0">
+
             <h2 className="text-2xl font-bold text-slate-900">
               My Timetable
             </h2>
 
-            <p className="mt-1 text-sm text-slate-500">
-              Join your lesson or open your subject classroom.
+            <p className="mt-1 font-medium text-slate-600">
+              Join your lesson or open your
+              subject classroom.
             </p>
+
           </div>
 
         </div>
@@ -727,10 +736,10 @@ export default function DashboardPage() {
 
             <CalendarDays
               size={40}
-              className="mx-auto text-slate-300"
+              className="mx-auto text-slate-400"
             />
 
-            <p className="mt-4 font-semibold text-slate-600">
+            <p className="mt-4 font-semibold text-slate-700">
               No lessons have been scheduled yet.
             </p>
 
@@ -786,7 +795,7 @@ export default function DashboardPage() {
                   subjectSchedules.find(
                     (schedule) =>
                       Boolean(
-                        schedule.google_meet_link
+                        schedule.meet_link
                       )
                   ) ||
                   subjectSchedules[0];
@@ -801,16 +810,16 @@ export default function DashboardPage() {
                     key={
                       subjectName
                     }
-                    className="rounded-2xl border border-slate-200 bg-slate-50 p-5"
+                    className="min-w-0 rounded-2xl border border-slate-200 bg-slate-50 p-5"
                   >
 
-                    <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+                    <div className="flex min-w-0 flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
 
                       {/* SUBJECT + SCHEDULES */}
 
                       <div className="min-w-0">
 
-                        <div className="flex items-start gap-3">
+                        <div className="flex min-w-0 items-start gap-3">
 
                           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-yellow-100">
 
@@ -823,7 +832,7 @@ export default function DashboardPage() {
 
                           <div className="min-w-0">
 
-                            <h3 className="text-xl font-extrabold text-slate-900">
+                            <h3 className="break-words text-xl font-extrabold text-slate-900">
                               {subjectName}
                             </h3>
 
@@ -838,11 +847,11 @@ export default function DashboardPage() {
                                     key={
                                       schedule.id
                                     }
-                                    className="font-semibold text-slate-700"
+                                    className="break-words font-semibold text-slate-700"
                                   >
                                     {schedule.day}
                                     {" — "}
-                                    {schedule.time_slot}
+                                    {schedule.time}
                                   </p>
 
                                 )
@@ -854,11 +863,11 @@ export default function DashboardPage() {
 
                         </div>
 
-                        {/* ONE TUTOR LINE */}
+                        {/* TUTOR */}
 
-                        <p className="mt-4 text-sm text-slate-600">
+                        <p className="mt-4 font-medium text-slate-700">
                           Tutor:{" "}
-                          <span className="font-semibold text-slate-900">
+                          <span className="font-bold text-slate-900">
                             {tutorName}
                           </span>
                         </p>
@@ -867,19 +876,19 @@ export default function DashboardPage() {
 
                       {/* ACTIONS */}
 
-                      <div className="flex shrink-0 flex-col gap-3 sm:flex-row">
+                      <div className="flex w-full shrink-0 flex-col gap-3 sm:flex-row lg:w-auto">
 
                         {/* JOIN CLASS */}
 
-                        {joinSchedule.google_meet_link ? (
+                        {joinSchedule.meet_link ? (
 
                           <a
                             href={
-                              joinSchedule.google_meet_link
+                              joinSchedule.meet_link
                             }
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center justify-center rounded-xl bg-yellow-500 px-6 py-3 font-bold text-slate-900 transition hover:bg-yellow-400"
+                            className="inline-flex w-full items-center justify-center rounded-xl bg-yellow-500 px-6 py-3 font-bold text-slate-900 transition hover:bg-yellow-400 sm:w-auto"
                           >
                             Join Class
                           </a>
@@ -888,7 +897,7 @@ export default function DashboardPage() {
 
                           <button
                             disabled
-                            className="inline-flex cursor-not-allowed items-center justify-center rounded-xl bg-slate-300 px-6 py-3 font-bold text-slate-500"
+                            className="inline-flex w-full cursor-not-allowed items-center justify-center rounded-xl bg-slate-300 px-6 py-3 font-bold text-slate-600 sm:w-auto"
                           >
                             Class Link Not Available
                           </button>
@@ -903,7 +912,7 @@ export default function DashboardPage() {
                           )}&schedule_id=${encodeURIComponent(
                             joinSchedule.id
                           )}`}
-                          className="inline-flex items-center justify-center gap-2 rounded-xl border-2 border-slate-900 bg-white px-6 py-3 font-bold text-slate-900 transition hover:bg-slate-900 hover:text-white"
+                          className="inline-flex w-full items-center justify-center gap-2 rounded-xl border-2 border-slate-900 bg-white px-6 py-3 font-bold text-slate-900 transition hover:bg-slate-900 hover:text-white sm:w-auto"
                         >
                           Open Class
 
@@ -927,6 +936,7 @@ export default function DashboardPage() {
         )}
 
       </div>
+
     </div>
   );
 }
