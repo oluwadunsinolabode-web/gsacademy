@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
   ArrowRight,
@@ -120,6 +121,8 @@ function subjectsMatch(
 ========================================================= */
 
 export default function ClassPage() {
+  const searchParams = useSearchParams();
+
   const [student, setStudent] =
     useState<Student | null>(null);
 
@@ -149,12 +152,25 @@ export default function ClassPage() {
            GET SCHEDULE ID
         --------------------------------------------------- */
 
-        const params = new URLSearchParams(
-          window.location.search
+        const scheduleId =
+          searchParams.get("schedule_id");
+
+        console.log(
+          "CLASS PAGE URL:",
+          window.location.href
         );
 
-        const scheduleId =
-          params.get("schedule_id");
+        console.log(
+          "ALL QUERY PARAMS:",
+          Object.fromEntries(
+            searchParams.entries()
+          )
+        );
+
+        console.log(
+          "SCHEDULE ID:",
+          scheduleId
+        );
 
         if (!scheduleId) {
           throw new Error(
@@ -216,22 +232,22 @@ export default function ClassPage() {
           error: scheduleError,
         } = await supabase
           .from("student_schedules")
-         .select(`
-  id,
-  day,
-  time,
-  meet_link,
+          .select(`
+            id,
+            day,
+            time,
+            meet_link,
 
-  subjects (
-    id,
-    name
-  ),
+            subjects (
+              id,
+              name
+            ),
 
-  tutors (
-    id,
-    full_name
-  )
-`)
+            tutors (
+              id,
+              full_name
+            )
+          `)
           .eq("id", scheduleId)
           .eq(
             "student_id",
@@ -374,7 +390,7 @@ export default function ClassPage() {
     }
 
     loadClassPage();
-  }, []);
+  }, [searchParams]);
 
   /* =========================================================
      LOADING
