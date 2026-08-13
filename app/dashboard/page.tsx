@@ -904,23 +904,23 @@ export default function DashboardPage() {
 
                         )}
 
-                        {/* OPEN CLASS */}
+                       {/* OPEN CLASS */}
 
-                        <Link
-                          href={`/dashboard/class?subject=${encodeURIComponent(
-                            subjectName
-                          )}&schedule_id=${encodeURIComponent(
-                            joinSchedule.id
-                          )}`}
-                          className="inline-flex w-full items-center justify-center gap-2 rounded-xl border-2 border-slate-900 bg-white px-6 py-3 font-bold text-slate-900 transition hover:bg-slate-900 hover:text-white sm:w-auto"
-                        >
-                          Open Class
+<Link
+  href={`/dashboard/class?schedule_id=${encodeURIComponent(
+    joinSchedule.id
+  )}&subject=${encodeURIComponent(
+    subjectName
+  )}`}
+  className="inline-flex w-full items-center justify-center gap-2 rounded-xl border-2 border-slate-900 bg-white px-6 py-3 font-bold text-slate-900 transition hover:bg-slate-900 hover:text-white sm:w-auto"
+>
+  Open Class
 
-                          <ArrowRight
-                            size={18}
-                          />
+  <ArrowRight
+    size={18}
+  />
 
-                        </Link>
+</Link>
 
                       </div>
 
