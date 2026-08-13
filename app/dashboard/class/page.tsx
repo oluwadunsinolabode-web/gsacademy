@@ -497,7 +497,7 @@ export default function ClassPage() {
                 <span className="font-semibold text-slate-700">
                   {schedule.day}
                 </span>{" "}
-                — {schedule.time_slot}
+                — {schedule.time}
               </p>
 
               <p>
