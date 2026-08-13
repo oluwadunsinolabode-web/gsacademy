@@ -635,12 +635,11 @@ function ClassPageContent() {
             <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
 
               {classworks.map(
-                (
-                  work,
-                  index
-                ) => (
+                (work, index) => (
 
-                href={`/dashboard/classwork/${work.id}?schedule_id=${schedule?.id}`}
+                  <Link
+                    key={work.id}
+                    href={`/dashboard/classwork/${work.id}?schedule_id=${schedule?.id}`}
                     className={`group flex items-center justify-between gap-5 px-6 py-6 transition hover:bg-slate-50 ${
                       index !==
                       classworks.length - 1
