@@ -249,7 +249,6 @@ export default function ClassworkDetailPage() {
         setSubmissions(
           submissionData || []
         );
-
       } catch (err) {
         console.error(
           "Classwork detail error:",
@@ -261,7 +260,6 @@ export default function ClassworkDetailPage() {
             ? err.message
             : "Unable to load classwork."
         );
-
       } finally {
         setLoading(false);
       }
@@ -475,7 +473,6 @@ export default function ClassworkDetailPage() {
       setMessage(
         "Your answer has been submitted successfully."
       );
-
     } catch (err) {
       console.error(
         "Submission error:",
@@ -487,7 +484,6 @@ export default function ClassworkDetailPage() {
           ? err.message
           : "Unable to submit your answer."
       );
-
     } finally {
       setSubmitting(false);
     }
@@ -499,13 +495,13 @@ export default function ClassworkDetailPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-slate-50 px-6 py-12">
+      <main className="min-h-screen bg-slate-50 px-4 py-8 sm:px-6 sm:py-12">
         <div className="mx-auto max-w-4xl">
-
-          <p className="text-sm font-semibold text-slate-500">
-            Loading classwork...
-          </p>
-
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+            <p className="text-sm font-semibold text-slate-500">
+              Loading classwork...
+            </p>
+          </div>
         </div>
       </main>
     );
@@ -517,21 +513,23 @@ export default function ClassworkDetailPage() {
 
   if (error && !classwork) {
     return (
-      <main className="min-h-screen bg-slate-50 px-6 py-12">
+      <main className="min-h-screen bg-slate-50 px-4 py-8 sm:px-6 sm:py-12">
         <div className="mx-auto max-w-4xl">
 
           <Link
             href="/dashboard"
-            className="inline-flex items-center gap-2 text-sm font-bold text-slate-600"
+            className="inline-flex min-h-10 items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold text-slate-600 transition hover:bg-white hover:text-slate-950"
           >
-            <ArrowLeft size={16} />
+            <ArrowLeft size={17} />
 
             Back to Dashboard
           </Link>
 
-          <p className="mt-8 text-sm font-semibold text-red-600">
-            {error}
-          </p>
+          <div className="mt-6 rounded-2xl border border-red-100 bg-red-50 p-5 sm:p-6">
+            <p className="text-sm font-semibold leading-6 text-red-600">
+              {error}
+            </p>
+          </div>
 
         </div>
       </main>
@@ -547,40 +545,38 @@ export default function ClassworkDetailPage() {
   ========================================================= */
 
   return (
-    <main className="min-h-screen bg-slate-50 px-6 py-10">
+    <main className="min-h-screen bg-slate-50 px-4 py-6 sm:px-6 sm:py-10">
 
-      <div className="mx-auto max-w-4xl">
+      <div className="mx-auto w-full max-w-4xl">
 
         {/* =================================================
-            BACK
+            BACK TO DASHBOARD
         ================================================= */}
 
         <Link
-          href={`/dashboard/classwork?subject=${encodeURIComponent(
-            classwork.subject
-          )}`}
-          className="inline-flex items-center gap-2 text-sm font-bold text-slate-600 transition hover:text-slate-950"
+          href="/dashboard"
+          className="inline-flex min-h-10 items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold text-slate-600 transition hover:bg-white hover:text-slate-950"
         >
-          <ArrowLeft size={16} />
+          <ArrowLeft size={17} />
 
-          Back to Classwork
+          Back to Dashboard
         </Link>
 
         {/* =================================================
             HEADER
         ================================================= */}
 
-        <header className="mt-8">
+        <header className="mt-6 sm:mt-8">
 
-          <p className="text-sm font-bold uppercase tracking-wider text-yellow-600">
+          <p className="text-xs font-black uppercase tracking-[0.15em] text-yellow-600 sm:text-sm">
             {classwork.subject}
           </p>
 
-          <h1 className="mt-2 break-words text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
+          <h1 className="mt-2 break-words text-2xl font-black leading-tight tracking-tight text-slate-950 sm:text-4xl">
             {classwork.title}
           </h1>
 
-          <div className="mt-4 flex flex-wrap items-center gap-4 text-sm text-slate-500">
+          <div className="mt-4 flex flex-col gap-2 text-xs text-slate-500 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4 sm:text-sm">
 
             {classwork.created_at && (
               <span>
@@ -600,7 +596,6 @@ export default function ClassworkDetailPage() {
 
             {classwork.due_date && (
               <span className="flex items-center gap-1.5">
-
                 <Clock size={15} />
 
                 Due{" "}
@@ -614,7 +609,6 @@ export default function ClassworkDetailPage() {
                     year: "numeric",
                   }
                 )}
-
               </span>
             )}
 
@@ -626,11 +620,11 @@ export default function ClassworkDetailPage() {
             FULL TUTOR CLASSWORK
         ================================================= */}
 
-        <section className="mt-10">
+        <section className="mt-8 sm:mt-10">
 
           <div className="mb-4">
 
-            <h2 className="text-xl font-black text-slate-950">
+            <h2 className="text-lg font-black text-slate-950 sm:text-xl">
               Classwork
             </h2>
 
@@ -640,10 +634,10 @@ export default function ClassworkDetailPage() {
 
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-6">
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
 
             {classwork.description ? (
-              <p className="whitespace-pre-wrap text-[15px] leading-7 text-slate-700">
+              <p className="whitespace-pre-wrap break-words text-sm leading-7 text-slate-700 sm:text-[15px]">
                 {classwork.description}
               </p>
             ) : (
@@ -657,24 +651,22 @@ export default function ClassworkDetailPage() {
             {classwork.attachment_url && (
               <div className="mt-6 flex flex-col gap-4 border-t border-slate-100 pt-5 sm:flex-row sm:items-center sm:justify-between">
 
-                <div className="flex items-center gap-3">
+                <div className="flex min-w-0 items-center gap-3">
 
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100">
-
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100">
                     <FileText
                       size={19}
                       className="text-slate-600"
                     />
-
                   </div>
 
-                  <div>
+                  <div className="min-w-0">
 
                     <p className="text-sm font-bold text-slate-800">
                       Tutor attachment
                     </p>
 
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs leading-5 text-slate-500">
                       Open the file before answering.
                     </p>
 
@@ -688,7 +680,7 @@ export default function ClassworkDetailPage() {
                   }
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-bold text-white"
+                  className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-slate-800 sm:w-auto"
                 >
                   <ExternalLink size={16} />
 
@@ -707,13 +699,13 @@ export default function ClassworkDetailPage() {
         ================================================= */}
 
         {latestSubmission && (
-          <section className="mt-8">
+          <section className="mt-7 sm:mt-8">
 
-            <div className="mb-4 flex items-center justify-between">
+            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 
               <div>
 
-                <h2 className="text-xl font-black text-slate-950">
+                <h2 className="text-lg font-black text-slate-950 sm:text-xl">
                   Your submission
                 </h2>
 
@@ -723,19 +715,19 @@ export default function ClassworkDetailPage() {
 
               </div>
 
-              <span className="rounded-full bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-700">
+              <span className="w-fit rounded-full bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-700">
                 {latestSubmission.status ||
                   "Submitted"}
               </span>
 
             </div>
 
-            <div className="rounded-2xl border border-slate-200 bg-white p-6">
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
 
               {/* SUBMITTED DATE */}
 
               {latestSubmission.submitted_at && (
-                <p className="text-xs text-slate-500">
+                <p className="text-xs leading-5 text-slate-500">
                   Submitted{" "}
                   {new Date(
                     latestSubmission.submitted_at
@@ -754,7 +746,7 @@ export default function ClassworkDetailPage() {
 
                   <div className="rounded-xl bg-slate-50 p-4">
 
-                    <p className="whitespace-pre-wrap text-sm leading-7 text-slate-700">
+                    <p className="whitespace-pre-wrap break-words text-sm leading-7 text-slate-700">
                       {
                         latestSubmission.text_answer
                       }
@@ -780,7 +772,7 @@ export default function ClassworkDetailPage() {
                     }
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-bold text-white"
+                    className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-bold text-white sm:w-auto"
                   >
                     <ExternalLink size={16} />
 
@@ -799,9 +791,9 @@ export default function ClassworkDetailPage() {
                   null ||
                 latestSubmission.grade
               ) && (
-                <div className="mt-6 grid grid-cols-3 divide-x overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+                <div className="mt-6 grid grid-cols-1 overflow-hidden rounded-xl border border-slate-200 bg-slate-50 sm:grid-cols-3 sm:divide-x">
 
-                  <div className="p-4 text-center">
+                  <div className="border-b border-slate-200 p-4 text-center sm:border-b-0">
 
                     <p className="text-[11px] font-bold uppercase text-slate-400">
                       Score
@@ -818,7 +810,7 @@ export default function ClassworkDetailPage() {
 
                   </div>
 
-                  <div className="p-4 text-center">
+                  <div className="border-b border-slate-200 p-4 text-center sm:border-b-0">
 
                     <p className="text-[11px] font-bold uppercase text-slate-400">
                       Percentage
@@ -861,7 +853,7 @@ export default function ClassworkDetailPage() {
 
                     <MessageSquare
                       size={17}
-                      className="text-blue-600"
+                      className="shrink-0 text-blue-600"
                     />
 
                     <p className="text-sm font-bold text-blue-900">
@@ -870,7 +862,7 @@ export default function ClassworkDetailPage() {
 
                   </div>
 
-                  <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-blue-900">
+                  <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-blue-900">
                     {latestSubmission.tutor_feedback ||
                       latestSubmission.teacher_feedback}
                   </p>
@@ -881,7 +873,7 @@ export default function ClassworkDetailPage() {
               {/* CORRECTION */}
 
               {latestSubmission.correction_file_url && (
-                <div className="mt-6 flex items-center justify-between gap-4 rounded-xl bg-orange-50 p-4">
+                <div className="mt-6 flex flex-col gap-4 rounded-xl bg-orange-50 p-4 sm:flex-row sm:items-center sm:justify-between">
 
                   <div>
 
@@ -889,7 +881,7 @@ export default function ClassworkDetailPage() {
                       Correction available
                     </p>
 
-                    <p className="mt-1 text-xs text-orange-700">
+                    <p className="mt-1 text-xs leading-5 text-orange-700">
                       Your tutor has provided a correction.
                     </p>
 
@@ -901,7 +893,7 @@ export default function ClassworkDetailPage() {
                     }
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="shrink-0 rounded-lg bg-orange-600 px-4 py-2 text-sm font-bold text-white"
+                    className="inline-flex min-h-10 items-center justify-center rounded-lg bg-orange-600 px-4 py-2 text-sm font-bold text-white"
                   >
                     View
                   </a>
@@ -918,23 +910,23 @@ export default function ClassworkDetailPage() {
             SUBMIT ANSWER
         ================================================= */}
 
-        <section className="mt-8">
+        <section className="mt-7 sm:mt-8">
 
           <div className="mb-4">
 
-            <h2 className="text-xl font-black text-slate-950">
+            <h2 className="text-lg font-black text-slate-950 sm:text-xl">
               {latestSubmission
                 ? "Submit another attempt"
                 : "Submit your answer"}
             </h2>
 
-            <p className="mt-1 text-sm text-slate-500">
+            <p className="mt-1 text-sm leading-6 text-slate-500">
               Write your answer or upload your completed work.
             </p>
 
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-6">
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
 
             {/* WRITTEN ANSWER */}
 
@@ -956,7 +948,7 @@ export default function ClassworkDetailPage() {
                 }}
                 rows={7}
                 placeholder="Write your answer here..."
-                className="mt-2 w-full resize-y rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-yellow-400 focus:ring-4 focus:ring-yellow-50"
+                className="mt-2 min-h-40 w-full resize-y rounded-xl border border-slate-200 px-4 py-3 text-sm leading-6 outline-none transition focus:border-yellow-400 focus:ring-4 focus:ring-yellow-50"
               />
 
             </div>
@@ -965,9 +957,9 @@ export default function ClassworkDetailPage() {
 
             <div className="mt-5">
 
-              <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 transition hover:border-yellow-400 hover:bg-yellow-50">
+              <label className="flex cursor-pointer flex-col gap-3 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 transition hover:border-yellow-400 hover:bg-yellow-50 sm:flex-row sm:items-center">
 
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white">
 
                   <Upload
                     size={19}
@@ -976,13 +968,13 @@ export default function ClassworkDetailPage() {
 
                 </div>
 
-                <div>
+                <div className="min-w-0">
 
                   <p className="text-sm font-bold text-slate-800">
                     Upload completed work
                   </p>
 
-                  <p className="text-xs text-slate-500">
+                  <p className="mt-1 text-xs leading-5 text-slate-500">
                     PDF, JPG, PNG, DOC or DOCX
                   </p>
 
@@ -1006,14 +998,14 @@ export default function ClassworkDetailPage() {
               </label>
 
               {file && (
-                <div className="mt-3 flex items-center gap-3 rounded-xl bg-slate-50 p-3">
+                <div className="mt-3 flex min-w-0 items-center gap-3 rounded-xl bg-slate-50 p-3">
 
                   <FileText
                     size={18}
-                    className="text-slate-500"
+                    className="shrink-0 text-slate-500"
                   />
 
-                  <p className="truncate text-sm font-semibold text-slate-700">
+                  <p className="min-w-0 truncate text-sm font-semibold text-slate-700">
                     {file.name}
                   </p>
 
@@ -1025,11 +1017,16 @@ export default function ClassworkDetailPage() {
             {/* SUCCESS */}
 
             {message && (
-              <div className="mt-5 flex items-center gap-2 rounded-xl bg-green-50 p-4 text-sm font-semibold text-green-700">
+              <div className="mt-5 flex items-start gap-2 rounded-xl bg-green-50 p-4 text-sm font-semibold leading-6 text-green-700">
 
-                <CheckCircle size={18} />
+                <CheckCircle
+                  size={18}
+                  className="mt-0.5 shrink-0"
+                />
 
-                {message}
+                <span>
+                  {message}
+                </span>
 
               </div>
             )}
@@ -1037,7 +1034,7 @@ export default function ClassworkDetailPage() {
             {/* ERROR */}
 
             {error && (
-              <div className="mt-5 rounded-xl bg-red-50 p-4 text-sm font-semibold text-red-700">
+              <div className="mt-5 rounded-xl bg-red-50 p-4 text-sm font-semibold leading-6 text-red-700">
                 {error}
               </div>
             )}
@@ -1048,7 +1045,7 @@ export default function ClassworkDetailPage() {
               type="button"
               onClick={submitAnswer}
               disabled={submitting}
-              className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-yellow-500 px-5 py-3.5 text-sm font-black text-slate-950 transition hover:bg-yellow-400 disabled:cursor-not-allowed disabled:opacity-60"
+              className="mt-6 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-yellow-500 px-5 py-3.5 text-sm font-black text-slate-950 transition hover:bg-yellow-400 disabled:cursor-not-allowed disabled:opacity-60"
             >
 
               {submitting ? (
@@ -1079,22 +1076,22 @@ export default function ClassworkDetailPage() {
         ================================================= */}
 
         {submissions.length > 1 && (
-          <section className="mt-8 pb-12">
+          <section className="mt-7 pb-8 sm:mt-8 sm:pb-12">
 
-            <div className="mb-4 flex items-center gap-3">
+            <div className="mb-4 flex items-start gap-3">
 
               <History
                 size={20}
-                className="text-slate-500"
+                className="mt-0.5 shrink-0 text-slate-500"
               />
 
               <div>
 
-                <h2 className="text-xl font-black text-slate-950">
+                <h2 className="text-lg font-black text-slate-950 sm:text-xl">
                   Previous attempts
                 </h2>
 
-                <p className="text-sm text-slate-500">
+                <p className="mt-1 text-sm leading-6 text-slate-500">
                   Earlier submissions for this classwork
                 </p>
 
@@ -1115,10 +1112,10 @@ export default function ClassworkDetailPage() {
                       key={
                         submission.id
                       }
-                      className="flex items-center justify-between gap-4 p-4"
+                      className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"
                     >
 
-                      <div>
+                      <div className="min-w-0">
 
                         <p className="text-sm font-bold text-slate-800">
                           Attempt{" "}
@@ -1128,7 +1125,7 @@ export default function ClassworkDetailPage() {
                         </p>
 
                         {submission.submitted_at && (
-                          <p className="mt-1 text-xs text-slate-500">
+                          <p className="mt-1 break-words text-xs leading-5 text-slate-500">
                             {new Date(
                               submission.submitted_at
                             ).toLocaleString()}
@@ -1137,7 +1134,7 @@ export default function ClassworkDetailPage() {
 
                       </div>
 
-                      <div className="flex items-center gap-3">
+                      <div className="flex flex-wrap items-center gap-3">
 
                         {submission.percentage !==
                           null && (
