@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useParams, useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
-  ArrowRight,
   BookOpen,
 } from "lucide-react";
 
@@ -119,15 +119,26 @@ function subjectsMatch(
    PAGE
 ========================================================= */
 
-export default function ClassPage() {
+export default function ClassworkDetailsPage() {
+  const params = useParams();
+  const searchParams = useSearchParams();
+
+  const classworkId =
+    typeof params.id === "string"
+      ? params.id
+      : "";
+
+  const scheduleId =
+    searchParams.get("schedule_id");
+
   const [student, setStudent] =
     useState<Student | null>(null);
 
   const [schedule, setSchedule] =
     useState<Schedule | null>(null);
 
-  const [classworks, setClassworks] =
-    useState<Classwork[]>([]);
+  const [classwork, setClasswork] =
+    useState<Classwork | null>(null);
 
   const [loading, setLoading] =
     useState(true);
@@ -136,25 +147,28 @@ export default function ClassPage() {
     useState("");
 
   /* =========================================================
-     LOAD CLASSWORK LIST
+     LOAD CLASSWORK DETAILS
   ========================================================= */
 
   useEffect(() => {
-    async function loadClassPage() {
+    async function loadClassworkDetails() {
       try {
         setLoading(true);
         setError("");
 
         /* ---------------------------------------------------
-           GET SCHEDULE ID
+           CHECK CLASSWORK ID
         --------------------------------------------------- */
 
-        const params = new URLSearchParams(
-          window.location.search
-        );
+        if (!classworkId) {
+          throw new Error(
+            "Invalid classwork link. No classwork was selected."
+          );
+        }
 
-        const scheduleId =
-          params.get("schedule_id");
+        /* ---------------------------------------------------
+           CHECK SCHEDULE ID
+        --------------------------------------------------- */
 
         if (!scheduleId) {
           throw new Error(
@@ -162,8 +176,35 @@ export default function ClassPage() {
           );
         }
 
+        console.log(
+          "===================================="
+        );
+
+        console.log(
+          "CLASSWORK DETAILS"
+        );
+
+        console.log(
+          "CLASSWORK ID:",
+          classworkId
+        );
+
+        console.log(
+          "SCHEDULE ID:",
+          scheduleId
+        );
+
+        console.log(
+          "URL:",
+          window.location.href
+        );
+
+        console.log(
+          "===================================="
+        );
+
         /* ---------------------------------------------------
-           GET LOGGED-IN STUDENT
+           GET LOGGED-IN USER
         --------------------------------------------------- */
 
         const {
@@ -205,10 +246,12 @@ export default function ClassPage() {
           );
         }
 
-        setStudent(studentData);
+        setStudent(
+          studentData as Student
+        );
 
         /* ---------------------------------------------------
-           GET SELECTED STUDENT CLASS
+           GET SELECTED STUDENT SCHEDULE
         --------------------------------------------------- */
 
         const {
@@ -232,7 +275,10 @@ export default function ClassPage() {
               full_name
             )
           `)
-          .eq("id", scheduleId)
+          .eq(
+            "id",
+            scheduleId
+          )
           .eq(
             "student_id",
             studentData.id
@@ -257,16 +303,7 @@ export default function ClassPage() {
         );
 
         /* ---------------------------------------------------
-           GET SUBJECT FROM SELECTED CLASS
-        --------------------------------------------------- */
-
-        const actualSubject =
-          getSubjectName(
-            selectedSchedule
-          );
-
-        /* ---------------------------------------------------
-           GET CLASSWORK ASSIGNED TO STUDENT
+           GET CLASSWORK ASSIGNMENT
         --------------------------------------------------- */
 
         const {
@@ -282,7 +319,12 @@ export default function ClassPage() {
           .eq(
             "student_id",
             studentData.id
-          );
+          )
+          .eq(
+            "classwork_id",
+            classworkId
+          )
+          .maybeSingle();
 
         if (assignmentError) {
           throw new Error(
@@ -290,27 +332,18 @@ export default function ClassPage() {
           );
         }
 
-        const classworkIds =
-          (assignmentData || [])
-            .map(
-              (assignment) =>
-                assignment.classwork_id
-            )
-            .filter(Boolean);
-
         /* ---------------------------------------------------
-           NO ASSIGNMENTS
+           MAKE SURE CLASSWORK IS ASSIGNED
         --------------------------------------------------- */
 
-        if (
-          classworkIds.length === 0
-        ) {
-          setClassworks([]);
-          return;
+        if (!assignmentData) {
+          throw new Error(
+            "This classwork is not assigned to you."
+          );
         }
 
         /* ---------------------------------------------------
-           GET ASSIGNED CLASSWORK
+           GET CLASSWORK DETAILS
         --------------------------------------------------- */
 
         const {
@@ -324,42 +357,48 @@ export default function ClassPage() {
             title,
             created_at
           `)
-          .in(
+          .eq(
             "id",
-            classworkIds
+            classworkId
           )
-          .order(
-            "created_at",
-            {
-              ascending: false,
-            }
-          );
+          .single();
 
-        if (classworkError) {
+        if (
+          classworkError ||
+          !classworkData
+        ) {
           throw new Error(
-            classworkError.message
+            classworkError?.message ||
+              "This classwork could not be found."
           );
         }
 
         /* ---------------------------------------------------
-           ONLY CLASSWORK FOR SELECTED SUBJECT
+           MAKE SURE SUBJECT MATCHES THE CLASS
         --------------------------------------------------- */
 
-        const subjectClassworks =
-          (classworkData || []).filter(
-            (work) =>
-              subjectsMatch(
-                work.subject,
-                actualSubject
-              )
-          ) as Classwork[];
+        const actualSubject =
+          getSubjectName(
+            selectedSchedule
+          );
 
-        setClassworks(
-          subjectClassworks
+        if (
+          !subjectsMatch(
+            classworkData.subject,
+            actualSubject
+          )
+        ) {
+          throw new Error(
+            "This classwork does not belong to this class."
+          );
+        }
+
+        setClasswork(
+          classworkData as Classwork
         );
       } catch (err) {
         console.error(
-          "CLASSWORK LIST ERROR:",
+          "CLASSWORK DETAILS ERROR:",
           err
         );
 
@@ -373,8 +412,11 @@ export default function ClassPage() {
       }
     }
 
-    loadClassPage();
-  }, []);
+    loadClassworkDetails();
+  }, [
+    classworkId,
+    scheduleId,
+  ]);
 
   /* =========================================================
      LOADING
@@ -408,17 +450,29 @@ export default function ClassPage() {
         <div className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6 sm:py-10">
 
           <Link
-            href="/dashboard"
+            href={
+              scheduleId
+                ? `/dashboard/class?schedule_id=${scheduleId}`
+                : "/dashboard"
+            }
             className="inline-flex max-w-full items-center gap-2 text-sm font-bold text-slate-600 transition hover:text-slate-950"
           >
-            <ArrowLeft size={16} />
-            <span>Back to Dashboard</span>
+            <ArrowLeft
+              size={16}
+              className="shrink-0"
+            />
+
+            <span>
+              Back to Class
+            </span>
           </Link>
 
           <div className="mt-6 rounded-3xl border border-red-200 bg-red-50 p-5 sm:mt-8 sm:p-6">
+
             <p className="break-words text-sm font-semibold leading-6 text-red-700">
               {error}
             </p>
+
           </div>
 
         </div>
@@ -450,18 +504,25 @@ export default function ClassPage() {
       <div className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6 sm:py-10">
 
         {/* =================================================
-            BACK TO DASHBOARD
+            BACK TO CLASS
         ================================================= */}
 
         <Link
-          href="/dashboard"
+          href={
+            scheduleId
+              ? `/dashboard/class?schedule_id=${scheduleId}`
+              : "/dashboard"
+          }
           className="inline-flex max-w-full items-center gap-2 text-sm font-bold text-slate-600 transition hover:text-slate-950"
         >
           <ArrowLeft
             size={16}
             className="shrink-0"
           />
-          <span>Back to Dashboard</span>
+
+          <span>
+            Back to Class
+          </span>
         </Link>
 
         {/* =================================================
@@ -484,11 +545,11 @@ export default function ClassPage() {
             <div className="min-w-0">
 
               <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-yellow-600 sm:text-xs sm:tracking-[0.2em]">
-                Classwork
+                {subjectName} Classwork
               </p>
 
               <h1 className="mt-1 break-words text-2xl font-black leading-tight tracking-tight text-slate-950 sm:text-4xl">
-                {subjectName}
+                {classwork?.title}
               </h1>
 
             </div>
@@ -499,20 +560,27 @@ export default function ClassPage() {
             <div className="mt-4 space-y-1 text-sm leading-6 text-slate-500 sm:mt-5">
 
               <p className="break-words">
+
                 <span className="font-semibold text-slate-700">
                   {schedule.day}
-                </span>{" "}
-                —{" "}
-                <span className="break-words">
+                </span>
+
+                {" — "}
+
+                <span>
                   {schedule.time_slot}
                 </span>
+
               </p>
 
               <p className="break-words">
+
                 Tutor:{" "}
+
                 <span className="font-bold text-slate-700">
                   {tutorName}
                 </span>
+
               </p>
 
             </div>
@@ -521,93 +589,39 @@ export default function ClassPage() {
         </header>
 
         {/* =================================================
-            CLASSWORK LIST
+            CLASSWORK CONTENT
         ================================================= */}
 
         <section className="mt-8 w-full sm:mt-12">
 
-          <div className="mb-5 sm:mb-6">
+          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
 
-            <h2 className="text-xl font-black text-slate-950 sm:text-2xl">
-              Classwork
-            </h2>
-
-            <p className="mt-2 text-sm leading-6 text-slate-500">
-              Select an assignment to view its details.
+            <p className="text-sm font-semibold uppercase tracking-wider text-yellow-600">
+              Assignment
             </p>
 
-          </div>
+            <h2 className="mt-2 break-words text-2xl font-black text-slate-950 sm:text-3xl">
+              {classwork?.title}
+            </h2>
 
-          {/* =================================================
-              NO CLASSWORK
-          ================================================= */}
+            <div className="mt-5 border-t border-slate-200 pt-5">
 
-          {classworks.length === 0 ? (
+              <p className="text-sm leading-7 text-slate-600">
+                This is your assigned classwork for{" "}
+                <span className="font-bold text-slate-900">
+                  {subjectName}
+                </span>.
+              </p>
 
-            <div className="w-full rounded-3xl border border-slate-200 bg-white px-5 py-12 text-center shadow-sm sm:px-6 sm:py-14">
-
-              <h3 className="text-lg font-bold text-slate-900">
-                No classwork yet
-              </h3>
-
-              <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-500">
-                Your tutor has not assigned any
-                classwork for this subject yet.
+              <p className="mt-3 text-sm leading-7 text-slate-600">
+                Your tutor will provide the assignment
+                instructions and submission requirements
+                here.
               </p>
 
             </div>
 
-          ) : (
-
-            /* =================================================
-               TITLE-ONLY LIST
-            ================================================= */
-
-            <div className="w-full overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-
-              {classworks.map(
-                (work, index) => (
-
-                  <Link
-                    key={work.id}
-                    href={`/dashboard/classwork/${work.id}`}
-                    className={`group flex w-full min-w-0 items-center gap-3 px-4 py-5 transition hover:bg-slate-50 sm:gap-5 sm:px-6 sm:py-6 ${
-                      index !==
-                      classworks.length - 1
-                        ? "border-b border-slate-200"
-                        : ""
-                    }`}
-                  >
-
-                    {/* -----------------------------------------
-                        TITLE
-                    ----------------------------------------- */}
-
-                    <div className="min-w-0 flex-1">
-
-                      <h3 className="break-words text-base font-extrabold leading-6 text-slate-900 transition group-hover:text-yellow-600 sm:text-lg sm:leading-7">
-                        {work.title}
-                      </h3>
-
-                    </div>
-
-                    {/* -----------------------------------------
-                        ARROW
-                    ----------------------------------------- */}
-
-                    <ArrowRight
-                      size={19}
-                      className="shrink-0 text-slate-400 transition group-hover:translate-x-1 group-hover:text-slate-900 sm:h-5 sm:w-5"
-                    />
-
-                  </Link>
-
-                )
-              )}
-
-            </div>
-
-          )}
+          </div>
 
         </section>
 
