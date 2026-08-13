@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
@@ -117,10 +117,32 @@ function subjectsMatch(
 }
 
 /* =========================================================
-   PAGE
+   LOADING COMPONENT
 ========================================================= */
 
-export default function ClassPage() {
+function ClassPageLoading() {
+  return (
+    <main className="min-h-screen bg-slate-50">
+      <div className="mx-auto max-w-5xl px-6 py-10">
+        <div className="rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+
+          <div className="mx-auto h-9 w-9 animate-spin rounded-full border-4 border-slate-200 border-t-yellow-500" />
+
+          <p className="mt-4 text-sm font-semibold text-slate-500">
+            Loading classwork...
+          </p>
+
+        </div>
+      </div>
+    </main>
+  );
+}
+
+/* =========================================================
+   ACTUAL CLASS PAGE
+========================================================= */
+
+function ClassPageContent() {
   const searchParams = useSearchParams();
 
   const [student, setStudent] =
@@ -139,7 +161,7 @@ export default function ClassPage() {
     useState("");
 
   /* =========================================================
-     LOAD CLASSWORK LIST
+     LOAD CLASS PAGE
   ========================================================= */
 
   useEffect(() => {
@@ -154,6 +176,10 @@ export default function ClassPage() {
 
         const scheduleId =
           searchParams.get("schedule_id");
+
+        console.log(
+          "===================================="
+        );
 
         console.log(
           "CLASS PAGE URL:",
@@ -172,6 +198,10 @@ export default function ClassPage() {
           scheduleId
         );
 
+        console.log(
+          "===================================="
+        );
+
         if (!scheduleId) {
           throw new Error(
             "Invalid classroom link. No schedule was selected."
@@ -179,7 +209,7 @@ export default function ClassPage() {
         }
 
         /* ---------------------------------------------------
-           GET LOGGED-IN STUDENT
+           GET LOGGED-IN USER
         --------------------------------------------------- */
 
         const {
@@ -221,7 +251,9 @@ export default function ClassPage() {
           );
         }
 
-        setStudent(studentData);
+        setStudent(
+          studentData as Student
+        );
 
         /* ---------------------------------------------------
            GET SELECTED STUDENT CLASS
@@ -248,7 +280,10 @@ export default function ClassPage() {
               full_name
             )
           `)
-          .eq("id", scheduleId)
+          .eq(
+            "id",
+            scheduleId
+          )
           .eq(
             "student_id",
             studentData.id
@@ -280,6 +315,11 @@ export default function ClassPage() {
           getSubjectName(
             selectedSchedule
           );
+
+        console.log(
+          "SELECTED SUBJECT:",
+          actualSubject
+        );
 
         /* ---------------------------------------------------
            GET CLASSWORK ASSIGNED TO STUDENT
@@ -313,6 +353,11 @@ export default function ClassPage() {
                 assignment.classwork_id
             )
             .filter(Boolean);
+
+        console.log(
+          "ASSIGNED CLASSWORK IDS:",
+          classworkIds
+        );
 
         /* ---------------------------------------------------
            NO ASSIGNMENTS
@@ -357,6 +402,11 @@ export default function ClassPage() {
           );
         }
 
+        console.log(
+          "ALL ASSIGNED CLASSWORK:",
+          classworkData
+        );
+
         /* ---------------------------------------------------
            ONLY CLASSWORK FOR SELECTED SUBJECT
         --------------------------------------------------- */
@@ -370,10 +420,17 @@ export default function ClassPage() {
               )
           ) as Classwork[];
 
+        console.log(
+          "SUBJECT CLASSWORK:",
+          subjectClassworks
+        );
+
         setClassworks(
           subjectClassworks
         );
+
       } catch (err) {
+
         console.error(
           "CLASSWORK LIST ERROR:",
           err
@@ -384,12 +441,16 @@ export default function ClassPage() {
             ? err.message
             : "Unable to load classwork."
         );
+
       } finally {
+
         setLoading(false);
+
       }
     }
 
     loadClassPage();
+
   }, [searchParams]);
 
   /* =========================================================
@@ -397,21 +458,7 @@ export default function ClassPage() {
   ========================================================= */
 
   if (loading) {
-    return (
-      <main className="min-h-screen bg-slate-50">
-        <div className="mx-auto max-w-5xl px-6 py-10">
-          <div className="rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-sm">
-
-            <div className="mx-auto h-9 w-9 animate-spin rounded-full border-4 border-slate-200 border-t-yellow-500" />
-
-            <p className="mt-4 text-sm font-semibold text-slate-500">
-              Loading classwork...
-            </p>
-
-          </div>
-        </div>
-      </main>
-    );
+    return <ClassPageLoading />;
   }
 
   /* =========================================================
@@ -421,6 +468,7 @@ export default function ClassPage() {
   if (error) {
     return (
       <main className="min-h-screen bg-slate-50">
+
         <div className="mx-auto max-w-5xl px-6 py-10">
 
           <Link
@@ -432,12 +480,15 @@ export default function ClassPage() {
           </Link>
 
           <div className="mt-8 rounded-3xl border border-red-200 bg-red-50 p-6">
+
             <p className="text-sm font-semibold text-red-700">
               {error}
             </p>
+
           </div>
 
         </div>
+
       </main>
     );
   }
@@ -486,10 +537,12 @@ export default function ClassPage() {
           <div className="flex items-center gap-4">
 
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-yellow-500">
+
               <BookOpen
                 size={28}
                 className="text-slate-950"
               />
+
             </div>
 
             <div>
@@ -510,17 +563,25 @@ export default function ClassPage() {
             <div className="mt-5 space-y-1 text-sm text-slate-500">
 
               <p>
+
                 <span className="font-semibold text-slate-700">
                   {schedule.day}
-                </span>{" "}
-                — {schedule.time}
+                </span>
+
+                {" — "}
+
+                {schedule.time}
+
               </p>
 
               <p>
+
                 Tutor:{" "}
+
                 <span className="font-bold text-slate-700">
                   {tutorName}
                 </span>
+
               </p>
 
             </div>
@@ -574,7 +635,10 @@ export default function ClassPage() {
             <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
 
               {classworks.map(
-                (work, index) => (
+                (
+                  work,
+                  index
+                ) => (
 
                   <Link
                     key={work.id}
@@ -610,5 +674,23 @@ export default function ClassPage() {
       </div>
 
     </main>
+  );
+}
+
+/* =========================================================
+   MAIN PAGE
+   Suspense fixes Vercel prerender error caused by
+   useSearchParams()
+========================================================= */
+
+export default function ClassPage() {
+  return (
+    <Suspense
+      fallback={
+        <ClassPageLoading />
+      }
+    >
+      <ClassPageContent />
+    </Suspense>
   );
 }
