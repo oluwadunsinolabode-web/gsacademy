@@ -42,13 +42,27 @@ export default function ChangePasswordPage() {
 
     // Mark password as changed
     if (user) {
-      await supabase
-        .from("students")
-        .update({
-          password_changed: true,
-          temporary_password: null,
-        })
-        .eq("auth_id", user.id);
+     const { error: studentUpdateError } = await supabase
+  .from("students")
+  .update({
+    password_changed: true,
+    temporary_password: null,
+  })
+  .eq("auth_id", user.id);
+
+if (studentUpdateError) {
+  console.error(
+    "STUDENT PROFILE UPDATE ERROR:",
+    studentUpdateError
+  );
+
+  alert(
+    `Password changed, but student profile could not be updated: ${studentUpdateError.message}`
+  );
+
+  setLoading(false);
+  return;
+}
     }
 
     setLoading(false);
