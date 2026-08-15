@@ -23,15 +23,14 @@ type Tutor = {
   full_name: string | null;
 };
 
-type Assignment = {
+type StudentSchedule = {
   id: string;
   student_id: string;
   subject_id: string;
+  tutor_id: string | null;
   day: string | null;
-  time_slot: string | null;
-  google_meet_link: string | null;
-  status: string | null;
-  active: boolean | null;
+  time: string | null;
+  meet_link: string | null;
 };
 
 type Student = {
@@ -39,14 +38,38 @@ type Student = {
   full_name: string | null;
 };
 
+type Subject = {
+  id: string;
+  name: string;
+};
+
+type DashboardAssignment = {
+  id: string;
+  student_id: string;
+  subject_id: string;
+  day: string | null;
+  time_slot: string | null;
+  google_meet_link: string | null;
+  status: string | null;
+  active: boolean;
+};
+
 type DashboardData = {
   tutor: Tutor | null;
+
   studentCount: number;
+
   todaysClasses: number;
+
   pendingClasswork: number;
+
   homeworkWaiting: number;
-  assignments: Assignment[];
+
+  assignments: DashboardAssignment[];
+
   students: Record<string, Student>;
+
+  subjects: Record<string, Subject>;
 };
 
 /* =====================================================
@@ -70,12 +93,14 @@ const DAY_NAMES = [
 /**
  * Converts common time formats into minutes after midnight.
  *
- * Supports examples such as:
+ * Supports:
+ *
  * 10:00 AM
  * 10:30AM
- * 14:00
  * 2:30 PM
+ * 14:00
  */
+
 function parseTimeToMinutes(
   timeString: string | null
 ): number | null {
@@ -87,17 +112,13 @@ function parseTimeToMinutes(
     .trim()
     .toUpperCase();
 
-  /*
-   * 12-hour format
-   *
-   * Examples:
-   * 9:00 AM
-   * 09:30 PM
-   */
-  const twelveHourMatch =
-    value.match(
-      /^(\d{1,2})(?::(\d{2}))?\s*(AM|PM)$/
-    );
+  /* ==========================
+     12-HOUR FORMAT
+  ========================== */
+
+  const twelveHourMatch = value.match(
+    /^(\d{1,2})(?::(\d{2}))?\s*(AM|PM)$/
+  );
 
   if (twelveHourMatch) {
     let hour = Number(
@@ -130,18 +151,13 @@ function parseTimeToMinutes(
       }
     }
 
-    return (
-      hour * 60 + minute
-    );
+    return hour * 60 + minute;
   }
 
-  /*
-   * 24-hour format
-   *
-   * Examples:
-   * 09:00
-   * 14:30
-   */
+  /* ==========================
+     24-HOUR FORMAT
+  ========================== */
+
   const twentyFourHourMatch =
     value.match(
       /^(\d{1,2}):(\d{2})$/
@@ -165,23 +181,16 @@ function parseTimeToMinutes(
       return null;
     }
 
-    return (
-      hour * 60 + minute
-    );
+    return hour * 60 + minute;
   }
 
   return null;
 }
 
-/**
- * Extracts the starting time from a time slot.
- *
- * Supports:
- * "10:00 AM - 11:00 AM"
- * "10:00 AM – 11:00 AM"
- * "10:00 AM to 11:00 AM"
- * "10:00 AM"
- */
+/* =====================================================
+   EXTRACT START TIME
+===================================================== */
+
 function getStartTimeMinutes(
   timeSlot: string | null
 ): number | null {
@@ -195,9 +204,14 @@ function getStartTimeMinutes(
       .toUpperCase();
 
   /*
-   * Find the first recognizable
-   * time in the string.
+   * Examples:
+   *
+   * 10:00 AM - 11:30 AM
+   * 10:00 AM – 11:30 AM
+   * 10:00 AM to 11:30 AM
+   * 10:00 AM
    */
+
   const match =
     normalized.match(
       /\d{1,2}(?::\d{2})?\s*(?:AM|PM)?/
@@ -213,23 +227,29 @@ function getStartTimeMinutes(
 }
 
 /* =====================================================
-   GET NEXT OCCURRENCE
+   NEXT LESSON
 ===================================================== */
 
 type UpcomingLesson = {
-  assignment: Assignment;
+  assignment: DashboardAssignment;
+
   date: Date;
+
   startMinutes: number;
 };
 
 function getNextLesson(
-  assignments: Assignment[]
+  assignments: DashboardAssignment[]
 ): UpcomingLesson | null {
   const now = new Date();
 
   let closestLesson:
     | UpcomingLesson
     | null = null;
+
+  /*
+   * Search the next 7 days.
+   */
 
   for (
     let offset = 0;
@@ -275,14 +295,6 @@ function getNextLesson(
           assignment.time_slot
         );
 
-      /*
-       * We cannot reliably determine
-       * when the class occurs without
-       * a valid time.
-       *
-       * Keep it out of the automatic
-       * "next lesson" calculation.
-       */
       if (
         startMinutes === null
       ) {
@@ -302,13 +314,10 @@ function getNextLesson(
       );
 
       /*
-       * Ignore lessons that have
-       * already started/passed.
-       *
-       * We use >= now so a class that
-       * is exactly starting now can
-       * still appear.
+       * Do not show a lesson
+       * that has already passed.
        */
+
       if (
         lessonDate.getTime() <
         now.getTime()
@@ -337,7 +346,7 @@ function getNextLesson(
 }
 
 /* =====================================================
-   FORMAT DATE
+   FORMAT LESSON DATE
 ===================================================== */
 
 function formatLessonDate(
@@ -398,12 +407,20 @@ export default function TutorDashboardPage() {
   const [data, setData] =
     useState<DashboardData>({
       tutor: null,
+
       studentCount: 0,
+
       todaysClasses: 0,
+
       pendingClasswork: 0,
+
       homeworkWaiting: 0,
+
       assignments: [],
+
       students: {},
+
+      subjects: {},
     });
 
   const [loading, setLoading] =
@@ -423,6 +440,7 @@ export default function TutorDashboardPage() {
   async function loadDashboard() {
     try {
       setLoading(true);
+
       setError("");
 
       /* ================================================
@@ -430,7 +448,9 @@ export default function TutorDashboardPage() {
       ================================================ */
 
       const {
-        data: { user },
+        data: {
+          user,
+        },
         error: authError,
       } =
         await supabase.auth.getUser();
@@ -479,64 +499,64 @@ export default function TutorDashboardPage() {
       }
 
       /* ================================================
-         3. ASSIGNMENTS
-      ================================================= */
+         3. STUDENT SCHEDULES
+         
+         THIS IS NOW THE MAIN SOURCE
+         FOR TUTOR CLASSES.
+      ================================================ */
 
       const {
-        data: assignments,
-        error: assignmentsError,
+        data: schedules,
+        error:
+          schedulesError,
       } =
         await supabase
-          .from("tutor_assignments")
+          .from(
+            "student_schedules"
+          )
           .select(
             `
               id,
-              tutor_id,
               student_id,
               subject_id,
+              tutor_id,
               day,
-              time_slot,
-              google_meet_link,
-              status,
-              active
+              time,
+              meet_link
             `
           )
           .eq(
             "tutor_id",
             tutor.id
-          )
-          .eq(
-            "active",
-            true
           );
 
       if (
-        assignmentsError
+        schedulesError
       ) {
         console.error(
-          "Tutor assignments error:",
-          assignmentsError
+          "Student schedules error:",
+          schedulesError
         );
 
         throw new Error(
-          assignmentsError.message
+          schedulesError.message
         );
       }
 
-      const tutorAssignments:
-        Assignment[] =
-        assignments || [];
+      const tutorSchedules:
+        StudentSchedule[] =
+        schedules || [];
 
       /* ================================================
          4. UNIQUE STUDENTS
-      ================================================= */
+      ================================================ */
 
       const uniqueStudentIds =
         Array.from(
           new Set(
-            tutorAssignments.map(
-              (assignment) =>
-                assignment.student_id
+            tutorSchedules.map(
+              (schedule) =>
+                schedule.student_id
             )
           )
         );
@@ -553,7 +573,8 @@ export default function TutorDashboardPage() {
       ) {
         const {
           data: students,
-          error: studentsError,
+          error:
+            studentsError,
         } =
           await supabase
             .from("students")
@@ -581,8 +602,7 @@ export default function TutorDashboardPage() {
         studentsMap =
           Object.fromEntries(
             (
-              students ||
-              []
+              students || []
             ).map(
               (student) => [
                 student.id,
@@ -593,8 +613,133 @@ export default function TutorDashboardPage() {
       }
 
       /* ================================================
-         5. TODAY'S CLASSES COUNT
-      ================================================= */
+         5. UNIQUE SUBJECTS
+      ================================================ */
+
+      const uniqueSubjectIds =
+        Array.from(
+          new Set(
+            tutorSchedules.map(
+              (schedule) =>
+                schedule.subject_id
+            )
+          )
+        );
+
+      let subjectsMap:
+        Record<
+          string,
+          Subject
+        > = {};
+
+      if (
+        uniqueSubjectIds.length >
+        0
+      ) {
+        const {
+          data: subjects,
+          error:
+            subjectsError,
+        } =
+          await supabase
+            .from("subjects")
+            .select(
+              "id, name"
+            )
+            .in(
+              "id",
+              uniqueSubjectIds
+            );
+
+        if (
+          subjectsError
+        ) {
+          console.error(
+            "Subjects query error:",
+            subjectsError
+          );
+
+          /*
+           * Don't completely kill
+           * the dashboard if subject
+           * lookup fails.
+           */
+
+          subjectsMap = {};
+        } else {
+          subjectsMap =
+            Object.fromEntries(
+              (
+                subjects || []
+              ).map(
+                (subject) => [
+                  subject.id,
+                  subject,
+                ]
+              )
+            );
+        }
+      }
+
+      /* ================================================
+         6. CONVERT SCHEDULES
+         
+         student_schedules:
+         
+         day
+         time
+         meet_link
+         
+         becomes dashboard:
+         
+         day
+         time_slot
+         google_meet_link
+         status
+         active
+      ================================================ */
+
+      const tutorAssignments:
+        DashboardAssignment[] =
+        tutorSchedules.map(
+          (schedule) => ({
+            id: schedule.id,
+
+            student_id:
+              schedule.student_id,
+
+            subject_id:
+              schedule.subject_id,
+
+            day:
+              schedule.day,
+
+            time_slot:
+              schedule.time,
+
+            google_meet_link:
+              schedule.meet_link,
+
+            /*
+             * student_schedules
+             * represents saved schedules,
+             * therefore treat them as
+             * scheduled.
+             */
+
+            status:
+              schedule.day &&
+              schedule.time
+                ? "scheduled"
+                : "unscheduled",
+
+            active: true,
+          })
+        );
+
+      /* ================================================
+         7. TODAY'S CLASSES
+      ================================================ */
 
       const now =
         new Date();
@@ -619,15 +764,17 @@ export default function TutorDashboardPage() {
         );
 
       /* ================================================
-         6. PENDING CLASSWORK
-      ================================================= */
+         8. PENDING CLASSWORK
+      ================================================ */
 
       let pendingClasswork =
         0;
 
       const {
-        data: tutorClassworks,
-        error: classworkError,
+        data:
+          tutorClassworks,
+        error:
+          classworkError,
       } =
         await supabase
           .from("classworks")
@@ -656,7 +803,8 @@ export default function TutorDashboardPage() {
           );
 
         const {
-          data: submissions,
+          data:
+            submissions,
           error:
             submissionsError,
         } =
@@ -682,13 +830,13 @@ export default function TutorDashboardPage() {
         } else {
           pendingClasswork =
             (
-              submissions ||
-              []
+              submissions || []
             ).filter(
               (submission) => {
                 const status =
                   submission.status
-                    ?.toLowerCase();
+                    ?.trim()
+                    .toLowerCase();
 
                 return (
                   status ===
@@ -704,15 +852,17 @@ export default function TutorDashboardPage() {
       }
 
       /* ================================================
-         7. HOMEWORK WAITING
-      ================================================= */
+         9. HOMEWORK WAITING
+      ================================================ */
 
       let homeworkWaiting =
         0;
 
       const {
-        data: tutorHomework,
-        error: homeworkError,
+        data:
+          tutorHomework,
+        error:
+          homeworkError,
       } =
         await supabase
           .from("homework")
@@ -734,13 +884,13 @@ export default function TutorDashboardPage() {
       } else {
         homeworkWaiting =
           (
-            tutorHomework ||
-            []
+            tutorHomework || []
           ).filter(
             (homework) => {
               const status =
                 homework.status
-                  ?.toLowerCase();
+                  ?.trim()
+                  .toLowerCase();
 
               return (
                 status ===
@@ -755,21 +905,30 @@ export default function TutorDashboardPage() {
       }
 
       /* ================================================
-         8. SAVE
-      ================================================= */
+         10. SAVE DASHBOARD DATA
+      ================================================ */
 
       setData({
         tutor,
+
         studentCount:
           uniqueStudentIds.length,
+
         todaysClasses:
           todaysAssignments.length,
+
         pendingClasswork,
+
         homeworkWaiting,
+
         assignments:
           tutorAssignments,
+
         students:
           studentsMap,
+
+        subjects:
+          subjectsMap,
       });
     } catch (err) {
       console.error(
@@ -802,10 +961,6 @@ export default function TutorDashboardPage() {
 
   /* =====================================================
      TODAY'S SCHEDULE
-     
-     Keep this because the rest of
-     the dashboard can still show
-     today's classes.
   ===================================================== */
 
   const todaysSchedule =
@@ -836,14 +991,12 @@ export default function TutorDashboardPage() {
           const aTime =
             getStartTimeMinutes(
               a.time_slot
-            ) ??
-            9999;
+            ) ?? 9999;
 
           const bTime =
             getStartTimeMinutes(
               b.time_slot
-            ) ??
-            9999;
+            ) ?? 9999;
 
           return (
             aTime - bTime
@@ -1008,11 +1161,10 @@ export default function TutorDashboardPage() {
             Students assigned to you
           </p>
         </Link>
-
       </div>
 
       {/* =================================================
-          TRUE NEXT LESSON
+          NEXT LESSON
       ================================================= */}
 
       <div className="mt-10 rounded-3xl bg-white p-8 shadow-sm">
@@ -1020,7 +1172,6 @@ export default function TutorDashboardPage() {
         <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
 
           <div>
-
             <div className="flex items-center gap-3">
 
               <CalendarDays
@@ -1031,13 +1182,11 @@ export default function TutorDashboardPage() {
               <h2 className="text-2xl font-bold text-slate-900">
                 Next Lesson
               </h2>
-
             </div>
 
             <p className="mt-2 text-slate-500">
               Your closest upcoming scheduled class.
             </p>
-
           </div>
 
           {nextLesson && (
@@ -1047,7 +1196,6 @@ export default function TutorDashboardPage() {
               )}
             </div>
           )}
-
         </div>
 
         {!nextLesson ? (
@@ -1068,7 +1216,6 @@ export default function TutorDashboardPage() {
               scheduled lesson with a valid
               time.
             </p>
-
           </div>
 
         ) : (
@@ -1097,7 +1244,12 @@ export default function TutorDashboardPage() {
                 </h3>
 
                 <p className="mt-2 text-slate-600">
-                  Scheduled lesson
+                  {data.subjects[
+                    nextLesson
+                      .assignment
+                      .subject_id
+                  ]?.name ||
+                    "Scheduled lesson"}
                 </p>
 
                 <div className="mt-4 flex flex-wrap gap-3">
@@ -1117,7 +1269,6 @@ export default function TutorDashboardPage() {
                   </span>
 
                 </div>
-
               </div>
 
               {/* START CLASS */}
@@ -1139,6 +1290,7 @@ export default function TutorDashboardPage() {
                     className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-yellow-500 px-7 py-4 font-extrabold text-slate-900 shadow-sm transition hover:bg-yellow-400 sm:w-auto"
                   >
                     Start Class
+
                     <ArrowRight
                       size={19}
                     />
@@ -1151,6 +1303,7 @@ export default function TutorDashboardPage() {
                     className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-7 py-4 font-extrabold text-white transition hover:bg-slate-800 sm:w-auto"
                   >
                     Open Student
+
                     <ArrowRight
                       size={19}
                     />
@@ -1161,11 +1314,8 @@ export default function TutorDashboardPage() {
               </div>
 
             </div>
-
           </div>
-
         )}
-
       </div>
 
       {/* =================================================
@@ -1190,7 +1340,6 @@ export default function TutorDashboardPage() {
               className="text-yellow-500"
               size={28}
             />
-
           </div>
 
           {todaysSchedule.length ===
@@ -1206,7 +1355,6 @@ export default function TutorDashboardPage() {
               <p className="mt-4 font-semibold text-slate-600">
                 No classes scheduled today.
               </p>
-
             </div>
 
           ) : (
@@ -1224,6 +1372,12 @@ export default function TutorDashboardPage() {
                         .student_id
                     ];
 
+                  const subject =
+                    data.subjects[
+                      assignment
+                        .subject_id
+                    ];
+
                   return (
                     <div
                       key={
@@ -1238,7 +1392,8 @@ export default function TutorDashboardPage() {
                       </p>
 
                       <h3 className="mt-2 text-xl font-bold text-slate-900">
-                        Class
+                        {subject?.name ||
+                          "Class"}
                       </h3>
 
                       <p className="mt-2 text-slate-600">
@@ -1247,7 +1402,8 @@ export default function TutorDashboardPage() {
                       </p>
 
                       <p className="mt-2 text-sm text-slate-500">
-                        Scheduled lesson
+                        {assignment.day ||
+                          "Day not set"}
                       </p>
 
                       {assignment.google_meet_link ? (
@@ -1280,9 +1436,7 @@ export default function TutorDashboardPage() {
               )}
 
             </div>
-
           )}
-
         </div>
 
         {/* =================================================
@@ -1350,9 +1504,7 @@ export default function TutorDashboardPage() {
             </Link>
 
           </div>
-
         </div>
-
       </div>
 
       {/* =================================================
@@ -1375,7 +1527,6 @@ export default function TutorDashboardPage() {
             <h2 className="text-2xl font-bold">
               Recent Activity
             </h2>
-
           </div>
 
           <div className="mt-8 space-y-5">
@@ -1430,7 +1581,6 @@ export default function TutorDashboardPage() {
             </p>
 
           </div>
-
         </div>
 
         {/* TEACHING OVERVIEW */}
@@ -1447,7 +1597,6 @@ export default function TutorDashboardPage() {
             <h2 className="text-2xl font-bold">
               Teaching Overview
             </h2>
-
           </div>
 
           <div className="mt-8 space-y-5">
@@ -1493,11 +1642,8 @@ export default function TutorDashboardPage() {
             </div>
 
           </div>
-
         </div>
-
       </div>
-
     </div>
   );
 }
