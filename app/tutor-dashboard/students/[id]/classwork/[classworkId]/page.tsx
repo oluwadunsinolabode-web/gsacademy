@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
   CalendarDays,
@@ -15,6 +15,11 @@ import {
   Send,
   X,
   User,
+  History,
+  ChevronDown,
+  ChevronUp,
+  Clock3,
+  Award,
 } from "lucide-react";
 import { useParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
@@ -58,6 +63,46 @@ type Submission = {
   total_marks: number | null;
   percentage: number | null;
   grade: string | null;
+  correction_file_url: string | null;
+};
+
+/*
+ * A submission group represents one actual submission event.
+
+ * Your database can contain more than one row for one submission.
+ *
+ * Example:
+ *
+ * Row A:
+ * text_answer = "My answer..."
+ * submitted_at = 2026-08-14 12:45:41
+ *
+ * Row B:
+ * image_url = "https://..."
+ * submitted_at = 2026-08-14 12:45:41
+ *
+ * These should appear as ONE submission in the UI.
+ */
+type SubmissionGroup = {
+  key: string;
+  rows: Submission[];
+  ids: string[];
+
+  submitted_at: string | null;
+
+  text_answer: string | null;
+  image_url: string | null;
+
+  status: string | null;
+
+  tutor_feedback: string | null;
+  teacher_feedback: string | null;
+
+  score: number | null;
+  total_marks: number | null;
+  percentage: number | null;
+  grade: string | null;
+
   correction_file_url: string | null;
 };
 
@@ -113,7 +158,9 @@ function getFileExtension(url: string | null) {
 function isImage(url: string | null) {
   const extension = getFileExtension(url);
 
-  return ["jpg", "jpeg", "png", "gif", "webp"].includes(extension);
+  return ["jpg", "jpeg", "png", "gif", "webp"].includes(
+    extension
+  );
 }
 
 function isPdf(url: string | null) {
@@ -136,6 +183,176 @@ function getFileLabel(url: string | null) {
   return `${extension.toUpperCase()} File`;
 }
 
+/*
+ * Creates a stable grouping key for submission rows.
+ *
+ * Rows belonging to the same submission normally have the same
+ * submitted_at value because they are created during the same
+ * student submission action.
+ *
+ * We normalize to milliseconds so identical timestamps are grouped.
+ */
+function getSubmissionGroupKey(row: Submission) {
+  if (row.submitted_at) {
+    const date = new Date(row.submitted_at);
+
+    if (!Number.isNaN(date.getTime())) {
+      return `time:${date.getTime()}`;
+    }
+  }
+
+  /*
+   * Fallback.
+   *
+   * If a row somehow has no submitted_at, keep it as its own
+   * database row instead of incorrectly combining it with another
+   * submission.
+   */
+  return `row:${row.id}`;
+}
+
+/* =========================================================
+   COMBINE SUBMISSION ROWS
+========================================================= */
+
+function buildSubmissionGroups(
+  rows: Submission[]
+): SubmissionGroup[] {
+  const groups = new Map<string, Submission[]>();
+
+  /*
+   * Rows are already sorted newest first.
+   */
+  for (const row of rows) {
+    const key = getSubmissionGroupKey(row);
+
+    const existing = groups.get(key);
+
+    if (existing) {
+      existing.push(row);
+    } else {
+      groups.set(key, [row]);
+    }
+  }
+
+  return Array.from(groups.entries())
+    .map(([key, groupRows]) => {
+      /*
+       * Because the rows are sorted newest first, the first row
+       * is a good base row.
+       */
+      const base = groupRows[0];
+
+      const textAnswer =
+        groupRows.find(
+          (row) =>
+            row.text_answer &&
+            row.text_answer.trim() !== ""
+        )?.text_answer || null;
+
+      const imageUrl =
+        groupRows.find(
+          (row) =>
+            row.image_url &&
+            row.image_url.trim() !== ""
+        )?.image_url || null;
+
+      const tutorFeedback =
+        groupRows.find(
+          (row) =>
+            row.tutor_feedback &&
+            row.tutor_feedback.trim() !== ""
+        )?.tutor_feedback || null;
+
+      const teacherFeedback =
+        groupRows.find(
+          (row) =>
+            row.teacher_feedback &&
+            row.teacher_feedback.trim() !== ""
+        )?.teacher_feedback || null;
+
+      const score =
+        groupRows.find(
+          (row) => row.score !== null
+        )?.score ?? null;
+
+      const totalMarks =
+        groupRows.find(
+          (row) => row.total_marks !== null
+        )?.total_marks ?? null;
+
+      const percentage =
+        groupRows.find(
+          (row) => row.percentage !== null
+        )?.percentage ?? null;
+
+      const grade =
+        groupRows.find(
+          (row) =>
+            row.grade &&
+            row.grade.trim() !== ""
+        )?.grade || null;
+
+      const correctionFileUrl =
+        groupRows.find(
+          (row) =>
+            row.correction_file_url &&
+            row.correction_file_url.trim() !== ""
+        )?.correction_file_url || null;
+
+      const status =
+        groupRows.find(
+          (row) => row.status
+        )?.status ||
+        base.status ||
+        "submitted";
+
+      const submittedAt =
+        groupRows.find(
+          (row) => row.submitted_at
+        )?.submitted_at ||
+        base.submitted_at ||
+        null;
+
+      return {
+        key,
+        rows: groupRows,
+        ids: groupRows.map(
+          (row) => row.id
+        ),
+
+        submitted_at: submittedAt,
+
+        text_answer: textAnswer,
+        image_url: imageUrl,
+
+        status,
+
+        tutor_feedback: tutorFeedback,
+        teacher_feedback: teacherFeedback,
+
+        score,
+        total_marks,
+        percentage,
+        grade,
+
+        correction_file_url:
+          correctionFileUrl,
+      };
+    })
+    .sort((a, b) => {
+      const aTime = a.submitted_at
+        ? new Date(a.submitted_at).getTime()
+        : 0;
+
+      const bTime = b.submitted_at
+        ? new Date(b.submitted_at).getTime()
+        : 0;
+
+      return bTime - aTime;
+    });
+}
+
 /* =========================================================
    PAGE
 ========================================================= */
@@ -155,51 +372,100 @@ export default function TutorClassworkDetailsPage() {
      DATA
   ======================================================= */
 
-  const [student, setStudent] = useState<Student | null>(null);
-  const [classwork, setClasswork] = useState<Classwork | null>(null);
-  const [submission, setSubmission] =
-    useState<Submission | null>(null);
+  const [student, setStudent] =
+    useState<Student | null>(null);
+
+  const [classwork, setClasswork] =
+    useState<Classwork | null>(null);
 
   /*
-   * Keep the real database submission IDs.
-   *
-   * Your current database has:
-   *
-   * Row 1 = written answer
-   * Row 2 = uploaded image
-   *
-   * We need both IDs when saving marking/correction.
+   * Latest submission displayed in the main submission area.
    */
-  const [submissionIds, setSubmissionIds] = useState<string[]>([]);
+  const [submission, setSubmission] =
+    useState<SubmissionGroup | null>(null);
+
+  /*
+   * Complete submission history.
+   */
+  const [submissionHistory, setSubmissionHistory] =
+    useState<SubmissionGroup[]>([]);
+
+  /*
+   * IDs belonging ONLY to the latest submission group.
+   *
+   * This is important.
+   *
+   * When tutor marks the latest submission, we update only
+   * those rows, not every historical submission.
+   */
+  const [submissionIds, setSubmissionIds] =
+    useState<string[]>([]);
+
+  /* =======================================================
+     HISTORY UI
+  ======================================================= */
+
+  const [expandedHistory, setExpandedHistory] =
+    useState<string | null>(null);
 
   /* =======================================================
      STATE
   ======================================================= */
 
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [loading, setLoading] =
+    useState(true);
+
+  const [saving, setSaving] =
+    useState(false);
+
   const [uploadingCorrection, setUploadingCorrection] =
     useState(false);
 
-  const [error, setError] = useState("");
-  const [message, setMessage] = useState("");
+  const [error, setError] =
+    useState("");
+
+  const [message, setMessage] =
+    useState("");
 
   /* =======================================================
      MARKING
   ======================================================= */
 
-  const [score, setScore] = useState("");
-  const [totalMarks, setTotalMarks] = useState("");
-  const [grade, setGrade] = useState("");
-  const [feedback, setFeedback] = useState("");
+  const [score, setScore] =
+    useState("");
+
+  const [totalMarks, setTotalMarks] =
+    useState("");
+
+  const [grade, setGrade] =
+    useState("");
+
+  const [feedback, setFeedback] =
+    useState("");
 
   /* =======================================================
      CORRECTION
   ======================================================= */
 
-  const [correctionText, setCorrectionText] = useState("");
+  const [correctionText, setCorrectionText] =
+    useState("");
+
   const [correctionFile, setCorrectionFile] =
     useState<File | null>(null);
+
+  /* =======================================================
+     DERIVED
+  ======================================================= */
+
+  const historyCount =
+    submissionHistory.length;
+
+  const previousSubmissions =
+    useMemo(
+      () =>
+        submissionHistory.slice(1),
+      [submissionHistory]
+    );
 
   /* =======================================================
      LOAD
@@ -267,7 +533,9 @@ export default function TutorClassworkDetailsPage() {
         error: studentError,
       } = await supabase
         .from("students")
-        .select("id, full_name, email")
+        .select(
+          "id, full_name, email"
+        )
         .eq("id", studentId)
         .single();
 
@@ -324,9 +592,17 @@ export default function TutorClassworkDetailsPage() {
         error: assignmentError,
       } = await supabase
         .from("classwork_assignments")
-        .select("classwork_id, student_id")
-        .eq("classwork_id", classworkId)
-        .eq("student_id", studentData.id)
+        .select(
+          "classwork_id, student_id"
+        )
+        .eq(
+          "classwork_id",
+          classworkId
+        )
+        .eq(
+          "student_id",
+          studentData.id
+        )
         .maybeSingle();
 
       if (assignmentError) {
@@ -342,27 +618,7 @@ export default function TutorClassworkDetailsPage() {
       }
 
       /* =====================================================
-         6. GET SUBMISSIONS BY CLASSWORK ONLY
-         
-         THIS IS THE IMPORTANT FIX.
-         
-         We DO NOT do:
-         
-         .eq("classwork_id", classworkId)
-         .eq("student_id", studentId)
-         
-         because that can hide the submission if the
-         route/student ID doesn't exactly match the
-         submission row.
-         
-         Instead, fetch the classwork submissions and
-         identify the student in JavaScript using either:
-         
-         student_id
-         
-         OR
-         
-         student_email
+         6. GET ALL SUBMISSIONS FOR THIS CLASSWORK
       ===================================================== */
 
       const {
@@ -391,10 +647,16 @@ export default function TutorClassworkDetailsPage() {
             correction_file_url
           `
         )
-        .eq("classwork_id", classworkId)
-        .order("submitted_at", {
-          ascending: false,
-        });
+        .eq(
+          "classwork_id",
+          classworkId
+        )
+        .order(
+          "submitted_at",
+          {
+            ascending: false,
+          }
+        );
 
       if (submissionsError) {
         throw new Error(
@@ -407,13 +669,18 @@ export default function TutorClassworkDetailsPage() {
       ===================================================== */
 
       const normalizedStudentEmail =
-        studentData.email?.trim().toLowerCase() || "";
+        studentData.email
+          ?.trim()
+          .toLowerCase() || "";
 
       const matchingSubmissions =
-        (allClassworkSubmissions || []).filter(
+        (
+          allClassworkSubmissions || []
+        ).filter(
           (row) => {
             const rowStudentId =
-              row.student_id?.trim() || "";
+              row.student_id
+                ?.trim() || "";
 
             const rowEmail =
               row.student_email
@@ -422,14 +689,19 @@ export default function TutorClassworkDetailsPage() {
 
             const idMatches =
               rowStudentId !== "" &&
-              rowStudentId === studentData.id;
+              rowStudentId ===
+                studentData.id;
 
             const emailMatches =
               normalizedStudentEmail !== "" &&
               rowEmail !== "" &&
-              rowEmail === normalizedStudentEmail;
+              rowEmail ===
+                normalizedStudentEmail;
 
-            return idMatches || emailMatches;
+            return (
+              idMatches ||
+              emailMatches
+            );
           }
         ) as Submission[];
 
@@ -437,9 +709,12 @@ export default function TutorClassworkDetailsPage() {
         "Tutor classwork submission debug:",
         {
           classworkId,
-          routeStudentId: studentId,
-          databaseStudentId: studentData.id,
-          studentEmail: studentData.email,
+          routeStudentId:
+            studentId,
+          databaseStudentId:
+            studentData.id,
+          studentEmail:
+            studentData.email,
           allSubmissions:
             allClassworkSubmissions,
           matchingSubmissions,
@@ -450,8 +725,12 @@ export default function TutorClassworkDetailsPage() {
          8. NO MATCH
       ===================================================== */
 
-      if (matchingSubmissions.length === 0) {
+      if (
+        matchingSubmissions.length ===
+        0
+      ) {
         setSubmission(null);
+        setSubmissionHistory([]);
         setSubmissionIds([]);
 
         setScore("");
@@ -464,116 +743,48 @@ export default function TutorClassworkDetailsPage() {
       }
 
       /* =====================================================
-         9. SAVE REAL SUBMISSION IDS
+         9. BUILD SUBMISSION HISTORY
       ===================================================== */
 
-      setSubmissionIds(
-        matchingSubmissions.map(
-          (row) => row.id
-        )
+      const groups =
+        buildSubmissionGroups(
+          matchingSubmissions
+        );
+
+      setSubmissionHistory(
+        groups
       );
 
       /* =====================================================
-         10. COMBINE SUBMISSION ROWS
-         
-         Example:
-         
-         ROW A
-         text_answer = "Here is my answer"
-         image_url = null
-         
-         ROW B
-         text_answer = null
-         image_url = "https://..."
-         
-         RESULT:
-         
-         text_answer = "Here is my answer"
-         image_url = "https://..."
+         10. LATEST SUBMISSION
       ===================================================== */
 
-      const latestRow =
-        matchingSubmissions[0];
+      const latestSubmission =
+        groups[0];
 
-      const combinedSubmission: Submission = {
-        ...latestRow,
+      if (!latestSubmission) {
+        setSubmission(null);
+        setSubmissionHistory([]);
+        setSubmissionIds([]);
 
-        text_answer:
-          matchingSubmissions.find(
-            (row) =>
-              row.text_answer &&
-              row.text_answer.trim() !== ""
-          )?.text_answer || null,
-
-        image_url:
-          matchingSubmissions.find(
-            (row) =>
-              row.image_url &&
-              row.image_url.trim() !== ""
-          )?.image_url || null,
-
-        status:
-          matchingSubmissions.find(
-            (row) => row.status
-          )?.status ||
-          latestRow.status ||
-          "submitted",
-
-        submitted_at:
-          matchingSubmissions.find(
-            (row) => row.submitted_at
-          )?.submitted_at ||
-          latestRow.submitted_at ||
-          null,
-
-        tutor_feedback:
-          matchingSubmissions.find(
-            (row) =>
-              row.tutor_feedback &&
-              row.tutor_feedback.trim() !== ""
-          )?.tutor_feedback || null,
-
-        teacher_feedback:
-          matchingSubmissions.find(
-            (row) =>
-              row.teacher_feedback &&
-              row.teacher_feedback.trim() !== ""
-          )?.teacher_feedback || null,
-
-        score:
-          matchingSubmissions.find(
-            (row) =>
-              row.score !== null
-          )?.score ?? null,
-
-        total_marks:
-          matchingSubmissions.find(
-            (row) =>
-              row.total_marks !== null
-          )?.total_marks ?? null,
-
-        percentage:
-          matchingSubmissions.find(
-            (row) =>
-              row.percentage !== null
-          )?.percentage ?? null,
-
-        grade:
-          matchingSubmissions.find(
-            (row) =>
-              row.grade &&
-              row.grade.trim() !== ""
-          )?.grade || null,
-
-        correction_file_url:
-          matchingSubmissions.find(
-            (row) =>
-              row.correction_file_url
-          )?.correction_file_url || null,
-      };
+        return;
+      }
 
       setSubmission(
-        combinedSubmission
+        latestSubmission
+      );
+
+      /*
+       * IMPORTANT:
+       *
+       * Only IDs belonging to the latest submission
+       * are saved here.
+       *
+       * This prevents marking a new submission from
+       * accidentally changing old submissions.
+       */
+      setSubmissionIds(
+        latestSubmission.ids
       );
 
       /* =====================================================
@@ -581,34 +792,43 @@ export default function TutorClassworkDetailsPage() {
       ===================================================== */
 
       setScore(
-        combinedSubmission.score !== null
+        latestSubmission.score !== null
           ? String(
-              combinedSubmission.score
+              latestSubmission.score
             )
           : ""
       );
 
       setTotalMarks(
-        combinedSubmission.total_marks !== null
+        latestSubmission.total_marks !==
+          null
           ? String(
-              combinedSubmission.total_marks
+              latestSubmission.total_marks
             )
           : ""
       );
 
       setGrade(
-        combinedSubmission.grade || ""
+        latestSubmission.grade ||
+          ""
       );
 
       setFeedback(
-        combinedSubmission.teacher_feedback ||
-          combinedSubmission.tutor_feedback ||
+        latestSubmission.teacher_feedback ||
+          latestSubmission.tutor_feedback ||
           ""
       );
 
       setCorrectionText(
-        combinedSubmission.tutor_feedback ||
+        latestSubmission.tutor_feedback ||
           ""
+      );
+
+      /*
+       * Automatically keep latest submission open.
+       */
+      setExpandedHistory(
+        latestSubmission.key
       );
     } catch (err) {
       console.error(
@@ -627,7 +847,15 @@ export default function TutorClassworkDetailsPage() {
   }
 
   /* =========================================================
-     SAVE MARKING
+     REFRESH
+  ========================================================= */
+
+  async function refreshPage() {
+    await loadPage();
+  }
+
+  /* =========================================================
+     MARKING
   ========================================================= */
 
   async function saveMarking(
@@ -642,7 +870,10 @@ export default function TutorClassworkDetailsPage() {
       return;
     }
 
-    if (submissionIds.length === 0) {
+    if (
+      submissionIds.length ===
+      0
+    ) {
       setError(
         "No submission records were found."
       );
@@ -666,7 +897,9 @@ export default function TutorClassworkDetailsPage() {
 
       if (
         numericScore !== null &&
-        !Number.isFinite(numericScore)
+        !Number.isFinite(
+          numericScore
+        )
       ) {
         throw new Error(
           "Please enter a valid score."
@@ -675,7 +908,9 @@ export default function TutorClassworkDetailsPage() {
 
       if (
         numericTotal !== null &&
-        !Number.isFinite(numericTotal)
+        !Number.isFinite(
+          numericTotal
+        )
       ) {
         throw new Error(
           "Please enter valid total marks."
@@ -703,7 +938,8 @@ export default function TutorClassworkDetailsPage() {
       if (
         numericScore !== null &&
         numericTotal !== null &&
-        numericScore > numericTotal
+        numericScore >
+          numericTotal
       ) {
         throw new Error(
           "Score cannot be greater than total marks."
@@ -726,17 +962,18 @@ export default function TutorClassworkDetailsPage() {
       }
 
       /* =====================================================
-         UPDATE ALL MATCHING SUBMISSION ROWS
-         
-         This keeps the text row and file row synchronized.
+         UPDATE ONLY LATEST SUBMISSION ROWS
       ===================================================== */
 
       const {
         error: updateError,
       } = await supabase
-        .from("classwork_submissions")
+        .from(
+          "classwork_submissions"
+        )
         .update({
-          score: numericScore,
+          score:
+            numericScore,
 
           total_marks:
             numericTotal,
@@ -744,20 +981,26 @@ export default function TutorClassworkDetailsPage() {
           percentage:
             percentage !== null
               ? Number(
-                  percentage.toFixed(2)
+                  percentage.toFixed(
+                    2
+                  )
                 )
               : null,
 
           grade:
-            grade.trim() || null,
+            grade.trim() ||
+            null,
 
           tutor_feedback:
-            feedback.trim() || null,
+            feedback.trim() ||
+            null,
 
           teacher_feedback:
-            feedback.trim() || null,
+            feedback.trim() ||
+            null,
 
-          status: "marked",
+          status:
+            "marked",
         })
         .in(
           "id",
@@ -771,14 +1014,15 @@ export default function TutorClassworkDetailsPage() {
       }
 
       /* =====================================================
-         UPDATE LOCAL STATE
+         UPDATE LATEST LOCAL SUBMISSION
       ===================================================== */
 
-      setSubmission(
-        (current) => ({
-          ...(current || submission),
+      const updatedSubmission: SubmissionGroup =
+        {
+          ...submission,
 
-          score: numericScore,
+          score:
+            numericScore,
 
           total_marks:
             numericTotal,
@@ -786,21 +1030,44 @@ export default function TutorClassworkDetailsPage() {
           percentage:
             percentage !== null
               ? Number(
-                  percentage.toFixed(2)
+                  percentage.toFixed(
+                    2
+                  )
                 )
               : null,
 
           grade:
-            grade.trim() || null,
+            grade.trim() ||
+            null,
 
           tutor_feedback:
-            feedback.trim() || null,
+            feedback.trim() ||
+            null,
 
           teacher_feedback:
-            feedback.trim() || null,
+            feedback.trim() ||
+            null,
 
-          status: "marked",
-        })
+          status:
+            "marked",
+        };
+
+      setSubmission(
+        updatedSubmission
+      );
+
+      /*
+       * Update latest item inside history too.
+       */
+      setSubmissionHistory(
+        (current) =>
+          current.map(
+            (item) =>
+              item.key ===
+              submission.key
+                ? updatedSubmission
+                : item
+          )
       );
 
       setMessage(
@@ -834,7 +1101,10 @@ export default function TutorClassworkDetailsPage() {
       return;
     }
 
-    if (submissionIds.length === 0) {
+    if (
+      submissionIds.length ===
+      0
+    ) {
       setError(
         "No submission records were found."
       );
@@ -852,7 +1122,10 @@ export default function TutorClassworkDetailsPage() {
     }
 
     try {
-      setUploadingCorrection(true);
+      setUploadingCorrection(
+        true
+      );
+
       setError("");
       setMessage("");
 
@@ -865,7 +1138,10 @@ export default function TutorClassworkDetailsPage() {
         error: authError,
       } = await supabase.auth.getUser();
 
-      if (authError || !user) {
+      if (
+        authError ||
+        !user
+      ) {
         throw new Error(
           "You must be logged in."
         );
@@ -903,7 +1179,8 @@ export default function TutorClassworkDetailsPage() {
             filePath,
             correctionFile,
             {
-              cacheControl: "3600",
+              cacheControl:
+                "3600",
               upsert: false,
               contentType:
                 correctionFile.type ||
@@ -918,27 +1195,31 @@ export default function TutorClassworkDetailsPage() {
         }
 
         const {
-          data: publicUrlData,
-        } = supabase.storage
-          .from(
-            "classwork-submissions"
-          )
-          .getPublicUrl(
-            filePath
-          );
+          data:
+            publicUrlData,
+        } =
+          supabase.storage
+            .from(
+              "classwork-submissions"
+            )
+            .getPublicUrl(
+              filePath
+            );
 
         correctionFileUrl =
           publicUrlData.publicUrl;
       }
 
       /* =====================================================
-         UPDATE ALL SUBMISSION ROWS
+         UPDATE ONLY LATEST SUBMISSION
       ===================================================== */
 
       const {
         error: updateError,
       } = await supabase
-        .from("classwork_submissions")
+        .from(
+          "classwork_submissions"
+        )
         .update({
           correction_file_url:
             correctionFileUrl ||
@@ -969,18 +1250,31 @@ export default function TutorClassworkDetailsPage() {
         submission.tutor_feedback ||
         null;
 
-      setSubmission(
-        (current) => ({
-          ...(current || submission),
+      const updatedSubmission: SubmissionGroup =
+        {
+          ...submission,
 
           correction_file_url:
             correctionFileUrl ||
-            current?.correction_file_url ||
             null,
 
           tutor_feedback:
             newCorrectionText,
-        })
+        };
+
+      setSubmission(
+        updatedSubmission
+      );
+
+      setSubmissionHistory(
+        (current) =>
+          current.map(
+            (item) =>
+              item.key ===
+              submission.key
+                ? updatedSubmission
+                : item
+          )
       );
 
       setCorrectionFile(null);
@@ -1013,8 +1307,408 @@ export default function TutorClassworkDetailsPage() {
           : "Unable to save correction."
       );
     } finally {
-      setUploadingCorrection(false);
+      setUploadingCorrection(
+        false
+      );
     }
+  }
+
+  /* =========================================================
+     TOGGLE HISTORY
+  ========================================================= */
+
+  function toggleHistory(
+    key: string
+  ) {
+    setExpandedHistory(
+      (current) =>
+        current === key
+          ? null
+          : key
+    );
+  }
+
+  /* =========================================================
+     HISTORY CARD
+  ========================================================= */
+
+  function HistoryCard({
+    item,
+    index,
+    latest = false,
+  }: {
+    item: SubmissionGroup;
+    index: number;
+    latest?: boolean;
+  }) {
+    const expanded =
+      expandedHistory ===
+      item.key;
+
+    return (
+      <div
+        className={`overflow-hidden rounded-3xl border bg-white transition ${
+          latest
+            ? "border-blue-200 shadow-md"
+            : "border-slate-200 shadow-sm"
+        }`}
+      >
+        {/* HEADER */}
+
+        <button
+          type="button"
+          onClick={() =>
+            toggleHistory(
+              item.key
+            )
+          }
+          className="w-full text-left"
+        >
+          <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-4">
+              <div
+                className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${
+                  latest
+                    ? "bg-blue-100 text-blue-600"
+                    : "bg-slate-100 text-slate-500"
+                }`}
+              >
+                {latest ? (
+                  <Clock3
+                    size={20}
+                  />
+                ) : (
+                  <History
+                    size={20}
+                  />
+                )}
+              </div>
+
+              <div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="font-extrabold text-slate-950">
+                    {latest
+                      ? "Latest Submission"
+                      : `Submission #${
+                          historyCount -
+                          index
+                        }`}
+                  </p>
+
+                  {latest && (
+                    <span className="rounded-full bg-blue-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-blue-700">
+                      Latest
+                    </span>
+                  )}
+                </div>
+
+                <p className="mt-1 text-sm text-slate-500">
+                  {formatDate(
+                    item.submitted_at
+                  )}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <span
+                className={`rounded-full px-3 py-1 text-xs font-extrabold ${
+                  item.status ===
+                  "marked"
+                    ? "bg-green-100 text-green-700"
+                    : "bg-yellow-100 text-yellow-700"
+                }`}
+              >
+                {item.status ||
+                  "Submitted"}
+              </span>
+
+              {item.score !== null &&
+                item.total_marks !==
+                  null && (
+                  <span className="rounded-xl bg-slate-50 px-3 py-2 text-sm font-black text-slate-700">
+                    {item.score}/
+                    {
+                      item.total_marks
+                    }
+                  </span>
+                )}
+
+              {expanded ? (
+                <ChevronUp
+                  size={19}
+                  className="text-slate-400"
+                />
+              ) : (
+                <ChevronDown
+                  size={19}
+                  className="text-slate-400"
+                />
+              )}
+            </div>
+          </div>
+        </button>
+
+        {/* EXPANDED CONTENT */}
+
+        {expanded && (
+          <div className="border-t border-slate-100 bg-slate-50/60 p-5">
+            <div className="grid gap-5 md:grid-cols-2">
+
+              {/* ANSWER */}
+
+              {item.text_answer && (
+                <div className="rounded-2xl border border-slate-200 bg-white p-5">
+                  <div className="flex items-center gap-3">
+                    <MessageSquare
+                      size={18}
+                      className="text-yellow-600"
+                    />
+
+                    <p className="font-extrabold text-slate-950">
+                      Written Answer
+                    </p>
+                  </div>
+
+                  <div className="mt-4 rounded-xl bg-slate-50 p-4">
+                    <p className="whitespace-pre-wrap break-words text-sm leading-7 text-slate-700">
+                      {
+                        item.text_answer
+                      }
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* FILE */}
+
+              {item.image_url && (
+                <div className="rounded-2xl border border-slate-200 bg-white p-5">
+                  <div className="flex items-center gap-3">
+                    <FileText
+                      size={18}
+                      className="text-slate-500"
+                    />
+
+                    <div>
+                      <p className="font-extrabold text-slate-950">
+                        Uploaded File
+                      </p>
+
+                      <p className="text-xs text-slate-500">
+                        {getFileLabel(
+                          item.image_url
+                        )}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <a
+                      href={
+                        item.image_url
+                      }
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-bold text-white hover:bg-slate-800"
+                    >
+                      <ExternalLink
+                        size={15}
+                      />
+                      View
+                    </a>
+
+                    <a
+                      href={
+                        item.image_url
+                      }
+                      download
+                      className="inline-flex items-center gap-2 rounded-xl bg-yellow-500 px-4 py-2.5 text-sm font-bold text-slate-950 hover:bg-yellow-400"
+                    >
+                      <Download
+                        size={15}
+                      />
+                      Download
+                    </a>
+                  </div>
+
+                  {isImage(
+                    item.image_url
+                  ) && (
+                    <div className="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-slate-50 p-3">
+                      <img
+                        src={
+                          item.image_url
+                        }
+                        alt="Student submission"
+                        className="max-h-[400px] w-full rounded-lg object-contain"
+                      />
+                    </div>
+                  )}
+
+                  {isPdf(
+                    item.image_url
+                  ) && (
+                    <div className="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
+                      <iframe
+                        src={
+                          item.image_url
+                        }
+                        title="Student submitted PDF"
+                        className="h-[500px] w-full"
+                      />
+                    </div>
+                  )}
+
+                  {isWordDocument(
+                    item.image_url
+                  ) && (
+                    <div className="mt-4 rounded-xl bg-blue-50 p-4 text-sm leading-6 text-slate-600">
+                      Word documents may not render directly in every browser. Use Download to open the document.
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* MARK */}
+
+              {(item.score !== null ||
+                item.grade ||
+                item.percentage !==
+                  null) && (
+                <div className="rounded-2xl border border-green-200 bg-green-50 p-5">
+                  <div className="flex items-center gap-3">
+                    <Award
+                      size={18}
+                      className="text-green-700"
+                    />
+
+                    <p className="font-extrabold text-green-900">
+                      Result
+                    </p>
+                  </div>
+
+                  <div className="mt-4 flex flex-wrap gap-3">
+                    {item.score !==
+                      null &&
+                      item.total_marks !==
+                        null && (
+                        <div className="rounded-xl bg-white px-4 py-3">
+                          <p className="text-[10px] font-black uppercase tracking-wide text-slate-400">
+                            Score
+                          </p>
+
+                          <p className="mt-1 text-xl font-black text-blue-600">
+                            {
+                              item.score
+                            }
+                            /
+                            {
+                              item.total_marks
+                            }
+                          </p>
+                        </div>
+                      )}
+
+                    {item.percentage !==
+                      null && (
+                      <div className="rounded-xl bg-white px-4 py-3">
+                        <p className="text-[10px] font-black uppercase tracking-wide text-slate-400">
+                          Percentage
+                        </p>
+
+                        <p className="mt-1 text-xl font-black text-blue-600">
+                          {
+                            item.percentage
+                          }
+                          %
+                        </p>
+                      </div>
+                    )}
+
+                    {item.grade && (
+                      <div className="rounded-xl bg-white px-4 py-3">
+                        <p className="text-[10px] font-black uppercase tracking-wide text-slate-400">
+                          Grade
+                        </p>
+
+                        <p className="mt-1 text-xl font-black text-blue-600">
+                          {
+                            item.grade
+                          }
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* FEEDBACK */}
+
+              {(item.teacher_feedback ||
+                item.tutor_feedback) && (
+                <div className="rounded-2xl border border-blue-200 bg-blue-50 p-5">
+                  <div className="flex items-center gap-3">
+                    <MessageSquare
+                      size={18}
+                      className="text-blue-600"
+                    />
+
+                    <p className="font-extrabold text-blue-950">
+                      Tutor Feedback
+                    </p>
+                  </div>
+
+                  <p className="mt-4 whitespace-pre-wrap text-sm leading-7 text-slate-700">
+                    {item.teacher_feedback ||
+                      item.tutor_feedback}
+                  </p>
+                </div>
+              )}
+
+              {/* CORRECTION */}
+
+              {item.correction_file_url && (
+                <div className="rounded-2xl border border-yellow-200 bg-yellow-50 p-5">
+                  <p className="font-extrabold text-slate-950">
+                    Correction Available
+                  </p>
+
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <a
+                      href={
+                        item.correction_file_url
+                      }
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-bold text-white"
+                    >
+                      <ExternalLink
+                        size={15}
+                      />
+                      View Correction
+                    </a>
+
+                    <a
+                      href={
+                        item.correction_file_url
+                      }
+                      download
+                      className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-bold text-slate-700"
+                    >
+                      <Download
+                        size={15}
+                      />
+                      Download
+                    </a>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    );
   }
 
   /* =========================================================
@@ -1044,27 +1738,36 @@ export default function TutorClassworkDetailsPage() {
      ERROR
   ========================================================= */
 
-  if (error && !classwork) {
+  if (
+    error &&
+    !classwork
+  ) {
     return (
       <main className="min-h-screen bg-slate-50">
         <div className="mx-auto max-w-5xl px-5 py-12">
+
           <Link
             href={`/tutor-dashboard/students/${studentId}/classwork`}
             className="inline-flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-slate-900"
           >
-            <ArrowLeft size={17} />
+            <ArrowLeft
+              size={17}
+            />
             Back to Classwork
           </Link>
 
           <div className="mt-8 rounded-3xl border border-red-200 bg-red-50 p-7">
             <div className="flex items-center gap-3 text-red-700">
-              <AlertCircle size={22} />
+              <AlertCircle
+                size={22}
+              />
 
               <p className="font-bold">
                 {error}
               </p>
             </div>
           </div>
+
         </div>
       </main>
     );
@@ -1078,21 +1781,30 @@ export default function TutorClassworkDetailsPage() {
     <main className="min-h-screen bg-slate-50">
       <div className="mx-auto max-w-5xl px-5 py-10">
 
-        {/* BACK */}
+        {/* =====================================================
+           BACK
+        ===================================================== */}
 
         <Link
           href={`/tutor-dashboard/students/${studentId}/classwork`}
           className="inline-flex items-center gap-2 text-sm font-bold text-slate-500 transition hover:text-slate-900"
         >
-          <ArrowLeft size={17} />
+          <ArrowLeft
+            size={17}
+          />
           Back to Classwork
         </Link>
 
-        {/* MESSAGES */}
+        {/* =====================================================
+           MESSAGES
+        ===================================================== */}
 
         {message && (
           <div className="mt-6 flex items-center gap-3 rounded-2xl border border-green-200 bg-green-50 px-5 py-4 text-sm font-semibold text-green-700">
-            <CheckCircle2 size={19} />
+            <CheckCircle2
+              size={19}
+            />
+
             {message}
           </div>
         )}
@@ -1100,7 +1812,10 @@ export default function TutorClassworkDetailsPage() {
         {error && (
           <div className="mt-6 flex items-center justify-between rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm font-semibold text-red-700">
             <div className="flex items-center gap-3">
-              <AlertCircle size={19} />
+              <AlertCircle
+                size={19}
+              />
+
               {error}
             </div>
 
@@ -1116,10 +1831,14 @@ export default function TutorClassworkDetailsPage() {
           </div>
         )}
 
-        {/* CLASSWORK HEADER */}
+        {/* =====================================================
+           CLASSWORK HEADER
+        ===================================================== */}
 
         <header className="mt-8">
+
           <div className="flex flex-wrap items-center gap-2">
+
             <span className="rounded-full bg-yellow-100 px-3 py-1 text-xs font-extrabold text-yellow-700">
               {classwork?.subject}
             </span>
@@ -1127,6 +1846,7 @@ export default function TutorClassworkDetailsPage() {
             <span className="rounded-full bg-green-50 px-3 py-1 text-xs font-bold text-green-700">
               {classwork?.status}
             </span>
+
           </div>
 
           <h1 className="mt-4 text-3xl font-black tracking-tight text-slate-950 md:text-4xl">
@@ -1134,8 +1854,11 @@ export default function TutorClassworkDetailsPage() {
           </h1>
 
           <div className="mt-4 flex flex-wrap gap-5 text-sm text-slate-500">
+
             <span className="inline-flex items-center gap-2">
-              <CalendarDays size={16} />
+              <CalendarDays
+                size={16}
+              />
 
               Published{" "}
               {formatShortDate(
@@ -1152,13 +1875,19 @@ export default function TutorClassworkDetailsPage() {
                 )}
               </span>
             )}
+
           </div>
+
         </header>
 
-        {/* STUDENT */}
+        {/* =====================================================
+           STUDENT
+        ===================================================== */}
 
         <section className="mt-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+
           <div className="flex items-center gap-3">
+
             <div className="flex h-11 w-11 items-center justify-center rounded-full bg-slate-100">
               <User
                 size={20}
@@ -1167,6 +1896,7 @@ export default function TutorClassworkDetailsPage() {
             </div>
 
             <div>
+
               <p className="text-xs font-extrabold uppercase tracking-wide text-slate-400">
                 Student
               </p>
@@ -1181,14 +1911,21 @@ export default function TutorClassworkDetailsPage() {
                   {student.email}
                 </p>
               )}
+
             </div>
+
           </div>
+
         </section>
 
-        {/* ASSIGNMENT */}
+        {/* =====================================================
+           ASSIGNMENT
+        ===================================================== */}
 
         <section className="mt-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm md:p-7">
+
           <div className="flex items-center gap-3">
+
             <FileText
               size={22}
               className="text-yellow-600"
@@ -1197,13 +1934,18 @@ export default function TutorClassworkDetailsPage() {
             <h2 className="text-xl font-extrabold text-slate-950">
               Tutor's Assignment
             </h2>
+
           </div>
 
           {classwork?.description ? (
             <div className="mt-5 rounded-2xl bg-slate-50 p-5">
+
               <p className="whitespace-pre-wrap leading-8 text-slate-700">
-                {classwork.description}
+                {
+                  classwork.description
+                }
               </p>
+
             </div>
           ) : (
             <p className="mt-5 text-sm text-slate-400">
@@ -1213,15 +1955,18 @@ export default function TutorClassworkDetailsPage() {
 
           {classwork?.attachment_url && (
             <div className="mt-6 border-t border-slate-100 pt-5">
+
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 
                 <div className="flex items-center gap-3">
+
                   <FileText
                     size={22}
                     className="text-slate-500"
                   />
 
                   <div>
+
                     <p className="font-bold text-slate-900">
                       Tutor Attachment
                     </p>
@@ -1229,10 +1974,13 @@ export default function TutorClassworkDetailsPage() {
                     <p className="text-sm text-slate-500">
                       Supporting file for this assignment.
                     </p>
+
                   </div>
+
                 </div>
 
                 <div className="flex flex-wrap gap-2">
+
                   <a
                     href={
                       classwork.attachment_url
@@ -1241,7 +1989,9 @@ export default function TutorClassworkDetailsPage() {
                     rel="noopener noreferrer"
                     className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-950 px-4 py-3 text-sm font-bold text-white hover:bg-slate-800"
                   >
-                    <ExternalLink size={16} />
+                    <ExternalLink
+                      size={16}
+                    />
                     Open
                   </a>
 
@@ -1252,34 +2002,86 @@ export default function TutorClassworkDetailsPage() {
                     download
                     className="inline-flex items-center justify-center gap-2 rounded-xl bg-yellow-500 px-4 py-3 text-sm font-bold text-slate-950 hover:bg-yellow-400"
                   >
-                    <Download size={16} />
+                    <Download
+                      size={16}
+                    />
                     Download
                   </a>
+
                 </div>
+
               </div>
+
             </div>
           )}
+
         </section>
 
-        {/* STUDENT SUBMISSION */}
+        {/* =====================================================
+           SUBMISSION AREA
+        ===================================================== */}
 
         <section className="mt-8">
-          <div className="mb-5">
-            <h2 className="text-2xl font-extrabold text-slate-950">
-              Student Submission
-            </h2>
 
-            <p className="mt-1 text-sm text-slate-500">
-              Review the student's written answer and uploaded file.
-            </p>
+          <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+
+            <div>
+
+              <div className="flex items-center gap-3">
+
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-100">
+                  <FileText
+                    size={21}
+                    className="text-blue-600"
+                  />
+                </div>
+
+                <div>
+
+                  <h2 className="text-2xl font-extrabold text-slate-950">
+                    Student Submission
+                  </h2>
+
+                  <p className="mt-1 text-sm text-slate-500">
+                    Review the student's latest work and previous attempts.
+                  </p>
+
+                </div>
+
+              </div>
+
+            </div>
+
+            {historyCount >
+              0 && (
+              <div className="inline-flex w-fit items-center gap-2 rounded-full bg-slate-100 px-4 py-2 text-xs font-extrabold text-slate-600">
+
+                <History
+                  size={15}
+                />
+
+                {historyCount}{" "}
+                {historyCount ===
+                1
+                  ? "submission"
+                  : "submissions"}
+
+              </div>
+            )}
+
           </div>
 
           {!submission ? (
             <div className="rounded-3xl border border-orange-200 bg-orange-50 p-7">
+
               <div className="flex items-center gap-3 text-orange-700">
-                <AlertCircle size={23} />
+
+                <AlertCircle
+                  size={23}
+                />
 
                 <div>
+
                   <h3 className="font-extrabold">
                     No submission yet
                   </h3>
@@ -1287,244 +2089,60 @@ export default function TutorClassworkDetailsPage() {
                   <p className="mt-1 text-sm">
                     The student has not submitted this classwork.
                   </p>
+
                 </div>
+
               </div>
+
             </div>
           ) : (
             <div className="space-y-6">
 
-              {/* SUBMISSION SUMMARY */}
+              {/* =================================================
+                 LATEST SUBMISSION
+              ================================================= */}
 
-              <div className="rounded-3xl border border-green-200 bg-green-50 p-6">
-                <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+              <div>
+
+                <div className="mb-3 flex items-center justify-between">
 
                   <div>
-                    <span className="inline-flex rounded-full bg-green-100 px-3 py-1 text-xs font-extrabold text-green-700">
-                      {submission.status ||
-                        "Submitted"}
-                    </span>
 
-                    {submission.submitted_at && (
-                      <p className="mt-3 text-sm text-green-700">
-                        Submitted{" "}
-                        {formatDate(
-                          submission.submitted_at
-                        )}
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="flex flex-wrap gap-3">
-
-                    {submission.score !== null &&
-                      submission.total_marks !== null && (
-                        <div className="min-w-[130px] rounded-2xl bg-white px-5 py-3 text-center shadow-sm">
-                          <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
-                            Score
-                          </p>
-
-                          <p className="text-2xl font-black text-blue-600">
-                            {submission.score}
-                            {" / "}
-                            {submission.total_marks}
-                          </p>
-
-                          {submission.percentage !== null && (
-                            <p className="text-xs font-bold text-slate-500">
-                              {submission.percentage}%
-                            </p>
-                          )}
-                        </div>
-                      )}
-
-                    {submission.grade && (
-                      <div className="min-w-[100px] rounded-2xl bg-white px-5 py-3 text-center shadow-sm">
-                        <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
-                          Grade
-                        </p>
-
-                        <p className="text-2xl font-black text-blue-600">
-                          {submission.grade}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* WRITTEN ANSWER */}
-
-              {submission.text_answer && (
-                <section className="rounded-3xl border border-yellow-200 bg-white p-6 shadow-sm">
-                  <div className="flex items-center gap-3">
-
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-yellow-100">
-                      <MessageSquare
-                        size={20}
-                        className="text-yellow-700"
-                      />
-                    </div>
-
-                    <div>
-                      <h3 className="text-lg font-extrabold text-slate-950">
-                        Written Answer
-                      </h3>
-
-                      <p className="text-sm text-slate-500">
-                        Answer submitted directly by the student.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-5">
-                    <p className="whitespace-pre-wrap break-words leading-8 text-slate-700">
-                      {submission.text_answer}
+                    <p className="text-xs font-black uppercase tracking-[0.16em] text-blue-600">
+                      Current Work
                     </p>
-                  </div>
-                </section>
-              )}
 
-              {/* UPLOADED FILE */}
-
-              {submission.image_url && (
-                <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-
-                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100">
-                        <FileText
-                          size={20}
-                          className="text-slate-600"
-                        />
-                      </div>
-
-                      <div>
-                        <h3 className="font-extrabold text-slate-950">
-                          Uploaded Submission
-                        </h3>
-
-                        <p className="text-sm text-slate-500">
-                          {getFileLabel(
-                            submission.image_url
-                          )}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-wrap gap-2">
-
-                      <a
-                        href={
-                          submission.image_url
-                        }
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-bold text-white hover:bg-slate-800"
-                      >
-                        <ExternalLink size={16} />
-                        View
-                      </a>
-
-                      <a
-                        href={
-                          submission.image_url
-                        }
-                        download
-                        className="inline-flex items-center gap-2 rounded-xl bg-yellow-500 px-4 py-2.5 text-sm font-bold text-slate-950 hover:bg-yellow-400"
-                      >
-                        <Download size={16} />
-                        Download
-                      </a>
-                    </div>
-                  </div>
-
-                  {/* IMAGE */}
-
-                  {isImage(
-                    submission.image_url
-                  ) && (
-                    <div className="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                      <img
-                        src={
-                          submission.image_url
-                        }
-                        alt="Student submission"
-                        className="mx-auto max-h-[700px] max-w-full rounded-xl object-contain"
-                      />
-                    </div>
-                  )}
-
-                  {/* PDF */}
-
-                  {isPdf(
-                    submission.image_url
-                  ) && (
-                    <div className="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-slate-100">
-                      <iframe
-                        src={
-                          submission.image_url
-                        }
-                        title="Student submitted PDF"
-                        className="h-[750px] w-full"
-                      />
-                    </div>
-                  )}
-
-                  {/* WORD */}
-
-                  {isWordDocument(
-                    submission.image_url
-                  ) && (
-                    <div className="mt-5 rounded-2xl border border-blue-200 bg-blue-50 p-5">
-                      <div className="flex items-start gap-3">
-
-                        <FileText
-                          size={22}
-                          className="mt-0.5 text-blue-600"
-                        />
-
-                        <div>
-                          <p className="font-bold text-slate-900">
-                            Word document
-                          </p>
-
-                          <p className="mt-1 text-sm leading-6 text-slate-600">
-                            Word documents may not render directly inside every browser. Use Download to open the submitted document.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </section>
-              )}
-
-              {/* NO CONTENT */}
-
-              {!submission.text_answer &&
-                !submission.image_url && (
-                  <div className="rounded-3xl border border-slate-200 bg-white p-7 text-center">
-                    <FileText
-                      size={38}
-                      className="mx-auto text-slate-300"
-                    />
-
-                    <h3 className="mt-4 font-bold text-slate-900">
-                      Submission record found
+                    <h3 className="mt-1 text-xl font-black text-slate-950">
+                      Latest Submission
                     </h3>
 
-                    <p className="mt-2 text-sm text-slate-500">
-                      This submission does not currently contain written text or an uploaded file.
-                    </p>
                   </div>
-                )}
 
-              {/* MARKING */}
+                  <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-black text-blue-700">
+                    Latest
+                  </span>
+
+                </div>
+
+                <HistoryCard
+                  item={submission}
+                  index={0}
+                  latest
+                />
+
+              </div>
+
+              {/* =================================================
+                 MARKING
+              ================================================= */}
 
               <form
-                onSubmit={saveMarking}
-                className="rounded-3xl border border-blue-200 bg-blue-50 p-6"
+                onSubmit={
+                  saveMarking
+                }
+                className="rounded-3xl border border-blue-200 bg-blue-50 p-6 md:p-7"
               >
+
                 <div className="flex items-center gap-3">
 
                   <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-100">
@@ -1535,19 +2153,23 @@ export default function TutorClassworkDetailsPage() {
                   </div>
 
                   <div>
+
                     <h3 className="text-xl font-extrabold text-slate-950">
-                      Mark Submission
+                      Mark Latest Submission
                     </h3>
 
                     <p className="text-sm text-slate-500">
                       Add the student's score, grade and feedback.
                     </p>
+
                   </div>
+
                 </div>
 
                 <div className="mt-6 grid gap-4 sm:grid-cols-3">
 
                   <div>
+
                     <label className="mb-2 block text-sm font-bold text-slate-700">
                       Score
                     </label>
@@ -1556,7 +2178,9 @@ export default function TutorClassworkDetailsPage() {
                       type="number"
                       min="0"
                       value={score}
-                      onChange={(event) =>
+                      onChange={(
+                        event
+                      ) =>
                         setScore(
                           event.target.value
                         )
@@ -1564,9 +2188,11 @@ export default function TutorClassworkDetailsPage() {
                       placeholder="e.g. 18"
                       className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-blue-500"
                     />
+
                   </div>
 
                   <div>
+
                     <label className="mb-2 block text-sm font-bold text-slate-700">
                       Total Marks
                     </label>
@@ -1574,8 +2200,12 @@ export default function TutorClassworkDetailsPage() {
                     <input
                       type="number"
                       min="0"
-                      value={totalMarks}
-                      onChange={(event) =>
+                      value={
+                        totalMarks
+                      }
+                      onChange={(
+                        event
+                      ) =>
                         setTotalMarks(
                           event.target.value
                         )
@@ -1583,9 +2213,11 @@ export default function TutorClassworkDetailsPage() {
                       placeholder="e.g. 20"
                       className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-blue-500"
                     />
+
                   </div>
 
                   <div>
+
                     <label className="mb-2 block text-sm font-bold text-slate-700">
                       Grade
                     </label>
@@ -1593,7 +2225,9 @@ export default function TutorClassworkDetailsPage() {
                     <input
                       type="text"
                       value={grade}
-                      onChange={(event) =>
+                      onChange={(
+                        event
+                      ) =>
                         setGrade(
                           event.target.value
                         )
@@ -1601,17 +2235,24 @@ export default function TutorClassworkDetailsPage() {
                       placeholder="e.g. A"
                       className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-blue-500"
                     />
+
                   </div>
+
                 </div>
 
                 <div className="mt-5">
+
                   <label className="mb-2 block text-sm font-bold text-slate-700">
                     Tutor Feedback
                   </label>
 
                   <textarea
-                    value={feedback}
-                    onChange={(event) =>
+                    value={
+                      feedback
+                    }
+                    onChange={(
+                      event
+                    ) =>
                       setFeedback(
                         event.target.value
                       )
@@ -1620,31 +2261,41 @@ export default function TutorClassworkDetailsPage() {
                     placeholder="Write feedback for the student..."
                     className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 leading-7 outline-none focus:border-blue-500"
                   />
+
                 </div>
 
                 <button
                   type="submit"
-                  disabled={saving}
+                  disabled={
+                    saving
+                  }
                   className="mt-5 inline-flex items-center gap-2 rounded-xl bg-slate-950 px-6 py-3 font-bold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
                 >
+
                   {saving ? (
                     <Loader2
                       size={18}
                       className="animate-spin"
                     />
                   ) : (
-                    <Send size={18} />
+                    <Send
+                      size={18}
+                    />
                   )}
 
                   {saving
                     ? "Saving..."
                     : "Save Mark & Feedback"}
+
                 </button>
+
               </form>
 
-              {/* CORRECTION */}
+              {/* =================================================
+                 CORRECTION
+              ================================================= */}
 
-              <section className="rounded-3xl border border-yellow-200 bg-yellow-50 p-6">
+              <section className="rounded-3xl border border-yellow-200 bg-yellow-50 p-6 md:p-7">
 
                 <div className="flex items-center gap-3">
 
@@ -1656,6 +2307,7 @@ export default function TutorClassworkDetailsPage() {
                   </div>
 
                   <div>
+
                     <h3 className="text-xl font-extrabold text-slate-950">
                       Correction
                     </h3>
@@ -1663,12 +2315,18 @@ export default function TutorClassworkDetailsPage() {
                     <p className="text-sm text-slate-500">
                       Send the student a correction as text or a file.
                     </p>
+
                   </div>
+
                 </div>
 
                 <textarea
-                  value={correctionText}
-                  onChange={(event) =>
+                  value={
+                    correctionText
+                  }
+                  onChange={(
+                    event
+                  ) =>
                     setCorrectionText(
                       event.target.value
                     )
@@ -1679,10 +2337,12 @@ export default function TutorClassworkDetailsPage() {
                 />
 
                 <div className="mt-5">
+
                   <label
                     htmlFor="correction-file"
                     className="flex cursor-pointer items-center gap-3 rounded-xl border border-dashed border-slate-300 bg-white px-4 py-4 hover:border-yellow-500"
                   >
+
                     <FileText
                       size={20}
                       className="text-slate-500"
@@ -1693,6 +2353,7 @@ export default function TutorClassworkDetailsPage() {
                         ? correctionFile.name
                         : "Attach correction file"}
                     </span>
+
                   </label>
 
                   <input
@@ -1700,13 +2361,16 @@ export default function TutorClassworkDetailsPage() {
                     type="file"
                     accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
                     className="hidden"
-                    onChange={(event) =>
+                    onChange={(
+                      event
+                    ) =>
                       setCorrectionFile(
                         event.target.files?.[0] ||
                           null
                       )
                     }
                   />
+
                 </div>
 
                 <button
@@ -1719,22 +2383,27 @@ export default function TutorClassworkDetailsPage() {
                   }
                   className="mt-5 inline-flex items-center gap-2 rounded-xl bg-yellow-500 px-6 py-3 font-bold text-slate-950 hover:bg-yellow-400 disabled:cursor-not-allowed disabled:opacity-60"
                 >
+
                   {uploadingCorrection ? (
                     <Loader2
                       size={18}
                       className="animate-spin"
                     />
                   ) : (
-                    <Send size={18} />
+                    <Send
+                      size={18}
+                    />
                   )}
 
                   {uploadingCorrection
                     ? "Saving..."
                     : "Send Correction"}
+
                 </button>
 
                 {submission.correction_file_url && (
                   <div className="mt-6 border-t border-yellow-200 pt-5">
+
                     <div className="flex flex-wrap gap-2">
 
                       <a
@@ -1745,7 +2414,9 @@ export default function TutorClassworkDetailsPage() {
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-2 rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-bold text-white hover:bg-slate-800"
                       >
-                        <ExternalLink size={16} />
+                        <ExternalLink
+                          size={16}
+                        />
                         View Correction
                       </a>
 
@@ -1756,17 +2427,86 @@ export default function TutorClassworkDetailsPage() {
                         download
                         className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50"
                       >
-                        <Download size={16} />
+                        <Download
+                          size={16}
+                        />
                         Download Correction
                       </a>
 
                     </div>
+
                   </div>
                 )}
+
               </section>
+
+              {/* =================================================
+                 SUBMISSION HISTORY
+              ================================================= */}
+
+              {previousSubmissions.length >
+                0 && (
+                <section className="pt-4">
+
+                  <div className="mb-5">
+
+                    <div className="flex items-center gap-3">
+
+                      <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-100">
+                        <History
+                          size={21}
+                          className="text-slate-600"
+                        />
+                      </div>
+
+                      <div>
+
+                        <h3 className="text-2xl font-black text-slate-950">
+                          Submission History
+                        </h3>
+
+                        <p className="mt-1 text-sm text-slate-500">
+                          Previous work submitted by this student for this classwork.
+                        </p>
+
+                      </div>
+
+                    </div>
+
+                  </div>
+
+                  <div className="space-y-4">
+
+                    {previousSubmissions.map(
+                      (
+                        item,
+                        index
+                      ) => (
+                        <HistoryCard
+                          key={
+                            item.key
+                          }
+                          item={
+                            item
+                          }
+                          index={
+                            index +
+                            1
+                          }
+                        />
+                      )
+                    )}
+
+                  </div>
+
+                </section>
+              )}
+
             </div>
           )}
+
         </section>
+
       </div>
     </main>
   );

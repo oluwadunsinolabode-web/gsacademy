@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -15,6 +15,10 @@ import {
   History,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+
+/* =========================================================
+   TYPES
+========================================================= */
 
 type Classwork = {
   id: string;
@@ -35,7 +39,7 @@ type Student = {
   email: string | null;
 };
 
-type Submission = {
+type SubmissionRow = {
   id: string;
   classwork_id: string | null;
   student_id: string | null;
@@ -54,6 +58,327 @@ type Submission = {
   teacher_feedback: string | null;
   correction_file_url: string | null;
 };
+
+type Submission = {
+  id: string;
+
+  /*
+   * Keep the real database row IDs.
+   *
+   * One logical attempt may currently contain
+   * more than one database row.
+   */
+  rowIds: string[];
+
+  classwork_id: string | null;
+  student_id: string | null;
+  student_email: string | null;
+  subject: string | null;
+  title: string | null;
+
+  image_url: string | null;
+  text_answer: string | null;
+
+  status: string | null;
+  submitted_at: string | null;
+
+  score: number | null;
+  total_marks: number | null;
+  percentage: number | null;
+  grade: string | null;
+
+  tutor_feedback: string | null;
+  teacher_feedback: string | null;
+
+  correction_file_url: string | null;
+};
+
+/* =========================================================
+   HELPERS
+========================================================= */
+
+function formatDate(value: string | null) {
+  if (!value) return "Not available";
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "Not available";
+  }
+
+  return date.toLocaleString(undefined, {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function formatShortDate(value: string | null) {
+  if (!value) return "Not available";
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "Not available";
+  }
+
+  return date.toLocaleDateString(undefined, {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function getFileExtension(url: string | null) {
+  if (!url) return "";
+
+  const cleanUrl = url
+    .split("?")[0]
+    .split("#")[0];
+
+  const parts = cleanUrl.split(".");
+
+  if (parts.length < 2) {
+    return "";
+  }
+
+  return parts[parts.length - 1].toLowerCase();
+}
+
+function isImage(url: string | null) {
+  const extension = getFileExtension(url);
+
+  return [
+    "jpg",
+    "jpeg",
+    "png",
+    "gif",
+    "webp",
+  ].includes(extension);
+}
+
+function isPdf(url: string | null) {
+  return getFileExtension(url) === "pdf";
+}
+
+function isWordDocument(url: string | null) {
+  const extension = getFileExtension(url);
+
+  return ["doc", "docx"].includes(extension);
+}
+
+function getFileLabel(url: string | null) {
+  const extension = getFileExtension(url);
+
+  if (!extension) {
+    return "Submitted file";
+  }
+
+  return `${extension.toUpperCase()} file`;
+}
+
+/* =========================================================
+   COMBINE DATABASE ROWS INTO LOGICAL ATTEMPTS
+========================================================= */
+
+/*
+ * IMPORTANT:
+ *
+ * We are NOT changing the database yet.
+ *
+ * For the current database, if multiple rows have the same
+ * classwork + student + submitted_at timestamp, we treat
+ * them as one logical submission.
+ *
+ * Later, after inspecting Supabase, we can replace this
+ * temporary grouping with a proper submission/attempt ID.
+ */
+
+function combineSubmissionRows(
+  rows: SubmissionRow[]
+): Submission[] {
+  const groups = new Map<
+    string,
+    SubmissionRow[]
+  >();
+
+  for (const row of rows) {
+    /*
+     * For existing rows without submitted_at,
+     * keep them separate for now.
+     */
+    const timestampKey =
+      row.submitted_at ||
+      `row-${row.id}`;
+
+    const key = `${row.classwork_id || "none"}-${row.student_id || "none"}-${timestampKey}`;
+
+    const existing =
+      groups.get(key) || [];
+
+    existing.push(row);
+
+    groups.set(key, existing);
+  }
+
+  const combined: Submission[] = [];
+
+  for (const groupRows of groups.values()) {
+    const latestRow = groupRows[0];
+
+    const firstText =
+      groupRows.find(
+        (row) =>
+          row.text_answer &&
+          row.text_answer.trim() !== ""
+      )?.text_answer || null;
+
+    const firstImage =
+      groupRows.find(
+        (row) =>
+          row.image_url &&
+          row.image_url.trim() !== ""
+      )?.image_url || null;
+
+    const firstTutorFeedback =
+      groupRows.find(
+        (row) =>
+          row.tutor_feedback &&
+          row.tutor_feedback.trim() !== ""
+      )?.tutor_feedback || null;
+
+    const firstTeacherFeedback =
+      groupRows.find(
+        (row) =>
+          row.teacher_feedback &&
+          row.teacher_feedback.trim() !== ""
+      )?.teacher_feedback || null;
+
+    const firstCorrection =
+      groupRows.find(
+        (row) =>
+          row.correction_file_url &&
+          row.correction_file_url.trim() !== ""
+      )?.correction_file_url || null;
+
+    const firstScore =
+      groupRows.find(
+        (row) => row.score !== null
+      )?.score ?? null;
+
+    const firstTotalMarks =
+      groupRows.find(
+        (row) => row.total_marks !== null
+      )?.total_marks ?? null;
+
+    const firstPercentage =
+      groupRows.find(
+        (row) => row.percentage !== null
+      )?.percentage ?? null;
+
+    const firstGrade =
+      groupRows.find(
+        (row) =>
+          row.grade &&
+          row.grade.trim() !== ""
+      )?.grade || null;
+
+    const firstStatus =
+      groupRows.find(
+        (row) =>
+          row.status &&
+          row.status.trim() !== ""
+      )?.status ||
+      latestRow.status ||
+      "Submitted";
+
+    const firstSubmittedAt =
+      groupRows.find(
+        (row) => row.submitted_at
+      )?.submitted_at ||
+      latestRow.submitted_at ||
+      null;
+
+    combined.push({
+      id: latestRow.id,
+
+      rowIds: groupRows.map(
+        (row) => row.id
+      ),
+
+      classwork_id:
+        latestRow.classwork_id,
+
+      student_id:
+        latestRow.student_id,
+
+      student_email:
+        latestRow.student_email,
+
+      subject:
+        latestRow.subject,
+
+      title:
+        latestRow.title,
+
+      text_answer:
+        firstText,
+
+      image_url:
+        firstImage,
+
+      status:
+        firstStatus,
+
+      submitted_at:
+        firstSubmittedAt,
+
+      score:
+        firstScore,
+
+      total_marks:
+        firstTotalMarks,
+
+      percentage:
+        firstPercentage,
+
+      grade:
+        firstGrade,
+
+      tutor_feedback:
+        firstTutorFeedback,
+
+      teacher_feedback:
+        firstTeacherFeedback,
+
+      correction_file_url:
+        firstCorrection,
+    });
+  }
+
+  /*
+   * Newest attempt first.
+   */
+  combined.sort((a, b) => {
+    const dateA = a.submitted_at
+      ? new Date(a.submitted_at).getTime()
+      : 0;
+
+    const dateB = b.submitted_at
+      ? new Date(b.submitted_at).getTime()
+      : 0;
+
+    return dateB - dateA;
+  });
+
+  return combined;
+}
+
+/* =========================================================
+   PAGE
+========================================================= */
 
 export default function ClassworkDetailPage() {
   const [classwork, setClasswork] =
@@ -156,6 +481,9 @@ export default function ClassworkDetailPage() {
           );
         }
 
+        /*
+         * KEEP EXISTING LOG
+         */
         console.log(
           "CLASSWORK ID:",
           classworkId
@@ -246,8 +574,26 @@ export default function ClassworkDetailPage() {
           throw submissionError;
         }
 
+        const logicalSubmissions =
+          combineSubmissionRows(
+            (submissionData ||
+              []) as SubmissionRow[]
+          );
+
+        console.log(
+          "Student classwork submissions:",
+          {
+            classworkId,
+            studentId:
+              studentData.id,
+            rawRows:
+              submissionData || [],
+            logicalSubmissions,
+          }
+        );
+
         setSubmissions(
-          submissionData || []
+          logicalSubmissions
         );
       } catch (err) {
         console.error(
@@ -276,6 +622,17 @@ export default function ClassworkDetailPage() {
     submissions.length > 0
       ? submissions[0]
       : null;
+
+  /* =========================================================
+     PREVIOUS ATTEMPTS
+  ========================================================= */
+
+  const previousSubmissions =
+    useMemo(
+      () =>
+        submissions.slice(1),
+      [submissions]
+    );
 
   /* =========================================================
      SUBMIT ANSWER
@@ -425,6 +782,7 @@ export default function ClassworkDetailPage() {
 
       const {
         data: updatedSubmissions,
+        error: reloadError,
       } = await supabase
         .from(
           "classwork_submissions"
@@ -463,8 +821,31 @@ export default function ClassworkDetailPage() {
           }
         );
 
+      if (reloadError) {
+        throw reloadError;
+      }
+
+      const logicalSubmissions =
+        combineSubmissionRows(
+          (updatedSubmissions ||
+            []) as SubmissionRow[]
+        );
+
+      console.log(
+        "Updated student submissions:",
+        {
+          classworkId:
+            classwork.id,
+          studentId:
+            student.id,
+          rawRows:
+            updatedSubmissions || [],
+          logicalSubmissions,
+        }
+      );
+
       setSubmissions(
-        updatedSubmissions || []
+        logicalSubmissions
       );
 
       setTextAnswer("");
@@ -498,9 +879,16 @@ export default function ClassworkDetailPage() {
       <main className="min-h-screen bg-slate-50 px-4 py-8 sm:px-6 sm:py-12">
         <div className="mx-auto max-w-4xl">
           <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
-            <p className="text-sm font-semibold text-slate-500">
-              Loading classwork...
-            </p>
+            <div className="flex items-center gap-3 text-slate-600">
+              <Loader2
+                size={19}
+                className="animate-spin"
+              />
+
+              <p className="text-sm font-semibold">
+                Loading classwork...
+              </p>
+            </div>
           </div>
         </div>
       </main>
@@ -521,7 +909,6 @@ export default function ClassworkDetailPage() {
             className="inline-flex min-h-10 items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold text-slate-600 transition hover:bg-white hover:text-slate-950"
           >
             <ArrowLeft size={17} />
-
             Back to Dashboard
           </Link>
 
@@ -550,7 +937,7 @@ export default function ClassworkDetailPage() {
       <div className="mx-auto w-full max-w-4xl">
 
         {/* =================================================
-            BACK TO DASHBOARD
+            BACK
         ================================================= */}
 
         <Link
@@ -558,7 +945,6 @@ export default function ClassworkDetailPage() {
           className="inline-flex min-h-10 items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold text-slate-600 transition hover:bg-white hover:text-slate-950"
         >
           <ArrowLeft size={17} />
-
           Back to Dashboard
         </Link>
 
@@ -568,11 +954,17 @@ export default function ClassworkDetailPage() {
 
         <header className="mt-6 sm:mt-8">
 
-          <p className="text-xs font-black uppercase tracking-[0.15em] text-yellow-600 sm:text-sm">
-            {classwork.subject}
-          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded-full bg-yellow-100 px-3 py-1 text-xs font-black uppercase tracking-wide text-yellow-700">
+              {classwork.subject}
+            </span>
 
-          <h1 className="mt-2 break-words text-2xl font-black leading-tight tracking-tight text-slate-950 sm:text-4xl">
+            <span className="rounded-full bg-green-50 px-3 py-1 text-xs font-bold text-green-700">
+              {classwork.status || "Published"}
+            </span>
+          </div>
+
+          <h1 className="mt-3 break-words text-2xl font-black leading-tight tracking-tight text-slate-950 sm:text-4xl">
             {classwork.title}
           </h1>
 
@@ -581,15 +973,8 @@ export default function ClassworkDetailPage() {
             {classwork.created_at && (
               <span>
                 Posted{" "}
-                {new Date(
+                {formatShortDate(
                   classwork.created_at
-                ).toLocaleDateString(
-                  undefined,
-                  {
-                    day: "numeric",
-                    month: "short",
-                    year: "numeric",
-                  }
                 )}
               </span>
             )}
@@ -599,15 +984,8 @@ export default function ClassworkDetailPage() {
                 <Clock size={15} />
 
                 Due{" "}
-                {new Date(
+                {formatShortDate(
                   classwork.due_date
-                ).toLocaleDateString(
-                  undefined,
-                  {
-                    day: "numeric",
-                    month: "short",
-                    year: "numeric",
-                  }
                 )}
               </span>
             )}
@@ -623,7 +1001,6 @@ export default function ClassworkDetailPage() {
         <section className="mt-8 sm:mt-10">
 
           <div className="mb-4">
-
             <h2 className="text-lg font-black text-slate-950 sm:text-xl">
               Classwork
             </h2>
@@ -631,7 +1008,6 @@ export default function ClassworkDetailPage() {
             <p className="mt-1 text-sm text-slate-500">
               Instructions from your tutor
             </p>
-
           </div>
 
           <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
@@ -683,7 +1059,6 @@ export default function ClassworkDetailPage() {
                   className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-slate-800 sm:w-auto"
                 >
                   <ExternalLink size={16} />
-
                   Open File
                 </a>
 
@@ -704,15 +1079,13 @@ export default function ClassworkDetailPage() {
             <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 
               <div>
-
                 <h2 className="text-lg font-black text-slate-950 sm:text-xl">
-                  Your submission
+                  Your latest submission
                 </h2>
 
                 <p className="mt-1 text-sm text-slate-500">
-                  Latest attempt
+                  Your most recent attempt
                 </p>
-
               </div>
 
               <span className="w-fit rounded-full bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-700">
@@ -724,15 +1097,19 @@ export default function ClassworkDetailPage() {
 
             <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
 
-              {/* SUBMITTED DATE */}
+              {/* SUBMISSION DATE */}
 
               {latestSubmission.submitted_at && (
-                <p className="text-xs leading-5 text-slate-500">
-                  Submitted{" "}
-                  {new Date(
-                    latestSubmission.submitted_at
-                  ).toLocaleString()}
-                </p>
+                <div className="flex items-center gap-2 text-xs text-slate-500">
+                  <Clock size={15} />
+
+                  <span>
+                    Submitted{" "}
+                    {formatDate(
+                      latestSubmission.submitted_at
+                    )}
+                  </span>
+                </div>
               )}
 
               {/* WRITTEN ANSWER */}
@@ -740,11 +1117,18 @@ export default function ClassworkDetailPage() {
               {latestSubmission.text_answer && (
                 <div className="mt-5">
 
-                  <p className="mb-2 text-sm font-bold text-slate-800">
-                    Written answer
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <MessageSquare
+                      size={17}
+                      className="text-yellow-600"
+                    />
 
-                  <div className="rounded-xl bg-slate-50 p-4">
+                    <p className="text-sm font-bold text-slate-800">
+                      Written answer
+                    </p>
+                  </div>
+
+                  <div className="mt-2 rounded-xl bg-slate-50 p-4">
 
                     <p className="whitespace-pre-wrap break-words text-sm leading-7 text-slate-700">
                       {
@@ -762,25 +1146,99 @@ export default function ClassworkDetailPage() {
               {latestSubmission.image_url && (
                 <div className="mt-5">
 
-                  <p className="mb-2 text-sm font-bold text-slate-800">
-                    Uploaded work
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <FileText
+                      size={17}
+                      className="text-slate-500"
+                    />
 
-                  <a
-                    href={
-                      latestSubmission.image_url
-                    }
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-bold text-white sm:w-auto"
-                  >
-                    <ExternalLink size={16} />
+                    <p className="text-sm font-bold text-slate-800">
+                      Uploaded work
+                    </p>
+                  </div>
 
-                    View Submission
-                  </a>
+                  <div className="mt-3 flex flex-wrap gap-2">
+
+                    <a
+                      href={
+                        latestSubmission.image_url
+                      }
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-bold text-white hover:bg-slate-800"
+                    >
+                      <ExternalLink size={16} />
+                      View Submission
+                    </a>
+
+                    <a
+                      href={
+                        latestSubmission.image_url
+                      }
+                      download
+                      className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50"
+                    >
+                      <FileText size={16} />
+                      Download
+                    </a>
+
+                  </div>
+
+                  {isImage(
+                    latestSubmission.image_url
+                  ) && (
+                    <div className="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-slate-50 p-3">
+                      <img
+                        src={
+                          latestSubmission.image_url
+                        }
+                        alt="Student submitted work"
+                        className="mx-auto max-h-[600px] max-w-full rounded-lg object-contain"
+                      />
+                    </div>
+                  )}
+
+                  {isPdf(
+                    latestSubmission.image_url
+                  ) && (
+                    <div className="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
+                      <iframe
+                        src={
+                          latestSubmission.image_url
+                        }
+                        title="Student submitted PDF"
+                        className="h-[650px] w-full"
+                      />
+                    </div>
+                  )}
+
+                  {isWordDocument(
+                    latestSubmission.image_url
+                  ) && (
+                    <div className="mt-4 rounded-xl border border-blue-100 bg-blue-50 p-4">
+                      <p className="text-sm font-bold text-blue-900">
+                        Word document
+                      </p>
+
+                      <p className="mt-1 text-xs leading-5 text-blue-700">
+                        Download the document to open it.
+                      </p>
+                    </div>
+                  )}
 
                 </div>
               )}
+
+              {/* EMPTY SUBMISSION */}
+
+              {!latestSubmission.text_answer &&
+                !latestSubmission.image_url && (
+                  <div className="mt-5 rounded-xl bg-slate-50 p-5">
+                    <p className="text-sm text-slate-500">
+                      No written answer or uploaded file was attached to this attempt.
+                    </p>
+                  </div>
+                )}
 
               {/* SCORE */}
 
@@ -795,7 +1253,7 @@ export default function ClassworkDetailPage() {
 
                   <div className="border-b border-slate-200 p-4 text-center sm:border-b-0">
 
-                    <p className="text-[11px] font-bold uppercase text-slate-400">
+                    <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">
                       Score
                     </p>
 
@@ -812,7 +1270,7 @@ export default function ClassworkDetailPage() {
 
                   <div className="border-b border-slate-200 p-4 text-center sm:border-b-0">
 
-                    <p className="text-[11px] font-bold uppercase text-slate-400">
+                    <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">
                       Percentage
                     </p>
 
@@ -827,7 +1285,7 @@ export default function ClassworkDetailPage() {
 
                   <div className="p-4 text-center">
 
-                    <p className="text-[11px] font-bold uppercase text-slate-400">
+                    <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">
                       Grade
                     </p>
 
@@ -870,7 +1328,36 @@ export default function ClassworkDetailPage() {
                 </div>
               )}
 
-              {/* CORRECTION */}
+              {/* CORRECTION TEXT */}
+
+              {latestSubmission.tutor_feedback &&
+                latestSubmission.tutor_feedback !==
+                  latestSubmission.teacher_feedback && (
+                  <div className="mt-5 rounded-xl border border-yellow-100 bg-yellow-50 p-4">
+
+                    <div className="flex items-center gap-2">
+
+                      <MessageSquare
+                        size={17}
+                        className="text-yellow-700"
+                      />
+
+                      <p className="text-sm font-bold text-yellow-900">
+                        Correction
+                      </p>
+
+                    </div>
+
+                    <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-yellow-900">
+                      {
+                        latestSubmission.tutor_feedback
+                      }
+                    </p>
+
+                  </div>
+                )}
+
+              {/* CORRECTION FILE */}
 
               {latestSubmission.correction_file_url && (
                 <div className="mt-6 flex flex-col gap-4 rounded-xl bg-orange-50 p-4 sm:flex-row sm:items-center sm:justify-between">
@@ -882,21 +1369,37 @@ export default function ClassworkDetailPage() {
                     </p>
 
                     <p className="mt-1 text-xs leading-5 text-orange-700">
-                      Your tutor has provided a correction.
+                      Your tutor has provided a correction file.
                     </p>
 
                   </div>
 
-                  <a
-                    href={
-                      latestSubmission.correction_file_url
-                    }
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex min-h-10 items-center justify-center rounded-lg bg-orange-600 px-4 py-2 text-sm font-bold text-white"
-                  >
-                    View
-                  </a>
+                  <div className="flex flex-wrap gap-2">
+
+                    <a
+                      href={
+                        latestSubmission.correction_file_url
+                      }
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-orange-600 px-4 py-2 text-sm font-bold text-white hover:bg-orange-700"
+                    >
+                      <ExternalLink size={15} />
+                      View
+                    </a>
+
+                    <a
+                      href={
+                        latestSubmission.correction_file_url
+                      }
+                      download
+                      className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-orange-200 bg-white px-4 py-2 text-sm font-bold text-orange-800 hover:bg-orange-50"
+                    >
+                      <FileText size={15} />
+                      Download
+                    </a>
+
+                  </div>
 
                 </div>
               )}
@@ -960,12 +1463,10 @@ export default function ClassworkDetailPage() {
               <label className="flex cursor-pointer flex-col gap-3 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 transition hover:border-yellow-400 hover:bg-yellow-50 sm:flex-row sm:items-center">
 
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white">
-
                   <Upload
                     size={19}
                     className="text-slate-500"
                   />
-
                 </div>
 
                 <div className="min-w-0">
@@ -1043,8 +1544,12 @@ export default function ClassworkDetailPage() {
 
             <button
               type="button"
-              onClick={submitAnswer}
-              disabled={submitting}
+              onClick={
+                submitAnswer
+              }
+              disabled={
+                submitting
+              }
               className="mt-6 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-yellow-500 px-5 py-3.5 text-sm font-black text-slate-950 transition hover:bg-yellow-400 disabled:cursor-not-allowed disabled:opacity-60"
             >
 
@@ -1072,63 +1577,73 @@ export default function ClassworkDetailPage() {
         </section>
 
         {/* =================================================
-            PREVIOUS ATTEMPTS
+            SUBMISSION HISTORY
         ================================================= */}
 
-        {submissions.length > 1 && (
+        {previousSubmissions.length > 0 && (
           <section className="mt-7 pb-8 sm:mt-8 sm:pb-12">
 
             <div className="mb-4 flex items-start gap-3">
 
-              <History
-                size={20}
-                className="mt-0.5 shrink-0 text-slate-500"
-              />
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100">
+                <History
+                  size={20}
+                  className="text-slate-500"
+                />
+              </div>
 
               <div>
 
                 <h2 className="text-lg font-black text-slate-950 sm:text-xl">
-                  Previous attempts
+                  Submission history
                 </h2>
 
                 <p className="mt-1 text-sm leading-6 text-slate-500">
-                  Earlier submissions for this classwork
+                  Your previous attempts for this classwork
                 </p>
 
               </div>
 
             </div>
 
-            <div className="divide-y divide-slate-200 rounded-2xl border border-slate-200 bg-white">
+            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
 
-              {submissions
-                .slice(1)
-                .map(
-                  (
-                    submission,
-                    index
-                  ) => (
-                    <div
-                      key={
-                        submission.id
-                      }
-                      className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"
-                    >
+              {previousSubmissions.map(
+                (
+                  submission,
+                  index
+                ) => (
+                  <div
+                    key={
+                      submission.id
+                    }
+                    className="border-b border-slate-100 p-4 last:border-b-0 sm:p-5"
+                  >
+
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 
                       <div className="min-w-0">
 
-                        <p className="text-sm font-bold text-slate-800">
-                          Attempt{" "}
-                          {submissions.length -
-                            index -
-                            1}
-                        </p>
+                        <div className="flex flex-wrap items-center gap-2">
+
+                          <p className="text-sm font-black text-slate-900">
+                            Attempt{" "}
+                            {previousSubmissions.length -
+                              index}
+                          </p>
+
+                          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-600">
+                            {submission.status ||
+                              "Submitted"}
+                          </span>
+
+                        </div>
 
                         {submission.submitted_at && (
-                          <p className="mt-1 break-words text-xs leading-5 text-slate-500">
-                            {new Date(
+                          <p className="mt-1.5 text-xs text-slate-500">
+                            {formatDate(
                               submission.submitted_at
-                            ).toLocaleString()}
+                            )}
                           </p>
                         )}
 
@@ -1136,9 +1651,24 @@ export default function ClassworkDetailPage() {
 
                       <div className="flex flex-wrap items-center gap-3">
 
+                        {submission.score !==
+                          null &&
+                          submission.total_marks !==
+                            null && (
+                            <span className="text-sm font-bold text-slate-700">
+                              {
+                                submission.score
+                              }
+                              /
+                              {
+                                submission.total_marks
+                              }
+                            </span>
+                          )}
+
                         {submission.percentage !==
                           null && (
-                          <span className="text-sm font-bold text-slate-700">
+                          <span className="rounded-lg bg-blue-50 px-2.5 py-1.5 text-xs font-bold text-blue-700">
                             {
                               submission.percentage
                             }
@@ -1146,16 +1676,52 @@ export default function ClassworkDetailPage() {
                           </span>
                         )}
 
-                        <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">
-                          {submission.status ||
-                            "Submitted"}
-                        </span>
+                        {submission.grade && (
+                          <span className="rounded-lg bg-green-50 px-2.5 py-1.5 text-xs font-bold text-green-700">
+                            Grade{" "}
+                            {
+                              submission.grade
+                            }
+                          </span>
+                        )}
 
                       </div>
 
                     </div>
-                  )
-                )}
+
+                    {/* CONTENT INDICATORS */}
+
+                    <div className="mt-4 flex flex-wrap gap-2">
+
+                      {submission.text_answer && (
+                        <span className="inline-flex items-center gap-1.5 rounded-lg bg-slate-50 px-2.5 py-1.5 text-xs font-semibold text-slate-600">
+                          <MessageSquare
+                            size={13}
+                          />
+                          Written answer
+                        </span>
+                      )}
+
+                      {submission.image_url && (
+                        <span className="inline-flex items-center gap-1.5 rounded-lg bg-slate-50 px-2.5 py-1.5 text-xs font-semibold text-slate-600">
+                          <FileText
+                            size={13}
+                          />
+                          Uploaded work
+                        </span>
+                      )}
+
+                      {submission.correction_file_url && (
+                        <span className="inline-flex items-center gap-1.5 rounded-lg bg-orange-50 px-2.5 py-1.5 text-xs font-semibold text-orange-700">
+                          Correction available
+                        </span>
+                      )}
+
+                    </div>
+
+                  </div>
+                )
+              )}
 
             </div>
 
