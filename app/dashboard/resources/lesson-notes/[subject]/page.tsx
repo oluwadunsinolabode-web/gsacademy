@@ -13,6 +13,7 @@ import {
   Loader2,
   AlertCircle,
   CalendarDays,
+  ExternalLink,
 } from "lucide-react";
 
 import { supabase } from "@/lib/supabase";
@@ -58,7 +59,7 @@ export default function SubjectResourcesPage() {
     useState("");
 
   /* =====================================================
-     LOAD
+     LOAD RESOURCES
   ===================================================== */
 
   useEffect(() => {
@@ -82,13 +83,9 @@ export default function SubjectResourcesPage() {
       const {
         data: { user },
         error: authError,
-      } =
-        await supabase.auth.getUser();
+      } = await supabase.auth.getUser();
 
-      if (
-        authError ||
-        !user
-      ) {
+      if (authError || !user) {
         throw new Error(
           "You must be logged in."
         );
@@ -101,20 +98,13 @@ export default function SubjectResourcesPage() {
       const {
         data: studentData,
         error: studentError,
-      } =
-        await supabase
-          .from("students")
-          .select("id")
-          .eq(
-            "auth_id",
-            user.id
-          )
-          .single();
+      } = await supabase
+        .from("students")
+        .select("id")
+        .eq("auth_id", user.id)
+        .single();
 
-      if (
-        studentError ||
-        !studentData
-      ) {
+      if (studentError || !studentData) {
         throw new Error(
           studentError?.message ||
             "Student profile could not be found."
@@ -128,42 +118,39 @@ export default function SubjectResourcesPage() {
       const {
         data,
         error: resourceError,
-      } =
-        await supabase
-          .from("lesson_resources")
-          .select(
-            `
-              id,
-              student_id,
-              tutor_id,
-              subject,
-              title,
-              file_name,
-              file_url,
-              file_path,
-              file_type,
-              file_size,
-              created_at
-            `
-          )
-          .eq(
-            "student_id",
-            studentData.id
-          )
-          .ilike(
-            "subject",
-            subject
-          )
-          .order(
-            "created_at",
-            {
-              ascending: false,
-            }
-          );
+      } = await supabase
+        .from("lesson_resources")
+        .select(
+          `
+            id,
+            student_id,
+            tutor_id,
+            subject,
+            title,
+            file_name,
+            file_url,
+            file_path,
+            file_type,
+            file_size,
+            created_at
+          `
+        )
+        .eq(
+          "student_id",
+          studentData.id
+        )
+        .ilike(
+          "subject",
+          subject
+        )
+        .order(
+          "created_at",
+          {
+            ascending: false,
+          }
+        );
 
-      if (
-        resourceError
-      ) {
+      if (resourceError) {
         throw new Error(
           resourceError.message
         );
@@ -196,9 +183,7 @@ export default function SubjectResourcesPage() {
     fileType: string | null
   ) {
     if (
-      fileType?.startsWith(
-        "image/"
-      )
+      fileType?.startsWith("image/")
     ) {
       return (
         <ImageIcon
@@ -227,17 +212,11 @@ export default function SubjectResourcesPage() {
       return "";
     }
 
-    if (
-      bytes <
-      1024
-    ) {
+    if (bytes < 1024) {
       return `${bytes} B`;
     }
 
-    if (
-      bytes <
-      1024 * 1024
-    ) {
+    if (bytes < 1024 * 1024) {
       return `${(
         bytes / 1024
       ).toFixed(1)} KB`;
@@ -247,6 +226,133 @@ export default function SubjectResourcesPage() {
       bytes /
       (1024 * 1024)
     ).toFixed(1)} MB`;
+  }
+
+  /* =====================================================
+     DOWNLOAD RESOURCE
+  ===================================================== */
+
+  async function downloadResource(
+    resource: LessonResource
+  ) {
+    try {
+      setError("");
+
+      /*
+       * If we have the original Supabase
+       * storage path, use Supabase download.
+       *
+       * This is preferable because it tells
+       * Supabase that the user wants the file
+       * downloaded rather than simply opened.
+       */
+
+      if (resource.file_path) {
+        const {
+          data,
+          error: downloadError,
+        } = await supabase.storage
+          .from("classwork-submissions")
+          .download(
+            resource.file_path
+          );
+
+        if (downloadError || !data) {
+          throw new Error(
+            downloadError?.message ||
+              "Unable to download this resource."
+          );
+        }
+
+        const blobUrl =
+          window.URL.createObjectURL(
+            data
+          );
+
+        const link =
+          document.createElement("a");
+
+        link.href = blobUrl;
+
+        link.download =
+          resource.file_name ||
+          resource.title ||
+          "learning-resource";
+
+        document.body.appendChild(
+          link
+        );
+
+        link.click();
+
+        link.remove();
+
+        window.URL.revokeObjectURL(
+          blobUrl
+        );
+
+        return;
+      }
+
+      /*
+       * Fallback:
+       *
+       * If an older resource does not have
+       * file_path, use the existing public URL.
+       */
+
+      const response =
+        await fetch(
+          resource.file_url
+        );
+
+      if (!response.ok) {
+        throw new Error(
+          "Unable to download this resource."
+        );
+      }
+
+      const blob =
+        await response.blob();
+
+      const blobUrl =
+        window.URL.createObjectURL(
+          blob
+        );
+
+      const link =
+        document.createElement("a");
+
+      link.href = blobUrl;
+
+      link.download =
+        resource.file_name ||
+        resource.title ||
+        "learning-resource";
+
+      document.body.appendChild(
+        link
+      );
+
+      link.click();
+
+      link.remove();
+
+      window.URL.revokeObjectURL(
+        blobUrl
+      );
+    } catch (err) {
+      console.error(
+        "RESOURCE DOWNLOAD ERROR:",
+        err
+      );
+
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Unable to download the resource."
+      );
+    }
   }
 
   /* =====================================================
@@ -336,7 +442,9 @@ export default function SubjectResourcesPage() {
 
       <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
 
-        {/* BACK */}
+        {/* =================================================
+            BACK
+        ================================================= */}
 
         <Link
           href="/dashboard/resources/lesson-notes"
@@ -346,7 +454,9 @@ export default function SubjectResourcesPage() {
           Back to Subjects
         </Link>
 
-        {/* HEADER */}
+        {/* =================================================
+            HEADER
+        ================================================= */}
 
         <div className="mt-8">
 
@@ -383,6 +493,17 @@ export default function SubjectResourcesPage() {
         </div>
 
         {/* =================================================
+            ERROR MESSAGE
+        ================================================= */}
+
+        {error && (
+          <div className="mt-6 flex items-center gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700">
+            <AlertCircle size={19} />
+            {error}
+          </div>
+        )}
+
+        {/* =================================================
             NO RESOURCES
         ================================================= */}
 
@@ -400,8 +521,8 @@ export default function SubjectResourcesPage() {
             </h2>
 
             <p className="mt-2 text-slate-600">
-              Your tutor has not uploaded any
-              {` ${subject}`} resources yet.
+              Your tutor has not uploaded any{" "}
+              {subject} resources yet.
             </p>
 
           </div>
@@ -418,15 +539,15 @@ export default function SubjectResourcesPage() {
               (resource) => (
 
                 <div
-                  key={
-                    resource.id
-                  }
+                  key={resource.id}
                   className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-yellow-400 hover:shadow-md"
                 >
 
-                  <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
 
-                    {/* LEFT */}
+                    {/* =================================================
+                        LEFT
+                    ================================================= */}
 
                     <div className="flex min-w-0 items-start gap-4">
 
@@ -474,24 +595,52 @@ export default function SubjectResourcesPage() {
 
                     </div>
 
-                    {/* OPEN */}
+                    {/* =================================================
+                        ACTIONS
+                    ================================================= */}
 
-                    <a
-                      href={
-                        resource.file_url
-                      }
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-yellow-500 px-5 py-3 font-bold text-slate-900 transition hover:bg-yellow-400"
-                    >
+                    <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
 
-                      <Download
-                        size={18}
-                      />
+                      {/* OPEN */}
 
-                      Open Document
+                      <a
+                        href={
+                          resource.file_url
+                        }
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-3 font-bold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+                      >
 
-                    </a>
+                        <ExternalLink
+                          size={18}
+                        />
+
+                        Open Document
+
+                      </a>
+
+                      {/* DOWNLOAD */}
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          downloadResource(
+                            resource
+                          )
+                        }
+                        className="inline-flex items-center justify-center gap-2 rounded-xl bg-yellow-500 px-5 py-3 font-bold text-slate-900 transition hover:bg-yellow-400"
+                      >
+
+                        <Download
+                          size={18}
+                        />
+
+                        Download
+
+                      </button>
+
+                    </div>
 
                   </div>
 
