@@ -34,6 +34,11 @@ type Tutor = {
   full_name: string | null;
 };
 
+type AssignedSubject = {
+  id: string;
+  name: string;
+};
+
 type Classwork = {
   id: string;
   tutor_id: string;
@@ -83,6 +88,9 @@ export default function TutorClassworkPage() {
 
   const [tutor, setTutor] =
     useState<Tutor | null>(null);
+
+  const [assignedSubjects, setAssignedSubjects] =
+    useState<AssignedSubject[]>([]);
 
   const [classworks, setClassworks] =
     useState<Classwork[]>([]);
@@ -222,10 +230,22 @@ export default function TutorClassworkPage() {
             )
           `
         )
-        .eq("tutor_id", tutorData.id)
-        .eq("student_id", studentData.id)
-        .eq("active", true)
-        .eq("status", "Scheduled");
+        .eq(
+          "tutor_id",
+          tutorData.id
+        )
+        .eq(
+          "student_id",
+          studentData.id
+        )
+        .eq(
+          "active",
+          true
+        )
+        .eq(
+          "status",
+          "Scheduled"
+        );
 
       if (assignmentError) {
         throw new Error(
@@ -233,26 +253,89 @@ export default function TutorClassworkPage() {
         );
       }
 
-      const assignedSubjects =
+      /* =================================================
+         BUILD CLEAN ASSIGNED SUBJECT LIST
+      ================================================= */
+
+      const subjectsForTutor: AssignedSubject[] =
         (assignmentData || [])
-          .map(
-            (item: any) =>
-              item.subjects?.name
-          )
+          .map((item: any) => {
+            const subjectRecord =
+              Array.isArray(item.subjects)
+                ? item.subjects[0]
+                : item.subjects;
+
+            if (
+              !subjectRecord?.id ||
+              !subjectRecord?.name
+            ) {
+              return null;
+            }
+
+            return {
+              id: subjectRecord.id,
+              name: subjectRecord.name,
+            };
+          })
           .filter(
-            (value): value is string =>
+            (
+              value
+            ): value is AssignedSubject =>
               Boolean(value)
           );
 
-      /*
-       * This page currently creates classwork for
-       * the first subject assigned to the tutor/student
-       * relationship.
-       */
-      const firstAssignedSubject =
-        assignedSubjects[0] || "";
+      /* =================================================
+         REMOVE DUPLICATE SUBJECTS
+      ================================================= */
 
-      setSubject(firstAssignedSubject);
+      const uniqueSubjects =
+        subjectsForTutor.filter(
+          (
+            item,
+            index,
+            array
+          ) =>
+            array.findIndex(
+              (subjectItem) =>
+                subjectItem.id ===
+                item.id
+            ) === index
+        );
+
+      setAssignedSubjects(
+        uniqueSubjects
+      );
+
+      /* =================================================
+         KEEP CURRENT SUBJECT IF IT IS STILL ASSIGNED
+         
+         If the tutor has never selected a subject,
+         select the first assigned subject as the
+         initial dropdown value.
+
+         IMPORTANT:
+         This is only an initial UI selection.
+         The tutor can change it from the dropdown.
+      ================================================= */
+
+      setSubject((currentSubject) => {
+        const stillAssigned =
+          uniqueSubjects.some(
+            (item) =>
+              item.name
+                .toLowerCase()
+                .trim() ===
+              currentSubject
+                .toLowerCase()
+                .trim()
+          );
+
+        if (stillAssigned) {
+          return currentSubject;
+        }
+
+        return uniqueSubjects[0]?.name || "";
+      });
 
       /* =================================================
          GET CLASSWORK ASSIGNED TO THIS STUDENT
@@ -280,7 +363,10 @@ export default function TutorClassworkPage() {
             )
           `
         )
-        .eq("tutor_id", tutorData.id)
+        .eq(
+          "tutor_id",
+          tutorData.id
+        )
         .eq(
           "classwork_assignments.student_id",
           studentData.id
@@ -296,13 +382,16 @@ export default function TutorClassworkPage() {
       }
 
       /* =================================================
-         ONLY SUBJECTS THIS TUTOR IS ACTUALLY ASSIGNED
+         ONLY SHOW CLASSWORK FOR SUBJECTS THIS TUTOR
+         IS ACTUALLY ASSIGNED TO TEACH
       ================================================= */
 
       const allowedSubjects =
-        assignedSubjects.map(
+        uniqueSubjects.map(
           (item) =>
-            item.toLowerCase().trim()
+            item.name
+              .toLowerCase()
+              .trim()
         );
 
       const studentClassworks =
@@ -322,23 +411,6 @@ export default function TutorClassworkPage() {
       /* =================================================
          GET ALL SUBMISSIONS FOR THIS STUDENT'S
          CLASSWORK
-      =================================================
-
-         IMPORTANT:
-
-         We intentionally fetch ALL submissions here.
-
-         File 1 only displays a clean summary.
-
-         File 2 can later fetch the complete history
-         using:
-
-           student_id
-           +
-           classwork_id
-
-         Therefore we are not throwing away
-         previous submission records.
       ================================================= */
 
       const classworkIds =
@@ -416,10 +488,6 @@ export default function TutorClassworkPage() {
           classworkId
       );
 
-    /*
-     * submissions are already ordered newest first
-     * from Supabase.
-     */
     return {
       latest: matching[0] || null,
       count: matching.length,
@@ -473,11 +541,16 @@ export default function TutorClassworkPage() {
   ) {
     event.preventDefault();
 
-    if (!student) return;
+    if (!student) {
+      setError(
+        "Student information is unavailable."
+      );
+      return;
+    }
 
     if (!subject) {
       setError(
-        "No subject is assigned to you for this student."
+        "Please select a subject."
       );
       return;
     }
@@ -531,6 +604,9 @@ export default function TutorClassworkPage() {
 
       /* =================================================
          VERIFY TUTOR/STUDENT/SUBJECT RELATIONSHIP
+         
+         We verify the exact selected subject before
+         allowing the classwork to be created.
       ================================================= */
 
       const {
@@ -541,6 +617,7 @@ export default function TutorClassworkPage() {
         .select(
           `
             id,
+            subject_id,
             subjects (
               id,
               name
@@ -570,18 +647,34 @@ export default function TutorClassworkPage() {
         );
       }
 
-      const canTeachSubject =
-        (tutorAssignments || []).some(
-          (assignment: any) =>
-            assignment.subjects?.name
-              ?.toLowerCase()
-              .trim() ===
-            subject
-              .toLowerCase()
-              .trim()
+      /* =================================================
+         VERIFY SELECTED SUBJECT
+      ================================================= */
+
+      const selectedSubjectAssignment =
+        (tutorAssignments || []).find(
+          (assignment: any) => {
+            const assignmentSubject =
+              Array.isArray(
+                assignment.subjects
+              )
+                ? assignment.subjects[0]
+                : assignment.subjects;
+
+            return (
+              assignmentSubject?.name
+                ?.toLowerCase()
+                .trim() ===
+              subject
+                .toLowerCase()
+                .trim()
+            );
+          }
         );
 
-      if (!canTeachSubject) {
+      if (
+        !selectedSubjectAssignment
+      ) {
         throw new Error(
           "You are not assigned to teach this subject for this student."
         );
@@ -638,22 +731,9 @@ export default function TutorClassworkPage() {
               "_"
             );
 
-        /*
-         * IMPORTANT:
-         *
-         * Tutor classwork files use their own
-         * folder inside the same Supabase bucket.
-         *
-         * Student submissions use:
-         *
-         * students/{studentId}/classwork/...
-         *
-         * Tutor attachments use:
-         *
-         * tutor-classworks/{tutorId}/{studentId}/...
-         *
-         * This keeps the two types of files separate.
-         */
+        /* =================================================
+           TUTOR ATTACHMENT PATH
+        ================================================= */
 
         const filePath =
           `tutor-classworks/${tutorData.id}/${student.id}/${crypto.randomUUID()}-${safeFileName}`;
@@ -700,6 +780,13 @@ export default function TutorClassworkPage() {
 
       /* =================================================
          CREATE CLASSWORK
+         
+         IMPORTANT:
+         The selected subject is stored here.
+         
+         Example:
+         Mathematics -> classworks.subject = Mathematics
+         Physics     -> classworks.subject = Physics
       ================================================= */
 
       const {
@@ -711,7 +798,8 @@ export default function TutorClassworkPage() {
           tutor_id:
             tutorData.id,
 
-          subject,
+          subject:
+            subject.trim(),
 
           title:
             title.trim(),
@@ -799,7 +887,7 @@ export default function TutorClassworkPage() {
       ================================================= */
 
       setMessage(
-        "Classwork published successfully."
+        `${subject} classwork published successfully.`
       );
 
       setTitle("");
@@ -929,8 +1017,14 @@ export default function TutorClassworkPage() {
             </h1>
 
             <p className="mt-2 text-sm text-slate-500">
-              {subject ||
-                "No subject assigned"}
+              {assignedSubjects.length > 0
+                ? `Assigned subjects: ${assignedSubjects
+                    .map(
+                      (item) =>
+                        item.name
+                    )
+                    .join(", ")}`
+                : "No subject assigned"}
             </p>
 
           </div>
@@ -939,6 +1033,10 @@ export default function TutorClassworkPage() {
 
           <button
             type="button"
+            disabled={
+              assignedSubjects.length ===
+              0
+            }
             onClick={() => {
               setShowForm(
                 !showForm
@@ -947,7 +1045,7 @@ export default function TutorClassworkPage() {
               setError("");
               setMessage("");
             }}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-950 px-5 py-3 text-sm font-bold text-white transition hover:bg-slate-800"
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-950 px-5 py-3 text-sm font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Plus size={18} />
 
@@ -1010,7 +1108,7 @@ export default function TutorClassworkPage() {
                 </h2>
 
                 <p className="mt-1 text-sm text-slate-500">
-                  This will be published for this student.
+                  Select the subject this classwork belongs to.
                 </p>
               </div>
 
@@ -1026,22 +1124,79 @@ export default function TutorClassworkPage() {
 
             </div>
 
-            {/* SUBJECT */}
+            {/* =================================================
+                SUBJECT DROPDOWN
+            ================================================= */}
 
             <div className="mt-7">
 
-              <label className="mb-2 block text-sm font-bold text-slate-700">
+              <label
+                htmlFor="classwork-subject"
+                className="mb-2 block text-sm font-bold text-slate-700"
+              >
                 Subject
               </label>
 
-              <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 font-bold text-slate-900">
-                {subject ||
-                  "No assigned subject"}
-              </div>
+              <select
+                id="classwork-subject"
+                value={subject}
+                onChange={(event) => {
+                  setSubject(
+                    event.target.value
+                  );
+
+                  setError("");
+                  setMessage("");
+                }}
+                disabled={
+                  creating ||
+                  assignedSubjects.length ===
+                    0
+                }
+                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 font-bold text-slate-900 outline-none transition focus:border-yellow-500 focus:ring-2 focus:ring-yellow-100 disabled:cursor-not-allowed disabled:bg-slate-50"
+              >
+
+                {assignedSubjects.length ===
+                0 ? (
+                  <option value="">
+                    No assigned subjects
+                  </option>
+                ) : (
+                  <>
+                    <option value="">
+                      Select a subject
+                    </option>
+
+                    {assignedSubjects.map(
+                      (assignedSubject) => (
+                        <option
+                          key={
+                            assignedSubject.id
+                          }
+                          value={
+                            assignedSubject.name
+                          }
+                        >
+                          {
+                            assignedSubject.name
+                          }
+                        </option>
+                      )
+                    )}
+                  </>
+                )}
+
+              </select>
+
+              <p className="mt-2 text-xs text-slate-400">
+                You can only select subjects assigned to you for this student.
+              </p>
 
             </div>
 
-            {/* TITLE */}
+            {/* =================================================
+                TITLE
+            ================================================= */}
 
             <div className="mt-5">
 
@@ -1063,7 +1218,9 @@ export default function TutorClassworkPage() {
 
             </div>
 
-            {/* INSTRUCTIONS */}
+            {/* =================================================
+                INSTRUCTIONS
+            ================================================= */}
 
             <div className="mt-5">
 
@@ -1085,7 +1242,9 @@ export default function TutorClassworkPage() {
 
             </div>
 
-            {/* DUE DATE */}
+            {/* =================================================
+                DUE DATE
+            ================================================= */}
 
             <div className="mt-5">
 
@@ -1106,7 +1265,9 @@ export default function TutorClassworkPage() {
 
             </div>
 
-            {/* ATTACHMENT */}
+            {/* =================================================
+                ATTACHMENT
+            ================================================= */}
 
             <div className="mt-5">
 
@@ -1154,7 +1315,9 @@ export default function TutorClassworkPage() {
 
             </div>
 
-            {/* ACTIONS */}
+            {/* =================================================
+                ACTIONS
+            ================================================= */}
 
             <div className="mt-7 flex flex-col gap-3 sm:flex-row">
 
@@ -1162,7 +1325,9 @@ export default function TutorClassworkPage() {
                 type="submit"
                 disabled={
                   creating ||
-                  !subject
+                  !subject ||
+                  assignedSubjects.length ===
+                    0
                 }
                 className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-950 px-6 py-3.5 font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
               >
