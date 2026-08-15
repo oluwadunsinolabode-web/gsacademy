@@ -332,9 +332,9 @@ function buildSubmissionGroups(
         teacher_feedback: teacherFeedback,
 
         score,
-        total_marks,
-        percentage,
-        grade,
+total_marks: totalMarks,
+percentage,
+grade,
 
         correction_file_url:
           correctionFileUrl,
