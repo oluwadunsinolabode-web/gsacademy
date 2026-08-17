@@ -245,6 +245,16 @@ export default function DashboardPage() {
     useState("");
 
   /* =======================================================
+     LATEST UPDATES ROTATION
+  ======================================================= */
+
+  const [updateIndex, setUpdateIndex] =
+    useState(0);
+
+  const [updateVisible, setUpdateVisible] =
+    useState(true);
+
+  /* =======================================================
      LOAD DASHBOARD
   ======================================================= */
 
@@ -388,6 +398,29 @@ export default function DashboardPage() {
           ]
         );
       }, 60000);
+
+    return () =>
+      clearInterval(interval);
+  }, []);
+
+  /* =======================================================
+     ROTATE LATEST UPDATES
+  ======================================================= */
+
+  useEffect(() => {
+    const interval =
+      setInterval(() => {
+        setUpdateVisible(false);
+
+        setTimeout(() => {
+          setUpdateIndex(
+            (current) =>
+              current === 0 ? 1 : 0
+          );
+
+          setUpdateVisible(true);
+        }, 500);
+      }, 6000);
 
     return () =>
       clearInterval(interval);
@@ -655,7 +688,9 @@ export default function DashboardPage() {
 
         </div>
 
-        {/* LATEST UPDATES */}
+        {/* =================================================
+            LATEST UPDATES
+        ================================================= */}
 
         <div className="min-w-0 rounded-3xl bg-white p-6 shadow-sm">
 
@@ -672,29 +707,141 @@ export default function DashboardPage() {
 
           </div>
 
-          <div className="mt-5 space-y-4">
+          {/* ROTATING CONTENT */}
 
-            <h3 className="text-xl font-extrabold text-slate-900">
-              Happy New Week! 🎉
-            </h3>
+          <div
+            className={`mt-5 min-h-[250px] transition-all duration-500 ease-in-out ${
+              updateVisible
+                ? "translate-y-0 opacity-100"
+                : "translate-y-2 opacity-0"
+            }`}
+          >
 
-            <p className="font-semibold leading-7 text-slate-700">
-              Welcome to a new week at GS Academy.
-              Stay focused, take your studies
-              seriously, and make every lesson count.
-            </p>
+            {updateIndex === 0 ? (
 
-            <p className="font-semibold leading-7 text-slate-700">
-              📚 Our classwork system is now working.
-              You can now access your classwork and
-              submit your work through the student
-              dashboard.
-            </p>
+              /* ==========================================
+                 ANNOUNCEMENT 1
+              ========================================== */
 
-            <p className="font-bold leading-7 text-slate-900">
-              Keep learning, keep improving, and
-              let&apos;s have a great week!
-            </p>
+              <div>
+
+                <h3 className="text-xl font-extrabold text-slate-900">
+                  Happy New Week! 🎉
+                </h3>
+
+                <p className="mt-4 font-semibold leading-7 text-slate-700">
+                  Welcome to a new week at GS Academy.
+                  Stay focused, take your studies
+                  seriously, and make every lesson
+                  count.
+                </p>
+
+                <div className="mt-5 rounded-2xl bg-yellow-50 p-4">
+
+                  <p className="font-bold leading-7 text-slate-900">
+                    ❤️ A Message from the Founder
+                  </p>
+
+                  <p className="mt-2 font-medium leading-7 text-slate-700">
+                    I am proud of every one of you.
+                    Keep learning, keep improving,
+                    and always give your best.
+                    I believe in you!
+                  </p>
+
+                  <p className="mt-3 font-bold text-slate-900">
+                    — GreatSam, Founder, GS Academy
+                  </p>
+
+                </div>
+
+              </div>
+
+            ) : (
+
+              /* ==========================================
+                 ANNOUNCEMENT 2
+              ========================================== */
+
+              <div>
+
+                <h3 className="text-xl font-extrabold text-slate-900">
+                  📝 Monthly Mock Examination
+                </h3>
+
+                <p className="mt-4 font-semibold leading-7 text-slate-700">
+                  Get ready for our monthly mock
+                  examination at the end of this
+                  month.
+                </p>
+
+                <p className="mt-4 font-semibold leading-7 text-slate-700">
+                  The mock will cover everything you
+                  have learnt throughout the month,
+                  so make sure you regularly review
+                  your lessons, classwork, and learning
+                  resources.
+                </p>
+
+                <div className="mt-5 rounded-2xl bg-yellow-50 p-4">
+
+                  <p className="font-bold leading-7 text-slate-900">
+                    📚 Start preparing now!
+                  </p>
+
+                  <p className="mt-1 font-medium leading-7 text-slate-700">
+                    Stay consistent and go into the
+                    mock fully prepared. You can do
+                    this! 💪
+                  </p>
+
+                </div>
+
+              </div>
+
+            )}
+
+          </div>
+
+          {/* ANNOUNCEMENT INDICATORS */}
+
+          <div className="mt-4 flex justify-center gap-2">
+
+            <button
+              type="button"
+              onClick={() => {
+                setUpdateVisible(false);
+
+                setTimeout(() => {
+                  setUpdateIndex(0);
+                  setUpdateVisible(true);
+                }, 300);
+              }}
+              aria-label="Show welcome announcement"
+              className={`h-2.5 rounded-full transition-all duration-300 ${
+                updateIndex === 0
+                  ? "w-7 bg-yellow-500"
+                  : "w-2.5 bg-slate-300"
+              }`}
+            />
+
+            <button
+              type="button"
+              onClick={() => {
+                setUpdateVisible(false);
+
+                setTimeout(() => {
+                  setUpdateIndex(1);
+                  setUpdateVisible(true);
+                }, 300);
+              }}
+              aria-label="Show mock examination announcement"
+              className={`h-2.5 rounded-full transition-all duration-300 ${
+                updateIndex === 1
+                  ? "w-7 bg-yellow-500"
+                  : "w-2.5 bg-slate-300"
+              }`}
+            />
 
           </div>
 
@@ -904,23 +1051,23 @@ export default function DashboardPage() {
 
                         )}
 
-                       {/* OPEN CLASS */}
+                        {/* OPEN CLASS */}
 
-<Link
-  href={`/dashboard/class?schedule_id=${encodeURIComponent(
-    joinSchedule.id
-  )}&subject=${encodeURIComponent(
-    subjectName
-  )}`}
-  className="inline-flex w-full items-center justify-center gap-2 rounded-xl border-2 border-slate-900 bg-white px-6 py-3 font-bold text-slate-900 transition hover:bg-slate-900 hover:text-white sm:w-auto"
->
-  Open Class
+                        <Link
+                          href={`/dashboard/class?schedule_id=${encodeURIComponent(
+                            joinSchedule.id
+                          )}&subject=${encodeURIComponent(
+                            subjectName
+                          )}`}
+                          className="inline-flex w-full items-center justify-center gap-2 rounded-xl border-2 border-slate-900 bg-white px-6 py-3 font-bold text-slate-900 transition hover:bg-slate-900 hover:text-white sm:w-auto"
+                        >
+                          Open Class
 
-  <ArrowRight
-    size={18}
-  />
+                          <ArrowRight
+                            size={18}
+                          />
 
-</Link>
+                        </Link>
 
                       </div>
 
