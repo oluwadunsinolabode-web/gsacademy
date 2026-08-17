@@ -733,7 +733,11 @@ export default function DashboardPage() {
                   Welcome to a new week at GS Academy.
                   Stay focused, take your studies
                   seriously, and make every lesson
-                  count.
+                  count. 
+                  Your learning resources are now available 
+                  through the student dashboard. 
+                  ensure you make good use of the materials provided by your tutors
+                  to support your lessons and revision.
                 </p>
 
                 <div className="mt-5 rounded-2xl bg-yellow-50 p-4">
