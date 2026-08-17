@@ -726,24 +726,21 @@ export default function DashboardPage() {
               <div>
 
                 <h3 className="text-xl font-extrabold text-slate-900">
-                  Happy New Week! 🎉
+                  Happy New Week! 
                 </h3>
 
                 <p className="mt-4 font-semibold leading-7 text-slate-700">
                   Welcome to a new week at GS Academy.
-                  Stay focused, take your studies
-                  seriously, and make every lesson
-                  count. 
                   Your learning resources are now available 
                   through the student dashboard. 
-                  ensure you make good use of the materials provided by your tutors
+                  Ensure you make good use of the materials provided by your tutors
                   to support your lessons and revision.
                 </p>
 
                 <div className="mt-5 rounded-2xl bg-yellow-50 p-4">
 
                   <p className="font-bold leading-7 text-slate-900">
-                    ❤️ A Message from the Founder
+                     A Message from the Founder
                   </p>
 
                   <p className="mt-2 font-medium leading-7 text-slate-700">
@@ -790,13 +787,13 @@ export default function DashboardPage() {
                 <div className="mt-5 rounded-2xl bg-yellow-50 p-4">
 
                   <p className="font-bold leading-7 text-slate-900">
-                    📚 Start preparing now!
+                     Start preparing now!
                   </p>
 
                   <p className="mt-1 font-medium leading-7 text-slate-700">
                     Stay consistent and go into the
                     mock fully prepared. You can do
-                    this! 💪
+                    this! 
                   </p>
 
                 </div>
