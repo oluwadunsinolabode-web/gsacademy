@@ -13,17 +13,37 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
 
-    // Generate temporary password
+    const realEmail = body.email?.trim().toLowerCase();
+
+    if (!realEmail) {
+      return NextResponse.json(
+        {
+          error: "Student email is required.",
+        },
+        {
+          status: 400,
+        }
+      );
+    }
+
+    /*
+     * =====================================================
+     * GENERATE TEMPORARY PASSWORD
+     * =====================================================
+     */
+
     const temporaryPassword =
       Math.random().toString(36).slice(-8) + "Gs@1";
 
     /*
      * =====================================================
-     * CHECK WHETHER THIS EMAIL ALREADY EXISTS IN AUTH
+     * CHECK WHETHER REAL EMAIL ALREADY EXISTS IN AUTH
      * =====================================================
+     *
+     * We no longer create internal GS Academy emails.
+     *
+     * The student's REAL email must be their Auth login email.
      */
-
-    let authEmail = body.email;
 
     const {
       data: existingUsers,
@@ -41,32 +61,31 @@ export async function POST(request: Request) {
       );
     }
 
-    const emailAlreadyExists = existingUsers.users.some(
-      (user) =>
-        user.email?.toLowerCase() ===
-        body.email.toLowerCase()
-    );
+    const existingAuthUser =
+      existingUsers.users.find(
+        (user) =>
+          user.email?.toLowerCase() === realEmail
+      );
 
-    /*
-     * =====================================================
-     * IF EMAIL ALREADY EXISTS
-     *
-     * Create a unique internal login email.
-     *
-     * The student's REAL email remains in:
-     * students.email
-     * =====================================================
-     */
-
-    if (emailAlreadyExists) {
-      authEmail =
-        `student-${crypto.randomUUID()}@gsacademyhub.com`;
+    if (existingAuthUser) {
+      return NextResponse.json(
+        {
+          error:
+            "This email already has a GS Academy login account. Please remove the existing student account before creating it again.",
+        },
+        {
+          status: 409,
+        }
+      );
     }
 
     /*
      * =====================================================
      * CREATE AUTH ACCOUNT
      * =====================================================
+     *
+     * IMPORTANT:
+     * The student's REAL email is now used directly.
      */
 
     const {
@@ -74,7 +93,7 @@ export async function POST(request: Request) {
       error: authError,
     } =
       await supabaseAdmin.auth.admin.createUser({
-        email: authEmail,
+        email: realEmail,
         password: temporaryPassword,
         email_confirm: true,
       });
@@ -106,7 +125,7 @@ export async function POST(request: Request) {
           full_name: body.full_name,
 
           // REAL EMAIL
-          email: body.email,
+          email: realEmail,
 
           phone: body.phone,
 
@@ -149,7 +168,11 @@ export async function POST(request: Request) {
         .single();
 
     if (studentError) {
-      // If student creation fails, remove the Auth account
+      /*
+       * If the student record fails,
+       * remove the Auth account we just created.
+       */
+
       await supabaseAdmin.auth.admin.deleteUser(
         authUser.user.id
       );
@@ -197,6 +220,12 @@ export async function POST(request: Request) {
           .insert(tutorAssignments);
 
       if (assignmentError) {
+        /*
+         * We do not delete the student/Auth account here
+         * because the student was already created successfully.
+         * The assignment error is returned for correction.
+         */
+
         return NextResponse.json(
           {
             error:
@@ -215,12 +244,15 @@ export async function POST(request: Request) {
      * =====================================================
      */
 
-    const { data: emailData, error: emailError } =
+    const {
+      data: emailData,
+      error: emailError,
+    } =
       await resend.emails.send({
         from:
           "GS Academy <booking@gsacademyhub.com>",
 
-        to: body.email,
+        to: realEmail,
 
         subject:
           "Your GS Academy Student Portal Login Details",
@@ -256,20 +288,8 @@ export async function POST(request: Request) {
 
             <p>
               <strong>Login Email:</strong>
-              ${authEmail}
+              ${realEmail}
             </p>
-
-            ${
-              authEmail !== body.email
-                ? `
-                  <p style="color:#b45309">
-                    Please use the Login Email above
-                    when signing in. Your registered
-                    contact email remains ${body.email}.
-                  </p>
-                `
-                : ""
-            }
 
             <p>
               <strong>Temporary Password:</strong>
@@ -315,16 +335,34 @@ export async function POST(request: Request) {
       });
 
     if (emailError) {
-      console.log(
+      console.error(
         "EMAIL ERROR:",
         emailError
       );
-    } else {
-      console.log(
-        "LOGIN EMAIL SENT:",
-        emailData
+
+      /*
+       * The account was created successfully,
+       * but the email failed.
+       */
+
+      return NextResponse.json(
+        {
+          success: true,
+          warning:
+            "Student account was created, but the login email could not be sent.",
+          student,
+          loginEmail: realEmail,
+        },
+        {
+          status: 200,
+        }
       );
     }
+
+    console.log(
+      "LOGIN EMAIL SENT:",
+      emailData
+    );
 
     /*
      * =====================================================
@@ -339,11 +377,14 @@ export async function POST(request: Request) {
 
       temporaryPassword,
 
-      loginEmail: authEmail,
+      loginEmail: realEmail,
     });
 
   } catch (error) {
-    console.log(error);
+    console.error(
+      "CREATE STUDENT ERROR:",
+      error
+    );
 
     return NextResponse.json(
       {
