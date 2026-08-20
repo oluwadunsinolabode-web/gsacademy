@@ -129,11 +129,17 @@ function getTimeMinutes(
     return 0;
   }
 
-  if (period === "PM" && hour !== 12) {
+  if (
+    period === "PM" &&
+    hour !== 12
+  ) {
     hour += 12;
   }
 
-  if (period === "AM" && hour === 12) {
+  if (
+    period === "AM" &&
+    hour === 12
+  ) {
     hour = 0;
   }
 
@@ -276,7 +282,9 @@ export default function TimetablePage() {
         } =
           await supabase
             .from("students")
-            .select("id, auth_id")
+            .select(
+              "id, auth_id"
+            )
             .eq(
               "auth_id",
               user.id
@@ -349,12 +357,22 @@ export default function TimetablePage() {
            CONVERT TO UI DATA
         ================================================ */
 
-        const timetableData =
+        const timetableData: TimetableLesson[] =
           schedules.map(
             (schedule) => {
               const isNextLesson =
                 nextLesson?.id ===
                 schedule.id;
+
+              const status: TimetableLesson["status"] =
+                isNextLesson
+                  ? "Upcoming"
+                  : "Scheduled";
+
+              const color =
+                isNextLesson
+                  ? "bg-green-100 text-green-700"
+                  : "bg-yellow-100 text-yellow-700";
 
               return {
                 id: schedule.id,
@@ -376,15 +394,9 @@ export default function TimetablePage() {
                 meetLink:
                   schedule.meet_link,
 
-                status:
-                  isNextLesson
-                    ? "Upcoming"
-                    : "Scheduled",
+                status,
 
-                color:
-                  isNextLesson
-                    ? "bg-green-100 text-green-700"
-                    : "bg-yellow-100 text-yellow-700",
+                color,
               };
             }
           );
@@ -406,8 +418,12 @@ export default function TimetablePage() {
             }
 
             return (
-              getTimeMinutes(a.time) -
-              getTimeMinutes(b.time)
+              getTimeMinutes(
+                a.time
+              ) -
+              getTimeMinutes(
+                b.time
+              )
             );
           }
         );
@@ -521,6 +537,7 @@ export default function TimetablePage() {
                   </div>
 
                   <div className="mt-5 space-y-3 text-slate-700">
+
                     <div className="flex justify-between gap-4">
                       <span className="font-semibold">
                         Day
@@ -550,11 +567,14 @@ export default function TimetablePage() {
                         {lesson.time}
                       </span>
                     </div>
+
                   </div>
 
                   {lesson.meetLink && (
                     <a
-                      href={lesson.meetLink}
+                      href={
+                        lesson.meetLink
+                      }
                       target="_blank"
                       rel="noopener noreferrer"
                       className="mt-6 inline-block rounded-xl bg-yellow-500 px-6 py-3 font-bold text-slate-900 hover:bg-yellow-400"
@@ -572,9 +592,13 @@ export default function TimetablePage() {
           ================================================ */}
 
           <div className="mt-10 hidden overflow-hidden rounded-3xl bg-white shadow-sm lg:block">
+
             <table className="w-full">
+
               <thead className="bg-slate-900 text-white">
+
                 <tr>
+
                   <th className="px-6 py-5 text-left">
                     Day
                   </th>
@@ -598,16 +622,21 @@ export default function TimetablePage() {
                   <th className="px-6 py-5 text-left">
                     Class
                   </th>
+
                 </tr>
+
               </thead>
 
               <tbody>
+
                 {timetable.map(
                   (lesson) => (
+
                     <tr
                       key={lesson.id}
                       className="border-b border-slate-200"
                     >
+
                       <td className="px-6 py-5 font-medium">
                         {lesson.day}
                       </td>
@@ -625,34 +654,49 @@ export default function TimetablePage() {
                       </td>
 
                       <td className="px-6 py-5">
+
                         <span
                           className={`inline-block rounded-full px-4 py-2 font-semibold ${lesson.color}`}
                         >
                           {lesson.status}
                         </span>
+
                       </td>
 
                       <td className="px-6 py-5">
+
                         {lesson.meetLink ? (
+
                           <a
-                            href={lesson.meetLink}
+                            href={
+                              lesson.meetLink
+                            }
                             target="_blank"
                             rel="noopener noreferrer"
                             className="rounded-xl bg-yellow-500 px-5 py-2 font-bold text-slate-900 hover:bg-yellow-400"
                           >
                             Join Class
                           </a>
+
                         ) : (
+
                           <span className="text-sm font-semibold text-slate-500">
                             Link unavailable
                           </span>
+
                         )}
+
                       </td>
+
                     </tr>
+
                   )
                 )}
+
               </tbody>
+
             </table>
+
           </div>
         </>
       )}
@@ -662,6 +706,7 @@ export default function TimetablePage() {
       =================================================== */}
 
       <div className="mt-10 rounded-3xl bg-white p-8 shadow-sm">
+
         <h2 className="text-2xl font-bold text-slate-900">
           Class Reminder
         </h2>
@@ -672,6 +717,7 @@ export default function TimetablePage() {
           Any timetable changes confirmed by GS Academy
           will appear here.
         </p>
+
       </div>
     </>
   );
