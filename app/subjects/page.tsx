@@ -1,4 +1,5 @@
 import Navbar from "@/components/Navbar";
+import Link from "next/link";
 
 export default function SubjectsPage() {
   return (
@@ -6,7 +7,6 @@ export default function SubjectsPage() {
       <Navbar />
 
       <main className="min-h-screen bg-slate-50">
-
         <section className="mx-auto max-w-7xl px-8 py-20">
 
           <div className="max-w-3xl">
@@ -23,8 +23,12 @@ export default function SubjectsPage() {
 
           <div className="mt-16 grid gap-8 md:grid-cols-2 lg:grid-cols-3">
 
-            <div className="rounded-3xl bg-white p-8 shadow-sm">
-              <h2 className="text-2xl font-bold text-slate-900">
+            {/* MATHEMATICS */}
+            <Link
+              href="/subjects/mathematics"
+              className="group rounded-3xl bg-white p-8 shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
+            >
+              <h2 className="text-2xl font-bold text-slate-900 group-hover:text-yellow-600">
                 Mathematics
               </h2>
 
@@ -32,8 +36,13 @@ export default function SubjectsPage() {
                 Primary Mathematics, Secondary Mathematics, GCSE, IGCSE,
                 WAEC, NECO and exam preparation.
               </p>
-            </div>
 
+              <p className="mt-5 font-bold text-slate-900">
+                Explore Mathematics →
+              </p>
+            </Link>
+
+            {/* SCIENCE */}
             <div className="rounded-3xl bg-white p-8 shadow-sm">
               <h2 className="text-2xl font-bold text-slate-900">
                 Science
@@ -45,6 +54,7 @@ export default function SubjectsPage() {
               </p>
             </div>
 
+            {/* PHYSICS */}
             <div className="rounded-3xl bg-white p-8 shadow-sm">
               <h2 className="text-2xl font-bold text-slate-900">
                 Physics
@@ -55,6 +65,7 @@ export default function SubjectsPage() {
               </p>
             </div>
 
+            {/* CHEMISTRY */}
             <div className="rounded-3xl bg-white p-8 shadow-sm">
               <h2 className="text-2xl font-bold text-slate-900">
                 Chemistry
@@ -65,6 +76,7 @@ export default function SubjectsPage() {
               </p>
             </div>
 
+            {/* BIOLOGY */}
             <div className="rounded-3xl bg-white p-8 shadow-sm">
               <h2 className="text-2xl font-bold text-slate-900">
                 Biology
@@ -75,6 +87,7 @@ export default function SubjectsPage() {
               </p>
             </div>
 
+            {/* ENGLISH */}
             <div className="rounded-3xl bg-white p-8 shadow-sm">
               <h2 className="text-2xl font-bold text-slate-900">
                 English Language
@@ -87,6 +100,7 @@ export default function SubjectsPage() {
               </p>
             </div>
 
+            {/* OTHER SUBJECTS */}
             <div className="rounded-3xl bg-white p-8 shadow-sm">
               <h2 className="text-2xl font-bold text-slate-900">
                 Other Subjects
@@ -113,9 +127,7 @@ export default function SubjectsPage() {
           </div>
 
         </section>
-
       </main>
-      
     </>
   );
 }
