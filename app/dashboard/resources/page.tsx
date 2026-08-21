@@ -38,7 +38,6 @@ export default function ResourcesPage() {
 
         </div>
 
-
         {/* =====================================================
             MONTHLY MOCK EXAM
         ===================================================== */}
@@ -52,15 +51,16 @@ export default function ResourcesPage() {
           </h2>
 
           <p className="mt-4 leading-7 text-slate-700">
-            Take scheduled monthly assessments and monitor your academic progress.
+            Take scheduled monthly assessments and monitor your academic
+            progress.
           </p>
 
-          <button
-            type="button"
-            className="mt-8 w-full rounded-xl bg-slate-900 py-3 font-bold text-white transition hover:bg-slate-800"
+          <Link
+            href="/dashboard/resources/mock-exams"
+            className="mt-8 block w-full rounded-xl bg-slate-900 py-3 text-center font-bold text-white transition hover:bg-slate-800"
           >
             View Exams
-          </button>
+          </Link>
 
         </div>
 
