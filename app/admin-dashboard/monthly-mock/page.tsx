@@ -52,7 +52,6 @@ export default function MonthlyMockPage() {
 
   const [students, setStudents] = useState<Student[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
-
   const [loading, setLoading] = useState(true);
 
   /* =========================================================
@@ -73,6 +72,8 @@ export default function MonthlyMockPage() {
   const [parsing, setParsing] = useState(false);
   const [savingQuestions, setSavingQuestions] = useState(false);
   const [publishing, setPublishing] = useState(false);
+
+  const [questionsSaved, setQuestionsSaved] = useState(false);
 
   const [currentExam, setCurrentExam] =
     useState<MockExam | null>(null);
@@ -236,6 +237,7 @@ export default function MonthlyMockPage() {
     setCurrentExam(null);
     setQuestions([]);
     setBulkText("");
+    setQuestionsSaved(false);
 
     setMessage("");
     setError("");
@@ -428,6 +430,7 @@ export default function MonthlyMockPage() {
       setParsing(true);
       setError("");
       setMessage("");
+      setQuestionsSaved(false);
 
       const parsed =
         parseBulkQuestions(bulkText);
@@ -467,6 +470,8 @@ export default function MonthlyMockPage() {
     field: keyof ParsedQuestion,
     value: any
   ) {
+    setQuestionsSaved(false);
+
     setQuestions((current) =>
       current.map((question, i) =>
         i === index
@@ -488,6 +493,8 @@ export default function MonthlyMockPage() {
     optionKey: string,
     value: string
   ) {
+    setQuestionsSaved(false);
+
     setQuestions((current) =>
       current.map((question, index) => {
         if (index !== questionIndex) {
@@ -510,6 +517,8 @@ export default function MonthlyMockPage() {
   ========================================================= */
 
   function deleteQuestion(index: number) {
+    setQuestionsSaved(false);
+
     setQuestions((current) =>
       current.filter(
         (_, i) => i !== index
@@ -522,6 +531,8 @@ export default function MonthlyMockPage() {
   ========================================================= */
 
   function addQuestion() {
+    setQuestionsSaved(false);
+
     setQuestions((current) => [
       ...current,
       {
@@ -562,6 +573,7 @@ export default function MonthlyMockPage() {
     try {
       setError("");
       setMessage("");
+      setQuestionsSaved(false);
 
       if (!studentId) {
         throw new Error(
@@ -634,6 +646,7 @@ export default function MonthlyMockPage() {
       }
 
       setCurrentExam(exam);
+      setQuestionsSaved(false);
 
       setMessage(
         "Mock created. You can now paste and review the questions."
@@ -656,6 +669,7 @@ export default function MonthlyMockPage() {
       setSavingQuestions(true);
       setError("");
       setMessage("");
+      setQuestionsSaved(false);
 
       if (!currentExam) {
         throw new Error(
@@ -784,12 +798,14 @@ export default function MonthlyMockPage() {
         );
       }
 
+      setQuestionsSaved(true);
+
       setMessage(
         `${questions.length} question${
           questions.length === 1
             ? ""
             : "s"
-        } saved successfully.`
+        } saved successfully. You can now publish the mock.`
       );
     } catch (err) {
       console.error(
@@ -834,6 +850,16 @@ export default function MonthlyMockPage() {
           "Select a subject before publishing."
         );
       }
+
+      if (!questionsSaved) {
+        throw new Error(
+          "Please save the questions before publishing."
+        );
+      }
+
+      /* =====================================================
+         VERIFY SAVED QUESTIONS
+      ===================================================== */
 
       const {
         data: savedQuestions,
@@ -995,12 +1021,6 @@ export default function MonthlyMockPage() {
         setPublishedMocks([]);
         return;
       }
-
-      /*
-        Find exams assigned to this student.
-        Then only keep published exams belonging
-        to the selected subject.
-      */
 
       const {
         data: assignments,
@@ -1497,13 +1517,13 @@ export default function MonthlyMockPage() {
                     <p className="mt-3 text-slate-300">
                       {selectedPublishedMock.subject_name}
                       {" • "}
-                      {selectedPublishedMock.duration_minutes ||
-                        0}{" "}
+                      {selectedPublishedMock.duration_minutes || 0}{" "}
                       minutes
                     </p>
                   </div>
 
                   <div className="rounded-2xl bg-white/10 px-6 py-4 text-center">
+
                     <p className="text-xs uppercase tracking-wide text-slate-400">
                       Student
                     </p>
@@ -1511,6 +1531,7 @@ export default function MonthlyMockPage() {
                     <p className="mt-1 font-extrabold text-yellow-400">
                       {viewerStudent?.full_name}
                     </p>
+
                   </div>
 
                 </div>
@@ -1560,8 +1581,7 @@ export default function MonthlyMockPage() {
                               <span className="text-sm font-bold text-slate-500">
                                 {question.marks}{" "}
                                 mark
-                                {question.marks ===
-                                1
+                                {question.marks === 1
                                   ? ""
                                   : "s"}
                               </span>
@@ -1587,6 +1607,7 @@ export default function MonthlyMockPage() {
                                         key={key}
                                         className="flex items-start gap-3 rounded-xl border border-slate-200 p-4"
                                       >
+
                                         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 font-bold text-slate-700">
                                           {key}
                                         </span>
@@ -1594,6 +1615,7 @@ export default function MonthlyMockPage() {
                                         <span className="pt-1 text-slate-800">
                                           {value}
                                         </span>
+
                                       </div>
                                     )
                                   )}
@@ -1702,6 +1724,7 @@ export default function MonthlyMockPage() {
               </div>
 
               <div>
+
                 <p className="text-xs font-bold uppercase tracking-wide text-yellow-600">
                   Prepare
                 </p>
@@ -1709,6 +1732,7 @@ export default function MonthlyMockPage() {
                 <h2 className="text-2xl font-extrabold text-slate-900">
                   Student & Subject
                 </h2>
+
               </div>
 
             </div>
@@ -1738,6 +1762,7 @@ export default function MonthlyMockPage() {
                   }
                   className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3"
                 >
+
                   <option value="">
                     Select student
                   </option>
@@ -1753,6 +1778,7 @@ export default function MonthlyMockPage() {
                       </option>
                     )
                   )}
+
                 </select>
 
               </div>
@@ -1767,11 +1793,12 @@ export default function MonthlyMockPage() {
 
                 <select
                   value={subjectId}
-                  onChange={(e) =>
+                  onChange={(e) => {
                     setSubjectId(
                       e.target.value
-                    )
-                  }
+                    );
+                    setQuestionsSaved(false);
+                  }}
                   disabled={
                     !studentId ||
                     registeredSubjects.length ===
@@ -1827,6 +1854,7 @@ export default function MonthlyMockPage() {
               </div>
 
               <div>
+
                 <p className="text-xs font-bold uppercase tracking-wide text-yellow-600">
                   Examination
                 </p>
@@ -1834,6 +1862,7 @@ export default function MonthlyMockPage() {
                 <h2 className="text-2xl font-extrabold text-slate-900">
                   Mock Details
                 </h2>
+
               </div>
 
             </div>
@@ -2018,6 +2047,7 @@ export default function MonthlyMockPage() {
                 <div className="flex gap-3">
 
                   <div className="rounded-xl bg-slate-900 px-5 py-3 text-center text-white">
+
                     <p className="text-xs uppercase text-slate-400">
                       Questions
                     </p>
@@ -2025,9 +2055,11 @@ export default function MonthlyMockPage() {
                     <p className="text-xl font-extrabold">
                       {questions.length}
                     </p>
+
                   </div>
 
                   <div className="rounded-xl bg-yellow-500 px-5 py-3 text-center text-slate-900">
+
                     <p className="text-xs uppercase">
                       Marks
                     </p>
@@ -2035,6 +2067,7 @@ export default function MonthlyMockPage() {
                     <p className="text-xl font-extrabold">
                       {totalMarks}
                     </p>
+
                   </div>
 
                 </div>
@@ -2101,9 +2134,11 @@ Marks: 3`}
 
                 <button
                   type="button"
-                  onClick={() =>
-                    setBulkText("")
-                  }
+                  onClick={() => {
+                    setBulkText("");
+                    setQuestions([]);
+                    setQuestionsSaved(false);
+                  }}
                   className="rounded-xl border border-slate-300 px-7 py-3 font-bold text-slate-700"
                 >
                   Clear
@@ -2452,7 +2487,9 @@ Marks: 3`}
                     <div>
 
                       <p className="text-sm font-bold uppercase tracking-wide text-yellow-400">
-                        Ready to save
+                        {questionsSaved
+                          ? "Questions saved"
+                          : "Ready to save"}
                       </p>
 
                       <h2 className="mt-2 text-2xl font-extrabold">
@@ -2461,8 +2498,9 @@ Marks: 3`}
                       </h2>
 
                       <p className="mt-2 text-slate-300">
-                        Save the reviewed question set before
-                        publishing.
+                        {questionsSaved
+                          ? "Your reviewed questions are saved. You can publish the mock below."
+                          : "Save the reviewed question set before publishing."}
                       </p>
 
                     </div>
@@ -2477,6 +2515,8 @@ Marks: 3`}
                     >
                       {savingQuestions
                         ? "Saving Questions..."
+                        : questionsSaved
+                        ? "Save Changes"
                         : "Save Questions"}
                     </button>
 
@@ -2504,7 +2544,9 @@ Marks: 3`}
                     </p>
 
                     <h2 className="mt-2 text-2xl font-extrabold text-slate-900">
-                      Ready to publish?
+                      {questionsSaved
+                        ? "Your mock is ready to publish"
+                        : "Save your questions first"}
                     </h2>
 
                     <p className="mt-3 max-w-3xl leading-7 text-slate-700">
@@ -2543,10 +2585,18 @@ Marks: 3`}
 
                     </p>
 
-                    <p className="mt-3 text-sm font-semibold text-green-700">
-                      Publishing will make this mock available
-                      to the selected student under this subject.
-                    </p>
+                    {!questionsSaved && (
+                      <p className="mt-3 text-sm font-semibold text-orange-700">
+                        Please click "Save Questions" above before publishing.
+                      </p>
+                    )}
+
+                    {questionsSaved && (
+                      <p className="mt-3 text-sm font-semibold text-green-700">
+                        The reviewed questions have been saved successfully.
+                        You can now publish this mock for the selected student.
+                      </p>
+                    )}
 
                   </div>
 
@@ -2555,16 +2605,19 @@ Marks: 3`}
                     onClick={publishMock}
                     disabled={
                       publishing ||
+                      !questionsSaved ||
                       currentExam.status ===
                         "published"
                     }
-                    className="rounded-xl bg-green-600 px-8 py-4 font-extrabold text-white transition hover:bg-green-700 disabled:opacity-50"
+                    className="rounded-xl bg-green-600 px-8 py-4 font-extrabold text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {publishing
                       ? "Publishing..."
                       : currentExam.status ===
                         "published"
                       ? "Published"
+                      : !questionsSaved
+                      ? "Save Questions First"
                       : "Publish Mock"}
                   </button>
 
